@@ -58,8 +58,8 @@ export function LoginForm({ nextPath, initialError }: { nextPath?: string; initi
   return (
     <div className="auth-layout">
       <aside className="auth-aside">
-        <a className="brand auth-brand" href="/" aria-label="Team Platform">
-          <Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} /><span>Team Platform</span>
+        <a className="brand auth-brand" href="/" aria-label="JituPTN Team Platform">
+          <Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} /><span>JituPTN Team Platform</span>
         </a>
         <div className="auth-aside-copy">
           <p className="auth-eyebrow">JITU / TEAM WORKSPACE</p>
@@ -72,7 +72,7 @@ export function LoginForm({ nextPath, initialError }: { nextPath?: string; initi
         <div className="auth-heading">
           <p className="auth-eyebrow">AKSES TIM</p>
           <h1 id="login-title">Masuk ke ruang kerja</h1>
-          <p>Gunakan akun yang telah diberikan akses ke Team Platform.</p>
+          <p>Gunakan akun yang telah diberikan akses ke JituPTN Team Platform.</p>
         </div>
         <form className="form-stack auth-form" onSubmit={signIn}>
           {error && <p className="inline-message error" role="alert">{error}</p>}
@@ -86,7 +86,7 @@ export function LoginForm({ nextPath, initialError }: { nextPath?: string; initi
             {loading ? 'Memeriksa akun…' : 'Masuk'}
           </button>
         </form>
-        <p className="auth-footnote">Akun dikelola oleh administrator Team Platform.</p>
+        <p className="auth-footnote">Akun dikelola oleh administrator JituPTN Team Platform.</p>
       </section>
     </div>
   );

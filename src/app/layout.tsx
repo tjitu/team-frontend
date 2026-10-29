@@ -3,7 +3,7 @@ import { WorkspaceShell } from '@/components/workspace-shell';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Team Platform',
+  title: 'JituPTN Team Platform',
   description: 'Ruang kerja proyek dan task tim.',
 };
 
