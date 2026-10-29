@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api, CurrentMember, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskPriority, TaskStatus } from '@/lib/api';
 
@@ -203,7 +204,7 @@ export default function ProjectPage() {
           <h1>{project?.name ?? (loading ? 'Memuat proyek…' : 'Proyek')}</h1>
           <p className="page-subtitle">{project?.description || 'Atur pekerjaan dan pantau progres task proyek.'}</p>
         </div>
-        {canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Task baru</button>}
+        <div className="page-heading-actions"><Link className="button button-secondary" href={`/projects/${encodeURIComponent(projectId)}/activity`}>Aktivitas</Link>{canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Task baru</button>}</div>
       </div>
 
       {project && <section className="project-member-section" aria-labelledby="project-members-heading">

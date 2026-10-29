@@ -54,6 +54,25 @@ export interface DepartmentMember {
   teamMember: TeamMember & { role: TeamRole };
 }
 
+export interface ActivityRecord {
+  id: string;
+  actorTeamMemberId: string;
+  projectId: string | null;
+  eventType: string;
+  entityType: string;
+  entityId: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  actor: TeamMember & { role: TeamRole };
+  project: Pick<Project, 'id' | 'name' | 'slug'> | null;
+}
+
+export interface ActivityPage {
+  items: ActivityRecord[];
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+
 export interface Project {
   id: string;
   name: string;
