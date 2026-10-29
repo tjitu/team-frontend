@@ -203,6 +203,20 @@ export default function ProjectPage() {
 
   useEffect(() => { void load(false); }, [load]);
 
+  useEffect(() => {
+    if (!selectedTask) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !createOpen && !editTaskOpen && !editProjectOpen && !manageMembersOpen) setSelectedTask(null);
+    }
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [selectedTask?.id, createOpen, editTaskOpen, editProjectOpen, manageMembersOpen]);
+
   async function loadMoreTasks() {
     if (!nextTaskCursor || loadingMoreTasks) return;
     const requestVersion = taskRequestVersion.current;
@@ -465,7 +479,7 @@ export default function ProjectPage() {
       {detailError && !selectedTask && <div className="inline-message error" role="alert">{detailError}</div>}
 
       <div className="section-heading section-spacer task-section-heading"><div><h2>{taskView === 'board' ? 'Papan task' : 'Daftar task'}</h2><p>{taskView === 'board' ? 'Pindahkan pekerjaan dengan mengubah status dari kartu task.' : 'Kelola status, prioritas, penanggung jawab, dan tenggat pekerjaan.'}</p></div><span className="task-count">{filteredCount} ditampilkan</span></div>
-      <div className={`task-layout ${selectedTask ? 'has-selection' : ''}`}>
+      <div className="task-layout">
         <div>
           <form className="task-toolbar" onSubmit={(event) => { event.preventDefault(); setAppliedQuery(query); }}>
             <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari task…" aria-label="Cari task" />
@@ -522,22 +536,29 @@ export default function ProjectPage() {
           {hasMoreTasks && !loading && <div className="task-load-more"><button className="button button-secondary" type="button" disabled={loadingMoreTasks} onClick={() => void loadMoreTasks()}>{loadingMoreTasks ? 'Memuat task…' : 'Muat task berikutnya'}</button><span>{tasks.length} task dimuat</span></div>}
         </div>
 
-        {selectedTask && <aside className="task-detail-card" aria-label="Detail task">
-          <div className="detail-header"><h2>{selectedTask.title}</h2><button className="icon-button" aria-label="Tutup detail task" onClick={() => setSelectedTask(null)}>×</button></div>
-          <div className="detail-body">
-            {detailError && <div className="inline-message error" role="alert">{detailError}</div>}
-            {(canWrite || canManage) && <div className="detail-actions">{canWrite && <button className="button button-secondary compact-button" onClick={() => { setTaskFormError(''); setEditTaskOpen(true); }}>Edit task</button>}{canManage && <button className="button button-quiet compact-button danger-action" disabled={saving} onClick={() => void archiveTask()}>Arsipkan</button>}</div>}
-            <div className="detail-field"><span>Status</span><TaskStatusPicker task={selectedTask} disabled={!canWrite || saving} onChange={updateStatus} fullWidth /></div>
-            <div className="detail-meta"><div className="detail-field"><span>Prioritas</span><strong>{priorityLabels[selectedTask.priority]}</strong></div><div className="detail-field"><span>Jatuh tempo</span><strong>{dateLabel(selectedTask.dueAt)}</strong></div></div>
-            <div className="detail-field"><span>Deskripsi</span><p>{selectedTask.description || 'Belum ada deskripsi.'}</p></div>
-            <div className="detail-field"><span>Assignee</span><div className="project-members">{selectedTask.assignees.length ? selectedTask.assignees.map(({ teamMember }) => <span className="member-chip" key={teamMember.id}><span className="avatar">{initials(teamMember.name)}</span>{teamMember.name}</span>) : <p>Belum ada assignee.</p>}</div></div>
-            <div className="detail-field"><span>Komentar ({selectedTask.comments?.length ?? 0})</span>
-              <div className="comment-list">{selectedTask.comments?.map((item) => <article className="comment-item" key={item.id}><div className="comment-meta"><strong>{item.author.name}</strong><time dateTime={item.createdAt}>{dateLabel(item.createdAt)}</time></div><p>{item.body}</p></article>)}</div>
-              {canWrite && <form className="comment-form" onSubmit={addComment}><label className="sr-only" htmlFor="task-comment">Tulis komentar</label><textarea className="field-textarea" id="task-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={5000} placeholder="Tulis komentar…" required /><button className="button button-secondary" disabled={saving || !comment.trim()}>Kirim komentar</button></form>}
-            </div>
-          </div>
-        </aside>}
       </div>
+
+      {selectedTask && <div className="task-detail-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedTask(null); }}>
+        <section className="task-detail-card" role="dialog" aria-modal="true" aria-labelledby="task-detail-title">
+          <div className="detail-header"><h2 id="task-detail-title">{selectedTask.title}</h2><button className="icon-button" aria-label="Tutup detail task" onClick={() => setSelectedTask(null)}>×</button></div>
+          <div className="detail-body">
+            <div className="task-detail-main">
+              {detailError && <div className="inline-message error" role="alert">{detailError}</div>}
+              <div className="detail-field"><span>Deskripsi</span><p>{selectedTask.description || 'Belum ada deskripsi.'}</p></div>
+              <div className="detail-field"><span>Komentar ({selectedTask.comments?.length ?? 0})</span>
+                <div className="comment-list">{selectedTask.comments?.map((item) => <article className="comment-item" key={item.id}><div className="comment-meta"><strong>{item.author.name}</strong><time dateTime={item.createdAt}>{dateLabel(item.createdAt)}</time></div><p>{item.body}</p></article>)}</div>
+                {canWrite && <form className="comment-form" onSubmit={addComment}><label className="sr-only" htmlFor="task-comment">Tulis komentar</label><textarea className="field-textarea" id="task-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={5000} placeholder="Tulis komentar…" required /><button className="button button-secondary" disabled={saving || !comment.trim()}>Kirim komentar</button></form>}
+              </div>
+            </div>
+            <aside className="task-detail-properties" aria-label="Properti task">
+              {(canWrite || canManage) && <div className="detail-actions">{canWrite && <button className="button button-secondary compact-button" onClick={() => { setTaskFormError(''); setEditTaskOpen(true); }}>Edit task</button>}{canManage && <button className="button button-quiet compact-button danger-action" disabled={saving} onClick={() => void archiveTask()}>Arsipkan</button>}</div>}
+              <div className="detail-field"><span>Status</span><TaskStatusPicker task={selectedTask} disabled={!canWrite || saving} onChange={updateStatus} fullWidth /></div>
+              <div className="detail-meta"><div className="detail-field"><span>Prioritas</span><strong>{priorityLabels[selectedTask.priority]}</strong></div><div className="detail-field"><span>Jatuh tempo</span><strong>{dateLabel(selectedTask.dueAt)}</strong></div></div>
+              <div className="detail-field"><span>Assignee</span><div className="project-members">{selectedTask.assignees.length ? selectedTask.assignees.map(({ teamMember }) => <span className="member-chip" key={teamMember.id}><span className="avatar">{initials(teamMember.name)}</span>{teamMember.name}</span>) : <p>Belum ada assignee.</p>}</div></div>
+            </aside>
+          </div>
+        </section>
+      </div>}
 
       {createOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateOpen(false); }}>
         <section className="modal" role="dialog" aria-modal="true" aria-labelledby="create-task-title">
