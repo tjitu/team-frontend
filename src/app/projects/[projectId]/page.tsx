@@ -32,8 +32,12 @@ export default function ProjectPage() {
   const [query, setQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [manageMembersOpen, setManageMembersOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [membershipError, setMembershipError] = useState('');
+  const [membershipNotice, setMembershipNotice] = useState('');
+  const [membershipBusy, setMembershipBusy] = useState('');
   const [detailError, setDetailError] = useState('');
   const [comment, setComment] = useState('');
 
@@ -108,6 +112,56 @@ export default function ProjectPage() {
     }
   }
 
+  async function addProjectMember(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setMembershipError('');
+    setMembershipNotice('');
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get('email') ?? '').trim();
+    const role = String(data.get('role') ?? 'MEMBER') as ProjectRole;
+    try {
+      await api.post(`/team/projects/${encodeURIComponent(projectId)}/members`, { email, role });
+      setMembershipNotice(`${email} ditambahkan ke proyek sebagai ${roleLabels[role]}.`);
+      await load(false);
+    } catch (cause) {
+      setMembershipError(cause instanceof Error ? cause.message : 'Anggota gagal ditambahkan.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateProjectMemberRole(teamMemberId: string, role: ProjectRole) {
+    setMembershipBusy(teamMemberId);
+    setMembershipError('');
+    setMembershipNotice('');
+    try {
+      await api.patch(`/team/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(teamMemberId)}/role`, { role });
+      setMembershipNotice(`Role anggota diperbarui menjadi ${roleLabels[role]}.`);
+      await load(false);
+    } catch (cause) {
+      setMembershipError(cause instanceof Error ? cause.message : 'Role anggota gagal diperbarui.');
+    } finally {
+      setMembershipBusy('');
+    }
+  }
+
+  async function removeProjectMember(teamMemberId: string, name: string) {
+    if (!window.confirm(`Keluarkan ${name} dari proyek ini?`)) return;
+    setMembershipBusy(teamMemberId);
+    setMembershipError('');
+    setMembershipNotice('');
+    try {
+      await api.delete(`/team/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(teamMemberId)}`);
+      setMembershipNotice(`${name} dikeluarkan dari proyek.`);
+      await load(false);
+    } catch (cause) {
+      setMembershipError(cause instanceof Error ? cause.message : 'Anggota gagal dikeluarkan.');
+    } finally {
+      setMembershipBusy('');
+    }
+  }
+
   async function updateStatus(status: TaskStatus) {
     if (!selectedTask) return;
     setSaving(true);
@@ -152,9 +206,12 @@ export default function ProjectPage() {
         {canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Task baru</button>}
       </div>
 
-      {project?.members && project.members.length > 0 && <div className="project-members" aria-label="Anggota proyek">
-        {project.members.map(({ id, role, teamMember }) => <span className="member-chip" key={id} title={`${teamMember.email} · ${roleLabels[role]}`}><span className="avatar">{initials(teamMember.name)}</span>{teamMember.name}<span className="sr-only">, {roleLabels[role]}</span></span>)}
-      </div>}
+      {project && <section className="project-member-section" aria-labelledby="project-members-heading">
+        <div className="section-heading"><div><h2 id="project-members-heading">Anggota proyek</h2><span>{project.members?.length ?? 0} anggota aktif</span></div>{canManage && <button className="button button-secondary" onClick={() => { setMembershipError(''); setMembershipNotice(''); setManageMembersOpen(true); }}>Kelola anggota</button>}</div>
+        {project.members && project.members.length > 0 ? <div className="project-members" aria-label="Anggota proyek">
+          {project.members.map(({ id, role, teamMember }) => <span className="member-chip" key={id} title={`${teamMember.email} · ${roleLabels[role]}`}><span className="avatar">{initials(teamMember.name)}</span>{teamMember.name}<span className="sr-only">, {roleLabels[role]}</span></span>)}
+        </div> : <p className="project-members-empty">Belum ada anggota di proyek ini.</p>}
+      </section>}
 
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(false)}>Coba lagi</button></div>}
       {detailError && !selectedTask && <div className="inline-message error" role="alert">{detailError}</div>}
@@ -215,6 +272,31 @@ export default function ProjectPage() {
             {canManage && project?.members && project.members.length > 0 && <label className="field-label">Assignee<select className="filter-select" name="assigneeIds" multiple size={Math.min(project.members.length, 4)}>{project.members.map(({ teamMember }) => <option key={teamMember.id} value={teamMember.id}>{teamMember.name} · {teamMember.email}</option>)}</select><span className="subtle-link">Pilih satu atau beberapa anggota.</span></label>}
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setCreateOpen(false)}>Batal</button><button className="button button-primary" disabled={saving}>{saving ? 'Menyimpan…' : 'Buat task'}</button></div>
           </form>
+        </section>
+      </div>}
+
+      {manageMembersOpen && project && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setManageMembersOpen(false); }}>
+        <section className="modal project-member-modal" role="dialog" aria-modal="true" aria-labelledby="manage-project-members-title">
+          <div className="modal-header"><div><h2 id="manage-project-members-title">Anggota proyek</h2><p>Tambahkan anggota tim aktif atau atur akses proyeknya.</p></div><button className="icon-button" aria-label="Tutup" onClick={() => setManageMembersOpen(false)}>×</button></div>
+          <div className="form-stack">
+            {membershipError && <p className="form-error" role="alert">{membershipError}</p>}
+            {membershipNotice && <div className="inline-message success" role="status">{membershipNotice}</div>}
+            <form className="project-member-add" onSubmit={addProjectMember}>
+              <label className="field-label">Email anggota aktif<input className="field-input" name="email" type="email" maxLength={320} placeholder="nama@perusahaan.com" required /></label>
+              <label className="field-label">Role proyek<select className="filter-select" name="role" defaultValue="MEMBER"><option value="MEMBER">Anggota</option><option value="VIEWER">Viewer</option>{isAdministrator(member?.role) && <option value="PROJECT_MANAGER">Project Manager</option>}</select></label>
+              <button className="button button-primary" disabled={saving}>{saving ? 'Menambahkan…' : 'Tambahkan'}</button>
+            </form>
+            <div className="project-member-list-heading"><strong>Anggota saat ini</strong><span>{project.members?.length ?? 0}</span></div>
+            <div className="project-member-list">
+              {project.members?.map(({ id, role, teamMember }) => <div className="project-member-row" key={id}>
+                <span className="avatar">{initials(teamMember.name)}</span>
+                <div className="project-member-identity"><strong>{teamMember.name}</strong><small>{teamMember.email}</small></div>
+                <label><span className="sr-only">Role {teamMember.name}</span><select className="filter-select compact-select" value={role} disabled={membershipBusy === teamMember.id} onChange={(event) => void updateProjectMemberRole(teamMember.id, event.target.value as ProjectRole)}><option value="PROJECT_MANAGER" disabled={!isAdministrator(member?.role)}>Project Manager</option><option value="MEMBER">Anggota</option><option value="VIEWER">Viewer</option></select></label>
+                <button className="button button-quiet compact-button danger-action" disabled={membershipBusy === teamMember.id} onClick={() => void removeProjectMember(teamMember.id, teamMember.name)}>Keluarkan</button>
+              </div>)}
+              {!project.members?.length && <p className="project-members-empty">Belum ada anggota di proyek ini.</p>}
+            </div>
+          </div>
         </section>
       </div>}
     </div>
