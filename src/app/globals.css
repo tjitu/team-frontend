@@ -463,6 +463,9 @@ h1 {
 .project-member-identity { display: grid; min-width: 0; gap: 4px; }
 .project-member-identity strong { overflow: hidden; font-size: 12px; font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
 .project-member-identity small { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.project-role-current { display: grid; min-width: 145px; gap: 3px; }
+.project-role-current strong { color: #344256; font-size: 11px; font-weight: 600; }
+.project-role-current small { color: var(--muted); font-size: 10px; }
 .member-chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 99px; background: var(--paper); padding: 5px 11px 5px 5px; color: #444; font-size: 12px; }
 .member-chip .avatar { width: 25px; height: 25px; font-size: 9px; }
 
@@ -614,6 +617,7 @@ h1 {
   .project-member-add .button { grid-column: 1 / -1; }
   .project-member-row { grid-template-columns: 32px minmax(0, 1fr) auto; }
   .project-member-row > label { grid-column: 2; }
+  .project-member-row > .project-role-current { grid-column: 2; grid-row: 2; }
   .project-member-row > button { grid-column: 3; grid-row: 1 / span 2; }
   .department-member-add { grid-template-columns: 1fr; }
   .auth-page { padding: 12px; }

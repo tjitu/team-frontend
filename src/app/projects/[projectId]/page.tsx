@@ -528,7 +528,9 @@ export default function ProjectPage() {
               {project.members?.map(({ id, role, teamMember }) => <div className="project-member-row" key={id}>
                 <span className="avatar">{initials(teamMember.name)}</span>
                 <div className="project-member-identity"><strong>{teamMember.name}</strong><small>{teamMember.email}</small></div>
-                <label><span className="sr-only">Role {teamMember.name}</span><select className="filter-select compact-select" value={role} disabled={membershipBusy === teamMember.id} onChange={(event) => void updateProjectMemberRole(teamMember.id, event.target.value as ProjectRole)}><option value="PROJECT_MANAGER" disabled={!isAdministrator(member?.role)}>Project Manager</option><option value="MEMBER">Anggota</option><option value="VIEWER">Viewer</option></select></label>
+                {teamMember.id === member?.id && role === 'PROJECT_MANAGER'
+                  ? <span className="project-role-current" title="Role Project Manager akun Anda tidak dapat diubah dari daftar anggota."><strong>Project Manager</strong><small>Akun Anda</small></span>
+                  : <label><span className="sr-only">Role {teamMember.name}</span><select className="filter-select compact-select" value={role} disabled={membershipBusy === teamMember.id} onChange={(event) => void updateProjectMemberRole(teamMember.id, event.target.value as ProjectRole)}><option value="PROJECT_MANAGER" disabled={!isAdministrator(member?.role)}>Project Manager</option><option value="MEMBER">Anggota</option><option value="VIEWER">Viewer</option></select></label>}
                 <button className="button button-quiet compact-button danger-action" disabled={membershipBusy === teamMember.id} onClick={() => void removeProjectMember(teamMember.id, teamMember.name)}>Keluarkan</button>
               </div>)}
               {!project.members?.length && <p className="project-members-empty">Belum ada anggota di proyek ini.</p>}
