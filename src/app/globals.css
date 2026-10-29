@@ -831,6 +831,13 @@ h1 { margin-bottom: 7px; font-size: clamp(26px, 2.4vw, 32px); font-weight: 650; 
 .task-status-check { margin-left: auto; font-size: 13px; }
 .task-board-empty { margin: 1px 0 0; border: 0; border-radius: 5px; padding: 8px 4px; color: #8993a3; font-size: 10px; text-align: left; }
 .global-notice { width: min(100% - 48px, 1350px); border-color: #dce3ef; border-radius: 7px; padding: 11px 14px; font-size: 12px; }
+.task-toolbar { display: grid; grid-template-columns: minmax(220px, 290px) minmax(0, 1fr); align-items: center; gap: 8px; }
+.task-toolbar .search-input { width: 100%; }
+.task-toolbar .toolbar-filters { display: grid; grid-template-columns: repeat(4, minmax(105px, 1fr)) auto auto; gap: 7px; }
+.task-toolbar .toolbar-filters .button { min-height: 36px; padding: 0 11px; font-size: 11px; }
+.task-date-filters { grid-column: 2; display: flex; justify-content: flex-end; gap: 8px; }
+.task-date-filters .field-label { display: grid; width: min(100%, 170px); gap: 4px; color: #69768a; font-size: 10px; }
+.task-date-filters .field-input { min-height: 34px; }
 
 .assignee-picker { position: relative; display: grid; gap: 8px; }
 .assignee-picker-trigger { display: flex; width: 100%; min-height: 40px; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #d8dce4; border-radius: 8px; background: #fff; padding: 0 12px; color: #4d596b; cursor: pointer; font-size: 12px; text-align: left; transition: border-color .14s ease, box-shadow .14s ease; }
@@ -862,6 +869,8 @@ h1 { margin-bottom: 7px; font-size: clamp(26px, 2.4vw, 32px); font-weight: 650; 
   .sidebar { width: 230px; }
   .main-area { margin-left: 230px; }
   .task-layout { grid-template-columns: minmax(0, 1fr) 290px; }
+  .task-toolbar { grid-template-columns: 1fr; }
+  .task-date-filters { grid-column: 1; justify-content: flex-start; }
 }
 @media (max-width: 860px) {
   .task-layout { grid-template-columns: 1fr; }
@@ -877,4 +886,6 @@ h1 { margin-bottom: 7px; font-size: clamp(26px, 2.4vw, 32px); font-weight: 650; 
   .project-workspace-nav { align-items: flex-start; flex-direction: column; gap: 2px; margin-top: 0; padding-top: 3px; }
   .project-context-actions { width: 100%; justify-content: space-between; gap: 8px; padding: 0 1px 9px; }
   .task-board { grid-template-columns: repeat(4, minmax(230px, 1fr)); }
+  .task-toolbar .toolbar-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .task-date-filters { flex-wrap: wrap; }
 }

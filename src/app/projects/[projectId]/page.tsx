@@ -117,6 +117,10 @@ export default function ProjectPage() {
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [filterAssignee, setFilterAssignee] = useState('');
+  const [filterCreator, setFilterCreator] = useState('');
+  const [filterDueFrom, setFilterDueFrom] = useState('');
+  const [filterDueTo, setFilterDueTo] = useState('');
   const [query, setQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -137,6 +141,7 @@ export default function ProjectPage() {
   const projectRole = useMemo(() => project?.members?.find(({ teamMember }) => teamMember.id === member?.id)?.role, [project, member]);
   const canManage = isAdministrator(member?.role) || projectRole === 'PROJECT_MANAGER';
   const canWrite = canManage || (projectRole !== 'VIEWER' && projectRole !== undefined);
+  const hasActiveFilters = Boolean(appliedQuery || filterStatus || filterPriority || filterAssignee || filterCreator || filterDueFrom || filterDueTo);
 
   function taskViewHref(view: TaskView) {
     const params = new URLSearchParams(searchParams.toString());
@@ -150,6 +155,10 @@ export default function ProjectPage() {
       const search = new URLSearchParams();
       if (filterStatus) search.set('status', filterStatus);
       if (filterPriority) search.set('priority', filterPriority);
+      if (filterAssignee) search.set('assigneeId', filterAssignee);
+      if (filterCreator) search.set('creatorId', filterCreator);
+      if (filterDueFrom) search.set('dueFrom', filterDueFrom);
+      if (filterDueTo) search.set('dueTo', filterDueTo);
       if (appliedQuery.trim()) search.set('q', appliedQuery.trim());
       search.set('limit', '100');
       const suffix = search.size ? `?${search.toString()}` : '';
@@ -176,7 +185,7 @@ export default function ProjectPage() {
     } finally {
       setLoading(false);
     }
-  }, [projectId, filterStatus, filterPriority, appliedQuery]);
+  }, [projectId, filterStatus, filterPriority, filterAssignee, filterCreator, filterDueFrom, filterDueTo, appliedQuery]);
 
   useEffect(() => { void load(false); }, [load]);
 
@@ -426,7 +435,14 @@ export default function ProjectPage() {
             <div className="toolbar-filters">
               <label><span className="sr-only">Filter status</span><select className="filter-select" value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}><option value="">Semua status</option>{statuses.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label>
               <label><span className="sr-only">Filter prioritas</span><select className="filter-select" value={filterPriority} onChange={(event) => setFilterPriority(event.target.value)}><option value="">Semua prioritas</option>{priorities.map((priority) => <option key={priority} value={priority}>{priorityLabels[priority]}</option>)}</select></label>
+              <label><span className="sr-only">Filter assignee</span><select className="filter-select" value={filterAssignee} onChange={(event) => setFilterAssignee(event.target.value)}><option value="">Semua assignee</option>{project?.members?.map(({ teamMember }) => <option key={teamMember.id} value={teamMember.id}>{teamMember.name}</option>)}</select></label>
+              <label><span className="sr-only">Filter pembuat</span><select className="filter-select" value={filterCreator} onChange={(event) => setFilterCreator(event.target.value)}><option value="">Semua pembuat</option>{project?.members?.map(({ teamMember }) => <option key={teamMember.id} value={teamMember.id}>{teamMember.name}</option>)}</select></label>
               <button className="button button-secondary" type="submit">Cari</button>
+              {hasActiveFilters && <button className="button button-quiet" type="button" onClick={() => { setQuery(''); setAppliedQuery(''); setFilterStatus(''); setFilterPriority(''); setFilterAssignee(''); setFilterCreator(''); setFilterDueFrom(''); setFilterDueTo(''); }}>Reset</button>}
+            </div>
+            <div className="task-date-filters">
+              <label className="field-label">Tenggat dari<input className="field-input" type="date" value={filterDueFrom} max={filterDueTo || undefined} onChange={(event) => setFilterDueFrom(event.target.value)} /></label>
+              <label className="field-label">Tenggat sampai<input className="field-input" type="date" value={filterDueTo} min={filterDueFrom || undefined} onChange={(event) => setFilterDueTo(event.target.value)} /></label>
             </div>
           </form>
           {loading ? <div className="loading-skeleton" aria-label="Memuat task" /> : tasks.length && taskView === 'list' ? (
@@ -464,7 +480,7 @@ export default function ProjectPage() {
               })}
             </div>
           ) : (
-            <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true">□</div><h3>{appliedQuery || filterStatus || filterPriority ? 'Task tidak ditemukan' : 'Belum ada task'}</h3><p>{appliedQuery || filterStatus || filterPriority ? 'Coba ubah kata kunci atau filter yang digunakan.' : 'Buat task pertama untuk mulai mencatat pekerjaan proyek.'}</p>{canWrite && !appliedQuery && !filterStatus && !filterPriority && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat task</button>}</div></section>
+            <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true">□</div><h3>{hasActiveFilters ? 'Task tidak ditemukan' : 'Belum ada task'}</h3><p>{hasActiveFilters ? 'Coba ubah kata kunci atau filter yang digunakan.' : 'Buat task pertama untuk mulai mencatat pekerjaan proyek.'}</p>{hasActiveFilters ? <button className="button button-secondary" onClick={() => { setQuery(''); setAppliedQuery(''); setFilterStatus(''); setFilterPriority(''); setFilterAssignee(''); setFilterCreator(''); setFilterDueFrom(''); setFilterDueTo(''); }}>Reset filter</button> : canWrite && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat task</button>}</div></section>
           )}
         </div>
 
