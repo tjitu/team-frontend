@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { AssigneePicker } from '@/components/assignee-picker';
-import { api, CurrentMember, Department, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskPriority, TaskStatus } from '@/lib/api';
+import { api, CurrentMember, Department, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskListPage, TaskPriority, TaskStatus } from '@/lib/api';
 
 const statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE'];
 const priorities: TaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
@@ -112,6 +112,10 @@ export default function ProjectPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [hasMoreTasks, setHasMoreTasks] = useState(false);
+  const [nextTaskCursor, setNextTaskCursor] = useState<string | null>(null);
+  const [loadingMoreTasks, setLoadingMoreTasks] = useState(false);
+  const taskRequestVersion = useRef(0);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -142,6 +146,17 @@ export default function ProjectPage() {
   const canManage = isAdministrator(member?.role) || projectRole === 'PROJECT_MANAGER';
   const canWrite = canManage || (projectRole !== 'VIEWER' && projectRole !== undefined);
   const hasActiveFilters = Boolean(appliedQuery || filterStatus || filterPriority || filterAssignee || filterCreator || filterDueFrom || filterDueTo);
+  const taskFilters = useMemo(() => {
+    const search = new URLSearchParams();
+    if (filterStatus) search.set('status', filterStatus);
+    if (filterPriority) search.set('priority', filterPriority);
+    if (filterAssignee) search.set('assigneeId', filterAssignee);
+    if (filterCreator) search.set('creatorId', filterCreator);
+    if (filterDueFrom) search.set('dueFrom', filterDueFrom);
+    if (filterDueTo) search.set('dueTo', filterDueTo);
+    if (appliedQuery.trim()) search.set('q', appliedQuery.trim());
+    return search;
+  }, [filterStatus, filterPriority, filterAssignee, filterCreator, filterDueFrom, filterDueTo, appliedQuery]);
 
   function taskViewHref(view: TaskView) {
     const params = new URLSearchParams(searchParams.toString());
@@ -150,44 +165,66 @@ export default function ProjectPage() {
   }
 
   const load = useCallback(async (keepSelected = true) => {
+    const requestVersion = ++taskRequestVersion.current;
     setLoading(true);
+    setLoadingMoreTasks(false);
     try {
-      const search = new URLSearchParams();
-      if (filterStatus) search.set('status', filterStatus);
-      if (filterPriority) search.set('priority', filterPriority);
-      if (filterAssignee) search.set('assigneeId', filterAssignee);
-      if (filterCreator) search.set('creatorId', filterCreator);
-      if (filterDueFrom) search.set('dueFrom', filterDueFrom);
-      if (filterDueTo) search.set('dueTo', filterDueTo);
-      if (appliedQuery.trim()) search.set('q', appliedQuery.trim());
+      const search = new URLSearchParams(taskFilters);
       search.set('limit', '100');
       const suffix = search.size ? `?${search.toString()}` : '';
-      const [projectData, taskList, currentMember, departmentList] = await Promise.all([
+      const [projectData, taskPage, currentMember, departmentList] = await Promise.all([
         api.get<Project>(`/team/projects/${encodeURIComponent(projectId)}`),
-        api.get<Task[]>(`/team/projects/${encodeURIComponent(projectId)}/tasks${suffix}`),
+        api.get<TaskListPage>(`/team/projects/${encodeURIComponent(projectId)}/tasks${suffix}`),
         api.get<CurrentMember>('/team/me'),
         api.get<Department[]>('/team/departments'),
       ]);
+      if (requestVersion !== taskRequestVersion.current) return;
       setProject(projectData);
-      setTasks(taskList);
+      setTasks(taskPage.items);
+      setHasMoreTasks(taskPage.hasMore);
+      setNextTaskCursor(taskPage.nextCursor);
       setMember(currentMember);
       setDepartments(departmentList.filter((department) => department.isActive || department.id === projectData.departmentId));
       setError('');
       if (keepSelected && selectedTask) {
-        const fresh = taskList.find(({ id }) => id === selectedTask.id);
+        const fresh = taskPage.items.find(({ id }) => id === selectedTask.id);
         if (fresh) await openTask(fresh.id, projectId, (task) => setSelectedTask(task));
         else setSelectedTask(null);
       }
     } catch (cause) {
+      if (requestVersion !== taskRequestVersion.current) return;
       const message = cause instanceof Error ? cause.message : 'Gagal memuat proyek.';
       if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
       else setError(message);
     } finally {
-      setLoading(false);
+      if (requestVersion === taskRequestVersion.current) setLoading(false);
     }
-  }, [projectId, filterStatus, filterPriority, filterAssignee, filterCreator, filterDueFrom, filterDueTo, appliedQuery]);
+  }, [projectId, taskFilters]);
 
   useEffect(() => { void load(false); }, [load]);
+
+  async function loadMoreTasks() {
+    if (!nextTaskCursor || loadingMoreTasks) return;
+    const requestVersion = taskRequestVersion.current;
+    setLoadingMoreTasks(true);
+    try {
+      const search = new URLSearchParams(taskFilters);
+      search.set('limit', '100');
+      search.set('cursor', nextTaskCursor);
+      const page = await api.get<TaskListPage>(`/team/projects/${encodeURIComponent(projectId)}/tasks?${search.toString()}`);
+      if (requestVersion !== taskRequestVersion.current) return;
+      setTasks((current) => [...current, ...page.items]);
+      setHasMoreTasks(page.hasMore);
+      setNextTaskCursor(page.nextCursor);
+    } catch (cause) {
+      if (requestVersion !== taskRequestVersion.current) return;
+      const message = cause instanceof Error ? cause.message : 'Task berikutnya gagal dimuat.';
+      if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
+      else setError(message);
+    } finally {
+      if (requestVersion === taskRequestVersion.current) setLoadingMoreTasks(false);
+    }
+  }
 
   async function openTask(taskId: string, id = projectId, setTask: (task: Task) => void = setSelectedTask) {
     setDetailError('');
@@ -482,6 +519,7 @@ export default function ProjectPage() {
           ) : (
             <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true">□</div><h3>{hasActiveFilters ? 'Task tidak ditemukan' : 'Belum ada task'}</h3><p>{hasActiveFilters ? 'Coba ubah kata kunci atau filter yang digunakan.' : 'Buat task pertama untuk mulai mencatat pekerjaan proyek.'}</p>{hasActiveFilters ? <button className="button button-secondary" onClick={() => { setQuery(''); setAppliedQuery(''); setFilterStatus(''); setFilterPriority(''); setFilterAssignee(''); setFilterCreator(''); setFilterDueFrom(''); setFilterDueTo(''); }}>Reset filter</button> : canWrite && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat task</button>}</div></section>
           )}
+          {hasMoreTasks && !loading && <div className="task-load-more"><button className="button button-secondary" type="button" disabled={loadingMoreTasks} onClick={() => void loadMoreTasks()}>{loadingMoreTasks ? 'Memuat task…' : 'Muat task berikutnya'}</button><span>{tasks.length} task dimuat</span></div>}
         </div>
 
         {selectedTask && <aside className="task-detail-card" aria-label="Detail task">

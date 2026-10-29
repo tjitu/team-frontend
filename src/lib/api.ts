@@ -123,6 +123,12 @@ export interface Task {
   comments?: Array<{ id: string; body: string; createdAt: string; author: TeamMember }>;
 }
 
+export interface TaskListPage {
+  items: Task[];
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const { data: { session }, error: sessionError } = await createSupabaseBrowserClient().auth.getSession();
   if (sessionError || !session?.access_token) throw new Error('SESSION_EXPIRED');
