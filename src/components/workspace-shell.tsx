@@ -123,7 +123,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         <nav className="project-nav" aria-label="Proyek">
           {projects.map((project) => (
             <Link
-              className={`project-nav-link ${pathname === `/projects/${project.id}` ? 'is-active' : ''}`}
+              className={`project-nav-link ${pathname.startsWith(`/projects/${project.id}`) ? 'is-active' : ''}`}
               href={`/projects/${project.id}`}
               key={project.id}
               title={project.name}

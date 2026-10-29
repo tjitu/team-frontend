@@ -61,6 +61,7 @@ export default function HomePage() {
     <div className="page-content">
       <div className="page-heading">
         <div>
+          <p className="page-eyebrow">Ruang kerja</p>
           <h1>Ikhtisar proyek</h1>
           <p className="page-subtitle">{member?.name ? `Selamat datang, ${member.name.split(' ')[0]}. ` : ''}Pantau proyek aktif dan perkembangan kerja tim.</p>
         </div>
@@ -68,9 +69,9 @@ export default function HomePage() {
       </div>
 
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Muat ulang</button></div>}
-      <div className="section-heading">
-        <h2>Proyek aktif</h2>
-        {!loading && <span>{projects.length} proyek</span>}
+      <div className="section-heading project-overview-heading">
+        <div><h2>Proyek aktif</h2><p>Pilih proyek untuk melihat task dan aktivitas tim.</p></div>
+        {!loading && <span className="section-count">{projects.length} proyek</span>}
       </div>
 
       {loading ? (
@@ -83,11 +84,11 @@ export default function HomePage() {
             <Link className="project-card" href={`/projects/${project.id}`} key={project.id}>
               <div className="project-card-top">
                 <span className="project-card-mark">{project.name.slice(0, 1).toUpperCase()}</span>
-                <span className="member-count">{project._count?.members ?? 0} anggota</span>
+                <span className="project-card-open">Buka proyek <span aria-hidden="true">↗</span></span>
               </div>
               <h3 title={project.name}>{project.name}</h3>
               <p className="project-description">{project.description || 'Belum ada deskripsi untuk proyek ini.'}</p>
-              <div className="project-card-footer"><span>Diperbarui {formatDate(project.updatedAt)}</span><span className="arrow" aria-hidden="true">↗</span></div>
+              <div className="project-card-footer"><span className="project-member-summary"><span className="mini-people-icon" aria-hidden="true" />{project._count?.members ?? 0} anggota</span><span>Diperbarui {formatDate(project.updatedAt)}</span></div>
             </Link>
           ))}
         </div>

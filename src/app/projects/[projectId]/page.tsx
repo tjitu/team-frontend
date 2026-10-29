@@ -285,13 +285,18 @@ export default function ProjectPage() {
     <div className="page-content">
       <div className="page-heading">
         <div>
+          <p className="page-eyebrow">Proyek</p>
           <h1>{project?.name ?? (loading ? 'Memuat proyek…' : 'Proyek')}</h1>
           <p className="page-subtitle">{project?.description || 'Atur pekerjaan dan pantau progres task proyek.'}</p>
         </div>
-        <div className="page-heading-actions"><Link className="button button-secondary" href={`/projects/${encodeURIComponent(projectId)}/activity`}>Aktivitas</Link>{canManage && <><button className="button button-secondary" onClick={() => { setProjectError(''); setEditProjectOpen(true); }}>Edit proyek</button><button className="button button-quiet danger-action" disabled={projectSaving} onClick={() => void archiveProject()}>Arsipkan</button></>}{canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Task baru</button>}</div>
+        <div className="page-heading-actions">{canManage && <><button className="button button-secondary" onClick={() => { setProjectError(''); setEditProjectOpen(true); }}>Edit proyek</button><button className="button button-quiet danger-action" disabled={projectSaving} onClick={() => void archiveProject()}>Arsipkan</button></>}{canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Task baru</button>}</div>
       </div>
 
       {projectError && !editProjectOpen && <div className="inline-message error" role="alert">{projectError}</div>}
+      <nav className="project-view-tabs" aria-label="Tampilan proyek">
+        <Link className="project-view-tab is-active" aria-current="page" href={`/projects/${encodeURIComponent(projectId)}`}>Daftar task</Link>
+        <Link className="project-view-tab" href={`/projects/${encodeURIComponent(projectId)}/activity`}>Aktivitas</Link>
+      </nav>
       {project && <section className="project-member-section" aria-labelledby="project-members-heading">
         <div className="section-heading"><div><h2 id="project-members-heading">Anggota proyek</h2><span>{project.members?.length ?? 0} anggota aktif</span></div>{canManage && <button className="button button-secondary" onClick={() => { setMembershipError(''); setMembershipNotice(''); setManageMembersOpen(true); }}>Kelola anggota</button>}</div>
         {project.members && project.members.length > 0 ? <div className="project-members" aria-label="Anggota proyek">
@@ -302,7 +307,7 @@ export default function ProjectPage() {
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(false)}>Muat ulang</button></div>}
       {detailError && !selectedTask && <div className="inline-message error" role="alert">{detailError}</div>}
 
-      <div className="section-heading section-spacer"><h2>Task</h2><span className="task-count">{filteredCount} ditampilkan</span></div>
+      <div className="section-heading section-spacer task-section-heading"><div><h2>Daftar task</h2><p>Kelola status, prioritas, penanggung jawab, dan tenggat pekerjaan.</p></div><span className="task-count">{filteredCount} ditampilkan</span></div>
       <div className="task-layout">
         <div>
           <form className="task-toolbar" onSubmit={(event) => { event.preventDefault(); setAppliedQuery(query); }}>
@@ -317,7 +322,7 @@ export default function ProjectPage() {
             <div className="task-table-wrap">
               <table className="task-table">
                 <thead><tr><th>Task</th><th>Status</th><th>Prioritas</th><th>Assignee</th><th>Jatuh tempo</th></tr></thead>
-                <tbody>{tasks.map((task) => <tr key={task.id}>
+                <tbody>{tasks.map((task) => <tr className={selectedTask?.id === task.id ? 'is-selected' : ''} key={task.id}>
                   <td><button className="task-title-button" onClick={() => void openTask(task.id)}>{task.title}</button><div className="task-subtitle">{task._count?.comments ?? 0} komentar · diperbarui {dateLabel(task.updatedAt)}</div></td>
                   <td><span className={`status-badge status-${task.status}`}>{statusLabels[task.status]}</span></td>
                   <td><span className={`priority-badge priority-${task.priority}`}>{priorityLabels[task.priority]}</span></td>
