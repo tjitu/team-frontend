@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
-import { api, CurrentMember, Department, isAdministrator, Project, signInUrl } from '@/lib/api';
+import { api, CurrentMember, Department, Project, signInUrl } from '@/lib/api';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
@@ -71,7 +71,7 @@ export default function HomePage() {
           <h1>Ikhtisar proyek</h1>
           <p className="page-subtitle">{member?.name ? `Selamat datang, ${member.name.split(' ')[0]}. ` : ''}Pantau proyek aktif dan perkembangan kerja tim.</p>
         </div>
-        {isAdministrator(member?.role) && <button className="button button-primary" onClick={() => setCreateOpen(true)}><span className="button-symbol" aria-hidden="true">+</span>Proyek baru</button>}
+        {member && <button className="button button-primary" onClick={() => setCreateOpen(true)}><span className="button-symbol" aria-hidden="true">+</span>Proyek baru</button>}
       </div>
 
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Muat ulang</button></div>}
@@ -104,8 +104,8 @@ export default function HomePage() {
           <div>
             <div className="empty-state-icon" aria-hidden="true" />
             <h3>Belum ada proyek aktif</h3>
-            <p>{isAdministrator(member?.role) ? 'Buat proyek pertama untuk mulai mengelola pekerjaan tim.' : 'Proyek yang melibatkan akun Anda akan ditampilkan di sini.'}</p>
-            {isAdministrator(member?.role) && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat proyek</button>}
+            <p>{member ? 'Buat proyek pertama untuk mulai mengelola pekerjaan tim.' : 'Proyek yang melibatkan akun Anda akan ditampilkan di sini.'}</p>
+            {member && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat proyek</button>}
           </div>
         </section>
       )}
