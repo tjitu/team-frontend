@@ -3,7 +3,7 @@
 import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { api, CurrentMember, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskPriority, TaskStatus } from '@/lib/api';
 
 const statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE'];
@@ -105,6 +105,8 @@ function TaskStatusPicker({ task, disabled, onChange, fullWidth = false }: { tas
 export default function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const taskView: TaskView = searchParams.get('view') === 'list' ? 'list' : 'board';
   const [project, setProject] = useState<Project | null>(null);
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -113,7 +115,6 @@ export default function ProjectPage() {
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
-  const [taskView, setTaskView] = useState<TaskView>('board');
   const [query, setQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -134,6 +135,12 @@ export default function ProjectPage() {
   const projectRole = useMemo(() => project?.members?.find(({ teamMember }) => teamMember.id === member?.id)?.role, [project, member]);
   const canManage = isAdministrator(member?.role) || projectRole === 'PROJECT_MANAGER';
   const canWrite = canManage || (projectRole !== 'VIEWER' && projectRole !== undefined);
+
+  function taskViewHref(view: TaskView) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('view', view);
+    return `/projects/${encodeURIComponent(projectId)}?${params.toString()}`;
+  }
 
   const load = useCallback(async (keepSelected = true) => {
     setLoading(true);
@@ -381,8 +388,8 @@ export default function ProjectPage() {
       {projectError && !editProjectOpen && <div className="inline-message error" role="alert">{projectError}</div>}
       <div className="project-workspace-nav">
         <div className="project-view-tabs" aria-label="Tampilan task">
-          <button className={`project-view-tab ${taskView === 'board' ? 'is-active' : ''}`} type="button" aria-pressed={taskView === 'board'} onClick={() => setTaskView('board')}>Papan</button>
-          <button className={`project-view-tab ${taskView === 'list' ? 'is-active' : ''}`} type="button" aria-pressed={taskView === 'list'} onClick={() => setTaskView('list')}>Daftar</button>
+          <Link className={`project-view-tab ${taskView === 'board' ? 'is-active' : ''}`} href={taskViewHref('board')} aria-current={taskView === 'board' ? 'page' : undefined} scroll={false}>Papan</Link>
+          <Link className={`project-view-tab ${taskView === 'list' ? 'is-active' : ''}`} href={taskViewHref('list')} aria-current={taskView === 'list' ? 'page' : undefined} scroll={false}>Daftar</Link>
         </div>
         <div className="project-context-actions">
           {project && <span className="project-member-summary"><span className="mini-people-icon" aria-hidden="true" />{project.members?.length ?? 0} anggota</span>}
