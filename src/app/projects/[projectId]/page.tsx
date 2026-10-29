@@ -145,6 +145,7 @@ export default function ProjectPage() {
   const projectRole = useMemo(() => project?.members?.find(({ teamMember }) => teamMember.id === member?.id)?.role, [project, member]);
   const canManage = isAdministrator(member?.role) || projectRole === 'PROJECT_MANAGER';
   const canWrite = canManage || (projectRole !== 'VIEWER' && projectRole !== undefined);
+  const activeProjectManagerCount = project?.members?.filter(({ role }) => role === 'PROJECT_MANAGER').length ?? 0;
   const hasActiveFilters = Boolean(appliedQuery || filterStatus || filterPriority || filterAssignee || filterCreator || filterDueFrom || filterDueTo);
   const taskFilters = useMemo(() => {
     const search = new URLSearchParams();
@@ -620,14 +621,18 @@ export default function ProjectPage() {
             </form>
             <div className="project-member-list-heading"><strong>Current members</strong><span>{project.members?.length ?? 0}</span></div>
             <div className="project-member-list">
-              {project.members?.map(({ id, role, teamMember }) => <div className="project-member-row" key={id}>
-                <span className="avatar">{initials(teamMember.name)}</span>
-                <div className="project-member-identity"><strong>{teamMember.name}</strong><small>{teamMember.email}</small></div>
-                {teamMember.id === member?.id
-                  ? <span className="project-role-current" title="You cannot change your own project role."><strong>{roleLabels[role]}</strong><small>Your account</small></span>
-                  : <label><span className="sr-only">Role {teamMember.name}</span><select className="filter-select compact-select" value={role} disabled={membershipBusy === teamMember.id} onChange={(event) => void updateProjectMemberRole(teamMember.id, event.target.value as ProjectRole)}><option value="PROJECT_MANAGER" disabled={!isAdministrator(member?.role)}>Project Manager</option><option value="MEMBER">Member</option><option value="VIEWER">Viewer</option></select></label>}
-                {teamMember.id !== member?.id && <button className="button button-quiet compact-button danger-action" disabled={membershipBusy === teamMember.id} onClick={() => void removeProjectMember(teamMember.id, teamMember.name)}>Remove</button>}
-              </div>)}
+              {project.members?.map(({ id, role, teamMember }) => {
+                const isLastProjectManager = role === 'PROJECT_MANAGER' && activeProjectManagerCount <= 1;
+                const roleControlDisabled = membershipBusy === teamMember.id || isLastProjectManager;
+                return <div className="project-member-row" key={id}>
+                  <span className="avatar">{initials(teamMember.name)}</span>
+                  <div className="project-member-identity"><strong>{teamMember.name}</strong><small>{teamMember.email}</small></div>
+                  {teamMember.id === member?.id
+                    ? <span className="project-role-current" title="You cannot change your own project role."><strong>{roleLabels[role]}</strong><small>Your account</small></span>
+                    : <label title={isLastProjectManager ? 'A project must keep at least one active Project Manager.' : undefined}><span className="sr-only">Role {teamMember.name}</span><select className="filter-select compact-select" value={role} disabled={roleControlDisabled} onChange={(event) => void updateProjectMemberRole(teamMember.id, event.target.value as ProjectRole)}><option value="PROJECT_MANAGER" disabled={!isAdministrator(member?.role)}>Project Manager</option><option value="MEMBER">Member</option><option value="VIEWER">Viewer</option></select></label>}
+                  {teamMember.id !== member?.id && <button className="button button-quiet compact-button danger-action" disabled={roleControlDisabled} title={isLastProjectManager ? 'A project must keep at least one active Project Manager.' : undefined} onClick={() => void removeProjectMember(teamMember.id, teamMember.name)}>Remove</button>}
+                </div>;
+              })}
               {!project.members?.length && <p className="project-members-empty">No members in this project yet.</p>}
             </div>
           </div>
