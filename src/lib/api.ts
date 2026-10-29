@@ -145,14 +145,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       cache: 'no-store',
     });
   } catch {
-    throw new Error('Layanan tidak dapat dihubungi. Periksa koneksi, lalu muat ulang.');
+    throw new Error('The service could not be reached. Check your connection and try again.');
   }
 
   if (!response.ok) {
     if (response.status === 401) throw new Error('SESSION_EXPIRED');
     const payload = await response.json().catch(() => null) as { message?: string | string[] } | null;
     const message = Array.isArray(payload?.message) ? payload.message.join(' ') : payload?.message;
-    throw new Error(message || `Permintaan gagal (${response.status}).`);
+    throw new Error(message || `Request failed (${response.status}).`);
   }
 
   if (response.status === 204) return undefined as T;

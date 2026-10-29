@@ -32,14 +32,14 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const accountControlRef = useRef<HTMLDivElement>(null);
   const accountTriggerRef = useRef<HTMLButtonElement>(null);
   const activeProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
-  const pageLabel = pathname === '/' ? 'Ikhtisar'
-    : pathname === '/projects/archived' ? 'Proyek diarsipkan'
+  const pageLabel = pathname === '/' ? 'Overview'
+    : pathname === '/projects/archived' ? 'Archived projects'
     : pathname === '/control-center' ? 'Control Center'
-    : pathname.startsWith('/team') ? 'Anggota tim'
-      : pathname === '/activity' ? 'Aktivitas tim'
-        : pathname.startsWith('/departments') ? 'Departemen'
-          : pathname.endsWith('/activity') ? 'Aktivitas proyek'
-            : activeProject?.name ?? 'Ruang kerja';
+    : pathname.startsWith('/team') ? 'Team members'
+      : pathname === '/activity' ? 'Team activity'
+        : pathname.startsWith('/departments') ? 'Department'
+          : pathname.endsWith('/activity') ? 'Project activity'
+            : activeProject?.name ?? 'Workspace';
 
   useEffect(() => {
     if (isInvitationRoute || isLoginRoute) return;
@@ -93,44 +93,44 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       window.location.replace('/login');
     } catch {
-      setSignOutError('Gagal keluar dari akun. Periksa koneksi lalu coba lagi.');
+      setSignOutError('Could not sign out. Check your connection and try again.');
       setSigningOut(false);
     }
   }
 
   return (
     <div className="workspace">
-      <aside className="sidebar" aria-label="Navigasi utama">
-        <Link className="brand" href="/" aria-label="JituPTN Team Platform, beranda">
+      <aside className="sidebar" aria-label="Main navigation">
+        <Link className="brand" href="/" aria-label="JituPTN Team Platform home">
           <Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} />
           <span>JituPTN Team Platform</span>
         </Link>
-        <div className="sidebar-label">Ruang kerja</div>
+        <div className="sidebar-label">Workspace</div>
         <nav className="primary-nav">
           <Link className={`nav-link ${pathname === '/' ? 'is-active' : ''}`} href="/">
-            <NavIcon name="overview" />Ikhtisar
+            <NavIcon name="overview" />Overview
           </Link>
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/team') ? 'is-active' : ''}`} href="/team">
-            <NavIcon name="team" />Anggota tim
+            <NavIcon name="team" />Team members
           </Link>}
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname === '/activity' ? 'is-active' : ''}`} href="/activity">
-            <NavIcon name="activity" />Aktivitas tim
+            <NavIcon name="activity" />Team activity
           </Link>}
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/control-center') ? 'is-active' : ''}`} href="/control-center">
             <NavIcon name="analytics" />Control Center
           </Link>}
           {member && <Link className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`} href="/departments">
-            <NavIcon name="departments" />Departemen
+            <NavIcon name="departments" />Departments
           </Link>}
         </nav>
         <div className="sidebar-section-heading">
-          <span>Proyek</span>
+          <span>Project</span>
           <span className="count-pill">{projects.length}</span>
         </div>
         <Link className={`nav-link archived-project-nav ${pathname === '/projects/archived' ? 'is-active' : ''}`} href="/projects/archived">
-          <NavIcon name="archive" />Arsip proyek
+          <NavIcon name="archive" />Archived projects
         </Link>
-        <nav className="project-nav" aria-label="Proyek">
+        <nav className="project-nav" aria-label="Project">
           {projects.map((project) => (
             <Link
               className={`project-nav-link ${pathname.startsWith(`/projects/${project.id}`) ? 'is-active' : ''}`}
@@ -142,13 +142,13 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               <span className="truncate">{project.name}</span>
             </Link>
           ))}
-          {projects.length === 0 && !loadError && <p className="sidebar-empty">Belum ada proyek aktif</p>}
+          {projects.length === 0 && !loadError && <p className="sidebar-empty">No active projects yet</p>}
         </nav>
         <div className="sidebar-footer">
           <div className="avatar avatar-small">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</div>
           <div className="profile-copy">
-            <strong className="truncate">{member?.name ?? 'Memuat akun…'}</strong>
-            <span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Anggota tim'}</span>
+            <strong className="truncate">{member?.name ?? 'Loading account…'}</strong>
+            <span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team members'}</span>
           </div>
         </div>
       </aside>
@@ -160,21 +160,21 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               ref={accountTriggerRef}
               className="account-trigger"
               type="button"
-              aria-label="Buka menu akun"
+              aria-label="Open account menu"
               aria-expanded={accountOpen}
               aria-controls="account-menu"
               onClick={() => { setSignOutError(''); setAccountOpen((open) => !open); }}
             >
               <span className="avatar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</span>
-              <span className="account-trigger-copy"><strong className="truncate">{member?.name ?? 'Memuat akun…'}</strong><small className="truncate">{member?.email ?? 'JituPTN Team Platform'}</small></span>
+              <span className="account-trigger-copy"><strong className="truncate">{member?.name ?? 'Loading account…'}</strong><small className="truncate">{member?.email ?? 'JituPTN Team Platform'}</small></span>
               <svg className={`account-chevron ${accountOpen ? 'is-open' : ''}`} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
-            {accountOpen && <div className="account-menu" id="account-menu" aria-label="Menu akun">
-              <div className="account-menu-identity"><strong className="truncate">{member?.name ?? 'Akun JituPTN Team Platform'}</strong><span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Anggota tim'}</span></div>
+            {accountOpen && <div className="account-menu" id="account-menu" aria-label="Account menu">
+              <div className="account-menu-identity"><strong className="truncate">{member?.name ?? 'JituPTN Team Platform account'}</strong><span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team member'}</span></div>
               {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
               <button className="account-logout" type="button" disabled={signingOut} onClick={() => void signOut()}>
                 <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M8 3H4.75A1.75 1.75 0 0 0 3 4.75v10.5A1.75 1.75 0 0 0 4.75 17H8m3-3 4-4-4-4m4 4H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                <span>{signingOut ? 'Keluar…' : 'Keluar dari akun'}</span>
+                <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
                 {signingOut && <span className="account-logout-spinner" aria-hidden="true" />}
               </button>
             </div>}

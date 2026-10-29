@@ -65,17 +65,17 @@ export function AssigneePicker({
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        <span>{selectedIds.length ? `${selectedIds.length} anggota dipilih` : 'Pilih assignee'}</span>
+        <span>{selectedIds.length ? `${selectedIds.length} members selected` : 'Select assignees'}</span>
         <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
-      {selectedMembers.length > 0 && <div className="assignee-picker-selected" aria-label="Assignee terpilih">
+      {selectedMembers.length > 0 && <div className="assignee-picker-selected" aria-label="Selected assignees">
         {selectedMembers.map(({ teamMember }) => <span className="assignee-picker-chip" key={teamMember.id}>
           <span>{teamMember.name}</span>
-          <button type="button" aria-label={`Hapus ${teamMember.name}`} onClick={() => toggleMember(teamMember)}>×</button>
+          <button type="button" aria-label={`Remove ${teamMember.name}`} onClick={() => toggleMember(teamMember)}>×</button>
         </span>)}
       </div>}
       {open && <div className="assignee-picker-menu">
-        <label className="sr-only" htmlFor={`${name}-search`}>Cari anggota proyek</label>
+        <label className="sr-only" htmlFor={`${name}-search`}>Search project members</label>
         <input
           ref={searchRef}
           id={`${name}-search`}
@@ -83,10 +83,10 @@ export function AssigneePicker({
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Cari nama atau email"
+          placeholder="Search by name or email"
           autoComplete="off"
         />
-        <div className="assignee-picker-options" role="listbox" aria-multiselectable="true" aria-label="Anggota proyek">
+        <div className="assignee-picker-options" role="listbox" aria-multiselectable="true" aria-label="Project members">
           {filteredMembers.length ? filteredMembers.map(({ teamMember }) => {
             const selected = selectedIds.includes(teamMember.id);
             return <button
@@ -101,10 +101,10 @@ export function AssigneePicker({
               <span className="assignee-picker-person"><strong>{teamMember.name}</strong><small>{teamMember.email}</small></span>
               <span className="assignee-picker-check" aria-hidden="true">{selected ? '✓' : ''}</span>
             </button>;
-          }) : <p className="assignee-picker-empty">Tidak ada anggota yang cocok.</p>}
+          }) : <p className="assignee-picker-empty">No matching members.</p>}
         </div>
       </div>}
-      <span className="subtle-link">Pilih satu atau beberapa anggota proyek.</span>
+      <span className="subtle-link">Select one or more project members.</span>
     </div>
   );
 }

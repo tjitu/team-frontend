@@ -10,7 +10,7 @@ export function createSupabaseBrowserClient() {
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !publishableKey) {
-    throw new Error('Supabase belum dikonfigurasi. Hubungi administrator.');
+    throw new Error('Supabase is not configured. Contact your administrator.');
   }
 
   browserClient ??= createBrowserClient(supabaseUrl, publishableKey);

@@ -11,7 +11,7 @@ type InviteState = 'checking' | 'signed-out' | 'success' | 'error' | 'invalid';
 const roleLabels: Record<TeamRole, string> = {
   SYSTEM_OWNER: 'System Owner',
   SYSTEM_ADMIN: 'System Admin',
-  MEMBER: 'Anggota',
+  MEMBER: 'Member',
 };
 
 export function InvitationAcceptance({ token, completed }: { token: string | null; completed: boolean }) {
@@ -34,7 +34,7 @@ export function InvitationAcceptance({ token, completed }: { token: string | nul
       setState('success');
       router.replace('/invitations/accept?completed=1');
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'Undangan gagal diproses.';
+      const message = cause instanceof Error ? cause.message : 'Could not process the invitation.';
       if (message === 'SESSION_EXPIRED') {
         setState('signed-out');
       } else {
@@ -64,28 +64,28 @@ export function InvitationAcceptance({ token, completed }: { token: string | nul
     <section className="invitation-panel" aria-labelledby="invitation-title" aria-live="polite">
       <Link className="brand invitation-brand" href="/"><Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} /><span>JituPTN Team Platform</span></Link>
       <div className="invitation-content">
-        <h1 id="invitation-title">{state === 'success' ? 'Selamat bergabung' : state === 'signed-out' ? 'Masuk untuk melanjutkan' : state === 'checking' ? 'Memeriksa undangan' : 'Undangan tidak tersedia'}</h1>
-        {state === 'checking' && <><p className="invitation-copy">Undangan sedang diverifikasi. Sebentar ya.</p><div className="invitation-progress" aria-label="Memproses undangan" /></>}
+        <h1 id="invitation-title">{state === 'success' ? 'Welcome' : state === 'signed-out' ? 'Sign in to continue' : state === 'checking' ? 'Checking invitation' : 'Invitation unavailable'}</h1>
+        {state === 'checking' && <><p className="invitation-copy">Verifying your invitation. This may take a moment.</p><div className="invitation-progress" aria-label="Processing invitation" /></>}
 
         {state === 'signed-out' && <>
-          <p className="invitation-copy">Masuk memakai akun terverifikasi dengan email yang menerima undangan. Setelah masuk, kembali ke tab ini untuk menerima undangannya.</p>
-          <div className="invitation-actions"><a className="button button-primary" href={signIn}>Buka halaman masuk</a><button className="button button-secondary" onClick={() => void accept()}>Saya sudah masuk</button></div>
+          <p className="invitation-copy">Sign in with a verified account using the email address that received the invitation. Then return to this tab to accept it.</p>
+          <div className="invitation-actions"><a className="button button-primary" href={signIn}>Open sign-in page</a><button className="button button-secondary" onClick={() => void accept()}>I am already signed in</button></div>
         </>}
 
         {state === 'success' && <>
-          <p className="invitation-copy">{member ? `${member.email} sekarang terdaftar sebagai ${roleLabels[member.role]}.` : 'Undangan sudah diterima dan keanggotaan tim aktif.'}</p>
-          <Link className="button button-primary invitation-primary-action" href="/">Buka workspace</Link>
+          <p className="invitation-copy">{member ? `${member.email} is now a ${roleLabels[member.role]}.` : 'The invitation has been accepted and your team membership is active.'}</p>
+          <Link className="button button-primary invitation-primary-action" href="/">Open workspace</Link>
         </>}
 
         {state === 'error' && <>
           <p className="invitation-copy invitation-error" role="alert">{error}</p>
-          {error.toLowerCase().includes('email') && <p className="invitation-copy">Pastikan kamu masuk dengan email undangan yang sama dan alamat emailnya sudah diverifikasi.</p>}
-          <div className="invitation-actions"><button className="button button-primary" onClick={() => void accept()}>Muat ulang</button><a className="subtle-link" href={signIn}>Buka halaman masuk</a></div>
+          {error.toLowerCase().includes('email') && <p className="invitation-copy">Make sure you sign in with the invited email address and that it has been verified.</p>}
+          <div className="invitation-actions"><button className="button button-primary" onClick={() => void accept()}>Reload</button><a className="subtle-link" href={signIn}>Open sign-in page</a></div>
         </>}
 
-        {state === 'invalid' && <p className="invitation-copy">Link tidak memiliki token undangan. Buka kembali link dari email undangan atau minta admin mengirimkannya ulang.</p>}
+        {state === 'invalid' && <p className="invitation-copy">This link does not contain an invitation token. Reopen the link from the invitation email or ask an administrator to resend it.</p>}
       </div>
-      <p className="invitation-footnote">Akses diberikan sesuai role yang tercantum pada undangan.</p>
+      <p className="invitation-footnote">Access is based on the role listed in the invitation.</p>
     </section>
   );
 }
