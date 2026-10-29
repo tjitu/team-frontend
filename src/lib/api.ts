@@ -75,6 +75,20 @@ export interface ActivityPage {
   nextCursor: string | null;
 }
 
+export interface MonthlyRevenue {
+  month: string;
+  revenue: number;
+  confirmedPayments: number;
+}
+
+export interface RevenueSummary {
+  configured: boolean;
+  totalRevenue: number;
+  confirmedPayments: number;
+  pendingPayments: number;
+  monthlyRevenue: MonthlyRevenue[];
+}
+
 export interface Project {
   id: string;
   name: string;
