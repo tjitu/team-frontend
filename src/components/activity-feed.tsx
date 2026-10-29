@@ -10,7 +10,7 @@ const eventTypes = [
   'PROJECT_CREATED', 'PROJECT_UPDATED', 'PROJECT_ARCHIVED', 'PROJECT_RESTORED',
   'PROJECT_MEMBER_ADDED', 'PROJECT_MEMBER_ROLE_CHANGED', 'PROJECT_MEMBER_REMOVED',
   'TASK_CREATED', 'TASK_UPDATED', 'TASK_ARCHIVED', 'TASK_COMMENT_ADDED',
-  'TEAM_MEMBER_ACTIVATED', 'TEAM_MEMBER_DEACTIVATED', 'TEAM_MEMBER_ROLE_CHANGED', 'TEAM_MEMBER_PROFILE_SYNCED',
+  'TEAM_MEMBER_CREATED', 'TEAM_MEMBER_ACTIVATED', 'TEAM_MEMBER_DEACTIVATED', 'TEAM_MEMBER_ROLE_CHANGED', 'TEAM_MEMBER_PROFILE_SYNCED',
   'TEAM_INVITATION_CREATED', 'TEAM_INVITATION_RESENT', 'TEAM_INVITATION_REVOKED', 'TEAM_INVITATION_ACCEPTED',
   'DEPARTMENT_CREATED', 'DEPARTMENT_UPDATED', 'DEPARTMENT_MEMBER_ADDED', 'DEPARTMENT_MEMBER_REACTIVATED', 'DEPARTMENT_MEMBER_REMOVED',
 ];
@@ -19,7 +19,7 @@ const eventLabels: Record<string, string> = {
   PROJECT_CREATED: 'Project created', PROJECT_UPDATED: 'Project updated', PROJECT_ARCHIVED: 'Project archived', PROJECT_RESTORED: 'Project restored',
   PROJECT_MEMBER_ADDED: 'Project member added', PROJECT_MEMBER_ROLE_CHANGED: 'Project role changed', PROJECT_MEMBER_REMOVED: 'Project member removed',
   TASK_CREATED: 'Task created', TASK_UPDATED: 'Task updated', TASK_ARCHIVED: 'Task archived', TASK_COMMENT_ADDED: 'Task comment added',
-  TEAM_MEMBER_ACTIVATED: 'Member access enabled', TEAM_MEMBER_DEACTIVATED: 'Member access disabled', TEAM_MEMBER_ROLE_CHANGED: 'Team role changed', TEAM_MEMBER_PROFILE_SYNCED: 'Profile name updated',
+  TEAM_MEMBER_CREATED: 'Team account created', TEAM_MEMBER_ACTIVATED: 'Member access enabled', TEAM_MEMBER_DEACTIVATED: 'Member access disabled', TEAM_MEMBER_ROLE_CHANGED: 'Team role changed', TEAM_MEMBER_PROFILE_SYNCED: 'Profile name updated',
   TEAM_INVITATION_CREATED: 'Invitation created', TEAM_INVITATION_RESENT: 'Invitation resent', TEAM_INVITATION_REVOKED: 'Invitation revoked', TEAM_INVITATION_ACCEPTED: 'Invitation accepted',
   DEPARTMENT_CREATED: 'Department created', DEPARTMENT_UPDATED: 'Department updated', DEPARTMENT_MEMBER_ADDED: 'Department member added', DEPARTMENT_MEMBER_REACTIVATED: 'Department member reactivated', DEPARTMENT_MEMBER_REMOVED: 'Department member removed',
 };
@@ -62,6 +62,7 @@ function summaryFor(activity: ActivityRecord) {
     }
     case 'TASK_ARCHIVED': return 'archived a task';
     case 'TASK_COMMENT_ADDED': return 'added a comment to a task';
+    case 'TEAM_MEMBER_CREATED': return `created a Team account for ${email}`;
     case 'TEAM_MEMBER_ACTIVATED': return `enabled access for ${email}`;
     case 'TEAM_MEMBER_DEACTIVATED': return `disabled access for ${email}`;
     case 'TEAM_MEMBER_ROLE_CHANGED': return `changed ${email}'s role${typeof metadata.after === 'string' ? ` to ${metadata.after.replaceAll('_', ' ')}` : ''}`;
