@@ -51,6 +51,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/team') ? 'is-active' : ''}`} href="/team">
             <span className="nav-icon" aria-hidden="true">T</span>Anggota tim
           </Link>}
+          {member && <Link className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`} href="/departments">
+            <span className="nav-icon" aria-hidden="true">D</span>Departemen
+          </Link>}
         </nav>
         <div className="sidebar-section-heading">
           <span>Proyek</span>

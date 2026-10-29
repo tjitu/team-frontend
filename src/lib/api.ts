@@ -36,6 +36,24 @@ export interface TeamInvitation {
   createdBy: TeamMember;
 }
 
+export interface Department {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  isActive: boolean;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { members: number };
+}
+
+export interface DepartmentMember {
+  id: string;
+  createdAt: string;
+  teamMember: TeamMember & { role: TeamRole };
+}
+
 export interface Project {
   id: string;
   name: string;
