@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { api, CurrentMember, Department, Project, signInUrl } from '@/lib/api';
 
 function formatDate(value: string) {
@@ -12,11 +12,29 @@ export default function HomePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [projectQuery, setProjectQuery] = useState('');
+  const [appliedProjectQuery, setAppliedProjectQuery] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const owners = useMemo(() => {
+    const uniqueOwners = new Map(projects.map(({ createdBy }) => [createdBy.id, createdBy]));
+    return [...uniqueOwners.values()].sort((left, right) => left.name.localeCompare(right.name, 'id'));
+  }, [projects]);
+  const visibleProjects = useMemo(() => {
+    const normalizedQuery = appliedProjectQuery.trim().toLocaleLowerCase();
+    return projects.filter((project) =>
+      (!departmentFilter || project.departmentId === departmentFilter) &&
+      (!ownerFilter || project.createdBy.id === ownerFilter) &&
+      (!normalizedQuery || `${project.name} ${project.description ?? ''}`.toLocaleLowerCase().includes(normalizedQuery)),
+    );
+  }, [projects, departmentFilter, ownerFilter, appliedProjectQuery]);
+  const hasProjectFilters = Boolean(appliedProjectQuery || departmentFilter || ownerFilter);
 
   async function load() {
     setLoading(true);
@@ -77,16 +95,24 @@ export default function HomePage() {
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Muat ulang</button></div>}
       <div className="section-heading project-overview-heading">
         <div><h2>Proyek aktif</h2><p>Pilih proyek untuk melihat task dan aktivitas tim.</p></div>
-        {!loading && <span className="section-count">{projects.length} proyek</span>}
+        {!loading && <span className="section-count">{visibleProjects.length} proyek</span>}
       </div>
+
+      {!loading && projects.length > 0 && <form className="project-list-toolbar" onSubmit={(event) => { event.preventDefault(); setAppliedProjectQuery(projectQuery); }}>
+        <input className="search-input" value={projectQuery} onChange={(event) => setProjectQuery(event.target.value)} placeholder="Cari proyek…" aria-label="Cari proyek" />
+        <label><span className="sr-only">Filter departemen</span><select className="filter-select" value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}><option value="">Semua departemen</option>{departments.map((department) => <option value={department.id} key={department.id}>{department.name}</option>)}</select></label>
+        <label><span className="sr-only">Filter pemilik proyek</span><select className="filter-select" value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}><option value="">Semua pemilik</option>{owners.map((owner) => <option value={owner.id} key={owner.id}>{owner.name}</option>)}</select></label>
+        <button className="button button-secondary" type="submit">Cari</button>
+        {hasProjectFilters && <button className="button button-quiet" type="button" onClick={() => { setProjectQuery(''); setAppliedProjectQuery(''); setDepartmentFilter(''); setOwnerFilter(''); }}>Reset</button>}
+      </form>}
 
       {loading ? (
         <div className="project-grid" aria-label="Memuat proyek">
           {[1, 2, 3].map((item) => <div className="loading-skeleton" key={item} />)}
         </div>
-      ) : projects.length > 0 ? (
+      ) : visibleProjects.length > 0 ? (
         <div className="project-grid">
-          {projects.map((project) => (
+          {visibleProjects.map((project) => (
             <Link className="project-card" href={`/projects/${project.id}`} key={project.id}>
               <div className="project-card-top">
                 <span className="project-card-mark">{project.name.slice(0, 1).toUpperCase()}</span>
@@ -103,9 +129,9 @@ export default function HomePage() {
         <section className="empty-state">
           <div>
             <div className="empty-state-icon" aria-hidden="true" />
-            <h3>Belum ada proyek aktif</h3>
-            <p>{member ? 'Buat proyek pertama untuk mulai mengelola pekerjaan tim.' : 'Proyek yang melibatkan akun Anda akan ditampilkan di sini.'}</p>
-            {member && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat proyek</button>}
+            <h3>{hasProjectFilters ? 'Proyek tidak ditemukan' : 'Belum ada proyek aktif'}</h3>
+            <p>{hasProjectFilters ? 'Coba ubah kata kunci atau filter yang digunakan.' : member ? 'Buat proyek pertama untuk mulai mengelola pekerjaan tim.' : 'Proyek yang melibatkan akun Anda akan ditampilkan di sini.'}</p>
+            {hasProjectFilters ? <button className="button button-secondary" onClick={() => { setProjectQuery(''); setAppliedProjectQuery(''); setDepartmentFilter(''); setOwnerFilter(''); }}>Reset filter</button> : member && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat proyek</button>}
           </div>
         </section>
       )}
