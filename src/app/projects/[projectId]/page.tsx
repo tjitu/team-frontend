@@ -4,6 +4,7 @@ import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useS
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { AssigneePicker } from '@/components/assignee-picker';
 import { api, CurrentMember, Department, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskPriority, TaskStatus } from '@/lib/api';
 
 const statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE'];
@@ -492,7 +493,7 @@ export default function ProjectPage() {
             <label className="field-label">Nama task<input className="field-input" name="title" placeholder="Contoh: Tinjau kebutuhan pengguna" minLength={2} maxLength={180} required autoFocus /></label>
             <label className="field-label">Deskripsi <span className="subtle-link">Opsional</span><textarea className="field-textarea" name="description" placeholder="Tambahkan konteks atau kriteria selesai" maxLength={10000} /></label>
             <div className="detail-meta"><label className="field-label">Prioritas<select className="filter-select" name="priority" defaultValue="NORMAL">{priorities.map((priority) => <option value={priority} key={priority}>{priorityLabels[priority]}</option>)}</select></label><label className="field-label">Jatuh tempo<input className="field-input" name="dueAt" type="date" /></label></div>
-            {canManage && project?.members && project.members.length > 0 && <label className="field-label">Assignee<select className="filter-select" name="assigneeIds" multiple size={Math.min(project.members.length, 4)}>{project.members.map(({ teamMember }) => <option key={teamMember.id} value={teamMember.id}>{teamMember.name} · {teamMember.email}</option>)}</select><span className="subtle-link">Pilih satu atau beberapa anggota.</span></label>}
+            {canWrite && project?.members && project.members.length > 0 && <label className="field-label">Assignee<AssigneePicker members={project.members} /></label>}
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setCreateOpen(false)}>Batal</button><button className="button button-primary" disabled={saving}>{saving ? 'Menyimpan…' : 'Buat task'}</button></div>
           </form>
         </section>
@@ -506,7 +507,7 @@ export default function ProjectPage() {
             <label className="field-label">Nama task<input className="field-input" name="title" key={`task-title-${selectedTask.id}`} defaultValue={selectedTask.title} minLength={2} maxLength={180} required autoFocus /></label>
             <label className="field-label">Deskripsi <span className="subtle-link">Opsional</span><textarea className="field-textarea" name="description" key={`task-description-${selectedTask.id}`} defaultValue={selectedTask.description ?? ''} maxLength={10000} placeholder="Tambahkan konteks atau kriteria selesai" /></label>
             <div className="detail-meta"><label className="field-label">Prioritas<select className="filter-select" name="priority" defaultValue={selectedTask.priority}>{priorities.map((priority) => <option value={priority} key={priority}>{priorityLabels[priority]}</option>)}</select></label><label className="field-label">Jatuh tempo<input className="field-input" name="dueAt" type="date" defaultValue={dateInputValue(selectedTask.dueAt)} /></label></div>
-            {canManage && project?.members && project.members.length > 0 && <label className="field-label">Assignee<select className="filter-select" name="assigneeIds" multiple size={Math.min(project.members.length, 4)} defaultValue={selectedTask.assignees.map(({ teamMember }) => teamMember.id)}>{project.members.map(({ teamMember }) => <option key={teamMember.id} value={teamMember.id}>{teamMember.name} · {teamMember.email}</option>)}</select><span className="subtle-link">Pilih satu atau beberapa anggota.</span></label>}
+            {canManage && project?.members && project.members.length > 0 && <label className="field-label">Assignee<AssigneePicker members={project.members} initialIds={selectedTask.assignees.map(({ teamMember }) => teamMember.id)} /></label>}
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setEditTaskOpen(false)}>Batal</button><button className="button button-primary" disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan perubahan'}</button></div>
           </form>
         </section>
