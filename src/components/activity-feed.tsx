@@ -7,7 +7,7 @@ import { ActivityPage as ActivityPageData, ActivityRecord, api, signInUrl } from
 type ActivityScope = 'team' | 'project';
 
 const eventTypes = [
-  'PROJECT_CREATED', 'PROJECT_UPDATED', 'PROJECT_ARCHIVED',
+  'PROJECT_CREATED', 'PROJECT_UPDATED', 'PROJECT_ARCHIVED', 'PROJECT_RESTORED',
   'PROJECT_MEMBER_ADDED', 'PROJECT_MEMBER_ROLE_CHANGED', 'PROJECT_MEMBER_REMOVED',
   'TASK_CREATED', 'TASK_UPDATED', 'TASK_ARCHIVED', 'TASK_COMMENT_ADDED',
   'TEAM_MEMBER_ACTIVATED', 'TEAM_MEMBER_DEACTIVATED', 'TEAM_MEMBER_ROLE_CHANGED',
@@ -16,7 +16,7 @@ const eventTypes = [
 ];
 
 const eventLabels: Record<string, string> = {
-  PROJECT_CREATED: 'Proyek dibuat', PROJECT_UPDATED: 'Proyek diperbarui', PROJECT_ARCHIVED: 'Proyek diarsipkan',
+  PROJECT_CREATED: 'Proyek dibuat', PROJECT_UPDATED: 'Proyek diperbarui', PROJECT_ARCHIVED: 'Proyek diarsipkan', PROJECT_RESTORED: 'Proyek dipulihkan',
   PROJECT_MEMBER_ADDED: 'Anggota proyek ditambahkan', PROJECT_MEMBER_ROLE_CHANGED: 'Role proyek diubah', PROJECT_MEMBER_REMOVED: 'Anggota proyek dikeluarkan',
   TASK_CREATED: 'Task dibuat', TASK_UPDATED: 'Task diperbarui', TASK_ARCHIVED: 'Task diarsipkan', TASK_COMMENT_ADDED: 'Komentar task ditambahkan',
   TEAM_MEMBER_ACTIVATED: 'Akses anggota diaktifkan', TEAM_MEMBER_DEACTIVATED: 'Akses anggota dinonaktifkan', TEAM_MEMBER_ROLE_CHANGED: 'Role tim diubah',
@@ -51,6 +51,7 @@ function summaryFor(activity: ActivityRecord) {
     case 'PROJECT_CREATED': return `membuat proyek ${text(metadata.name, '')}`;
     case 'PROJECT_UPDATED': return `memperbarui proyek ${text(after.name, activity.project?.name ?? '')}`;
     case 'PROJECT_ARCHIVED': return `mengarsipkan proyek ${activity.project?.name ?? ''}`;
+    case 'PROJECT_RESTORED': return `memulihkan proyek ${activity.project?.name ?? ''}`;
     case 'PROJECT_MEMBER_ADDED': return 'menambahkan anggota ke proyek';
     case 'PROJECT_MEMBER_ROLE_CHANGED': return `mengubah role anggota proyek${typeof metadata.after === 'string' ? ` menjadi ${metadata.after}` : ''}`;
     case 'PROJECT_MEMBER_REMOVED': return 'mengeluarkan anggota dari proyek';

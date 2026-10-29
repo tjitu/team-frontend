@@ -7,12 +7,13 @@ import { useEffect, useRef, useState } from 'react';
 import { api, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
-function NavIcon({ name }: { name: 'overview' | 'team' | 'activity' | 'departments' }) {
+function NavIcon({ name }: { name: 'overview' | 'team' | 'activity' | 'departments' | 'archive' }) {
   const paths = {
     overview: <><path d="m3 10 9-7 9 7" /><path d="M5 9v12h14V9M9 21v-7h6v7" /></>,
     team: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.5V20" /></>,
     activity: <><path d="M3 12h4l3-8 4 16 3-8h4" /></>,
     departments: <><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M9 7h2m2 0h2M9 11h2m2 0h2M9 15h2m2 0h2M10 21v-3h4v3" /></>,
+    archive: <><path d="M3 4h18v4H3zM5 8v12h14V8m-9 4h4" /></>,
   };
   return <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -31,6 +32,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const accountTriggerRef = useRef<HTMLButtonElement>(null);
   const activeProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
   const pageLabel = pathname === '/' ? 'Ikhtisar'
+    : pathname === '/projects/archived' ? 'Proyek diarsipkan'
     : pathname.startsWith('/team') ? 'Anggota tim'
       : pathname === '/activity' ? 'Aktivitas tim'
         : pathname.startsWith('/departments') ? 'Departemen'
@@ -120,6 +122,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           <span>Proyek</span>
           <span className="count-pill">{projects.length}</span>
         </div>
+        <Link className={`nav-link archived-project-nav ${pathname === '/projects/archived' ? 'is-active' : ''}`} href="/projects/archived">
+          <NavIcon name="archive" />Arsip proyek
+        </Link>
         <nav className="project-nav" aria-label="Proyek">
           {projects.map((project) => (
             <Link

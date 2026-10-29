@@ -88,6 +88,7 @@ export interface Project {
   version: number;
   updatedAt: string;
   createdAt: string;
+  archivedAt: string | null;
   _count?: { members: number };
   members?: Array<{ id: string; role: ProjectRole; teamMember: TeamMember }>;
 }
