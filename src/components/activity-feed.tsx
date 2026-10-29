@@ -10,7 +10,7 @@ const eventTypes = [
   'PROJECT_CREATED', 'PROJECT_UPDATED', 'PROJECT_ARCHIVED', 'PROJECT_RESTORED',
   'PROJECT_MEMBER_ADDED', 'PROJECT_MEMBER_ROLE_CHANGED', 'PROJECT_MEMBER_REMOVED',
   'TASK_CREATED', 'TASK_UPDATED', 'TASK_ARCHIVED', 'TASK_COMMENT_ADDED',
-  'TEAM_MEMBER_ACTIVATED', 'TEAM_MEMBER_DEACTIVATED', 'TEAM_MEMBER_ROLE_CHANGED',
+  'TEAM_MEMBER_ACTIVATED', 'TEAM_MEMBER_DEACTIVATED', 'TEAM_MEMBER_ROLE_CHANGED', 'TEAM_MEMBER_PROFILE_SYNCED',
   'TEAM_INVITATION_CREATED', 'TEAM_INVITATION_RESENT', 'TEAM_INVITATION_REVOKED', 'TEAM_INVITATION_ACCEPTED',
   'DEPARTMENT_CREATED', 'DEPARTMENT_UPDATED', 'DEPARTMENT_MEMBER_ADDED', 'DEPARTMENT_MEMBER_REACTIVATED', 'DEPARTMENT_MEMBER_REMOVED',
 ];
@@ -19,7 +19,7 @@ const eventLabels: Record<string, string> = {
   PROJECT_CREATED: 'Proyek dibuat', PROJECT_UPDATED: 'Proyek diperbarui', PROJECT_ARCHIVED: 'Proyek diarsipkan', PROJECT_RESTORED: 'Proyek dipulihkan',
   PROJECT_MEMBER_ADDED: 'Anggota proyek ditambahkan', PROJECT_MEMBER_ROLE_CHANGED: 'Role proyek diubah', PROJECT_MEMBER_REMOVED: 'Anggota proyek dikeluarkan',
   TASK_CREATED: 'Task dibuat', TASK_UPDATED: 'Task diperbarui', TASK_ARCHIVED: 'Task diarsipkan', TASK_COMMENT_ADDED: 'Komentar task ditambahkan',
-  TEAM_MEMBER_ACTIVATED: 'Akses anggota diaktifkan', TEAM_MEMBER_DEACTIVATED: 'Akses anggota dinonaktifkan', TEAM_MEMBER_ROLE_CHANGED: 'Role tim diubah',
+  TEAM_MEMBER_ACTIVATED: 'Akses anggota diaktifkan', TEAM_MEMBER_DEACTIVATED: 'Akses anggota dinonaktifkan', TEAM_MEMBER_ROLE_CHANGED: 'Role tim diubah', TEAM_MEMBER_PROFILE_SYNCED: 'Nama profil diperbarui',
   TEAM_INVITATION_CREATED: 'Undangan dibuat', TEAM_INVITATION_RESENT: 'Undangan dikirim ulang', TEAM_INVITATION_REVOKED: 'Undangan dicabut', TEAM_INVITATION_ACCEPTED: 'Undangan diterima',
   DEPARTMENT_CREATED: 'Departemen dibuat', DEPARTMENT_UPDATED: 'Departemen diperbarui', DEPARTMENT_MEMBER_ADDED: 'Anggota departemen ditambahkan', DEPARTMENT_MEMBER_REACTIVATED: 'Anggota departemen diaktifkan kembali', DEPARTMENT_MEMBER_REMOVED: 'Anggota departemen dikeluarkan',
 };
@@ -65,6 +65,7 @@ function summaryFor(activity: ActivityRecord) {
     case 'TEAM_MEMBER_ACTIVATED': return `mengaktifkan akses ${email}`;
     case 'TEAM_MEMBER_DEACTIVATED': return `menonaktifkan akses ${email}`;
     case 'TEAM_MEMBER_ROLE_CHANGED': return `mengubah role ${email}${typeof metadata.after === 'string' ? ` menjadi ${metadata.after.replaceAll('_', ' ')}` : ''}`;
+    case 'TEAM_MEMBER_PROFILE_SYNCED': return 'menyinkronkan nama tampilan dari profil Supabase';
     case 'TEAM_INVITATION_CREATED': return `mengundang ${email}`;
     case 'TEAM_INVITATION_RESENT': return `mengirim ulang undangan ke ${email}`;
     case 'TEAM_INVITATION_REVOKED': return `mencabut undangan untuk ${email}`;
