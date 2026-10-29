@@ -4,7 +4,7 @@ import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useS
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { api, CurrentMember, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskPriority, TaskStatus } from '@/lib/api';
+import { api, CurrentMember, Department, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskPriority, TaskStatus } from '@/lib/api';
 
 const statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE'];
 const priorities: TaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
@@ -108,6 +108,7 @@ export default function ProjectPage() {
   const searchParams = useSearchParams();
   const taskView: TaskView = searchParams.get('view') === 'list' ? 'list' : 'board';
   const [project, setProject] = useState<Project | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -151,14 +152,16 @@ export default function ProjectPage() {
       if (appliedQuery.trim()) search.set('q', appliedQuery.trim());
       search.set('limit', '100');
       const suffix = search.size ? `?${search.toString()}` : '';
-      const [projectData, taskList, currentMember] = await Promise.all([
+      const [projectData, taskList, currentMember, departmentList] = await Promise.all([
         api.get<Project>(`/team/projects/${encodeURIComponent(projectId)}`),
         api.get<Task[]>(`/team/projects/${encodeURIComponent(projectId)}/tasks${suffix}`),
         api.get<CurrentMember>('/team/me'),
+        api.get<Department[]>('/team/departments'),
       ]);
       setProject(projectData);
       setTasks(taskList);
       setMember(currentMember);
+      setDepartments(departmentList.filter((department) => department.isActive || department.id === projectData.departmentId));
       setError('');
       if (keepSelected && selectedTask) {
         const fresh = taskList.find(({ id }) => id === selectedTask.id);
@@ -217,8 +220,16 @@ export default function ProjectPage() {
     const data = new FormData(event.currentTarget);
     const name = String(data.get('name') ?? '').trim();
     const description = String(data.get('description') ?? '').trim();
+    const startsAtValue = String(data.get('startsAt') ?? '');
+    const endsAtValue = String(data.get('endsAt') ?? '');
     try {
-      await api.patch<Project>(`/team/projects/${encodeURIComponent(projectId)}`, { name, description });
+      await api.patch<Project>(`/team/projects/${encodeURIComponent(projectId)}`, {
+        name,
+        description,
+        departmentId: String(data.get('departmentId') ?? ''),
+        startsAt: startsAtValue ? new Date(`${startsAtValue}T00:00:00.000Z`).toISOString() : null,
+        endsAt: endsAtValue ? new Date(`${endsAtValue}T00:00:00.000Z`).toISOString() : null,
+      });
       setEditProjectOpen(false);
       await load(false);
     } catch (cause) {
@@ -381,6 +392,7 @@ export default function ProjectPage() {
           <p className="page-eyebrow">Proyek</p>
           <h1>{project?.name ?? (loading ? 'Memuat proyek…' : 'Proyek')}</h1>
           <p className="page-subtitle">{project?.description || 'Atur pekerjaan dan pantau progres task proyek.'}</p>
+          {project && <p className="project-meta-line">{project.department.name} · Pemilik {project.createdBy.name} · Periode {dateLabel(project.startsAt)} – {dateLabel(project.endsAt)}</p>}
         </div>
         <div className="page-heading-actions">{canManage && <><button className="button button-secondary" onClick={() => { setProjectError(''); setEditProjectOpen(true); }}>Edit proyek</button><button className="button button-quiet danger-action" disabled={projectSaving} onClick={() => void archiveProject()}>Arsipkan</button></>}{canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Task baru</button>}</div>
       </div>
@@ -507,6 +519,8 @@ export default function ProjectPage() {
             {projectError && <p className="form-error" role="alert">{projectError}</p>}
             <label className="field-label">Nama proyek<input className="field-input" name="name" key={`project-name-${project.id}`} defaultValue={project.name} minLength={2} maxLength={120} required autoFocus /></label>
             <label className="field-label">Deskripsi <span className="subtle-link">Opsional</span><textarea className="field-textarea" name="description" key={`project-description-${project.id}`} defaultValue={project.description ?? ''} maxLength={2000} placeholder="Tujuan atau ringkasan proyek" /></label>
+            <label className="field-label">Departemen<select className="filter-select" name="departmentId" key={`project-department-${project.id}`} defaultValue={project.departmentId} required>{departments.map((department) => <option value={department.id} key={department.id}>{department.name}{department.isActive ? '' : ' (nonaktif)'}</option>)}</select></label>
+            <div className="detail-meta"><label className="field-label">Mulai<input className="field-input" name="startsAt" type="date" defaultValue={dateInputValue(project.startsAt)} /></label><label className="field-label">Selesai<input className="field-input" name="endsAt" type="date" defaultValue={dateInputValue(project.endsAt)} /></label></div>
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setEditProjectOpen(false)}>Batal</button><button className="button button-primary" disabled={projectSaving}>{projectSaving ? 'Menyimpan…' : 'Simpan perubahan'}</button></div>
           </form>
         </section>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
-import { api, CurrentMember, isAdministrator, Project, signInUrl } from '@/lib/api';
+import { api, CurrentMember, Department, isAdministrator, Project, signInUrl } from '@/lib/api';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
@@ -11,6 +11,7 @@ function formatDate(value: string) {
 export default function HomePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [member, setMember] = useState<CurrentMember | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -20,12 +21,14 @@ export default function HomePage() {
   async function load() {
     setLoading(true);
     try {
-      const [projectList, currentMember] = await Promise.all([
+      const [projectList, currentMember, departmentList] = await Promise.all([
         api.get<Project[]>('/team/projects'),
         api.get<CurrentMember>('/team/me'),
+        api.get<Department[]>('/team/departments'),
       ]);
       setProjects(projectList);
       setMember(currentMember);
+      setDepartments(departmentList.filter((department) => department.isActive));
       setError('');
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Data ruang kerja gagal dimuat.';
@@ -47,6 +50,9 @@ export default function HomePage() {
       await api.post<Project>('/team/projects', {
         name: String(data.get('name') ?? '').trim(),
         description: String(data.get('description') ?? '').trim(),
+        departmentId: String(data.get('departmentId') ?? ''),
+        startsAt: data.get('startsAt') ? new Date(`${String(data.get('startsAt'))}T00:00:00.000Z`).toISOString() : undefined,
+        endsAt: data.get('endsAt') ? new Date(`${String(data.get('endsAt'))}T00:00:00.000Z`).toISOString() : undefined,
       });
       setCreateOpen(false);
       await load();
@@ -88,7 +94,8 @@ export default function HomePage() {
               </div>
               <h3 title={project.name}>{project.name}</h3>
               <p className="project-description">{project.description || 'Belum ada deskripsi untuk proyek ini.'}</p>
-              <div className="project-card-footer"><span className="project-member-summary"><span className="mini-people-icon" aria-hidden="true" />{project._count?.members ?? 0} anggota</span><span>Diperbarui {formatDate(project.updatedAt)}</span></div>
+              <p className="project-card-metadata">{project.department.name} · Pemilik {project.createdBy.name}</p>
+              <div className="project-card-footer"><span className="project-member-summary"><span className="mini-people-icon" aria-hidden="true" />{project._count?.members ?? 0} anggota</span><span>{project.startsAt || project.endsAt ? `${project.startsAt ? formatDate(project.startsAt) : '—'} – ${project.endsAt ? formatDate(project.endsAt) : '—'}` : `Diperbarui ${formatDate(project.updatedAt)}`}</span></div>
             </Link>
           ))}
         </div>
@@ -110,6 +117,8 @@ export default function HomePage() {
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Nama proyek<input className="field-input" name="name" placeholder="Contoh: Pengembangan Produk" minLength={2} maxLength={120} required autoFocus /></label>
             <label className="field-label">Deskripsi <span className="subtle-link">Opsional</span><textarea className="field-textarea" name="description" placeholder="Tujuan atau ringkasan proyek" maxLength={2000} /></label>
+            <label className="field-label">Departemen<select className="filter-select" name="departmentId" required defaultValue=""><option value="" disabled>Pilih departemen</option>{departments.map((department) => <option value={department.id} key={department.id}>{department.name}</option>)}</select></label>
+            <div className="detail-meta"><label className="field-label">Mulai<input className="field-input" name="startsAt" type="date" /></label><label className="field-label">Selesai<input className="field-input" name="endsAt" type="date" /></label></div>
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setCreateOpen(false)}>Batal</button><button className="button button-primary" disabled={saving}>{saving ? 'Menyimpan…' : 'Buat proyek'}</button></div>
           </form>
         </section>

@@ -332,6 +332,8 @@ h1 {
 .member-count { color: var(--muted); font-size: 12px; }
 .project-card h3 { overflow: hidden; margin: 20px 0 7px; font-size: 16px; font-weight: 650; letter-spacing: -.25px; text-overflow: ellipsis; white-space: nowrap; }
 .project-description { display: -webkit-box; overflow: hidden; min-height: 43px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.project-card-metadata, .project-meta-line { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.project-card-metadata { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; padding-top: 19px; color: var(--faint); font-size: 11px; }
 .arrow { color: var(--ink); font-size: 17px; }
 .empty-state {
@@ -718,6 +720,7 @@ h1 { margin-bottom: 7px; font-size: clamp(26px, 2.4vw, 32px); font-weight: 650; 
 .project-card h3 { margin: 16px 0 5px; font-size: 14px; }
 .project-description { min-height: 38px; font-size: 12px; line-height: 1.55; }
 .project-card-footer { padding-top: 14px; font-size: 10px; }
+.project-card-metadata, .project-meta-line { font-size: 11px; }
 .project-member-summary { display: inline-flex; align-items: center; gap: 5px; color: #637084; }
 .mini-people-icon { position: relative; width: 13px; height: 11px; }
 .mini-people-icon::before { position: absolute; top: 0; left: 4px; width: 4px; height: 4px; border: 1px solid currentColor; border-radius: 50%; content: ''; }

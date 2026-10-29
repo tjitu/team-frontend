@@ -80,6 +80,11 @@ export interface Project {
   name: string;
   slug: string;
   description: string | null;
+  departmentId: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  department: Pick<Department, 'id' | 'name' | 'slug'> & { isActive?: boolean };
+  createdBy: TeamMember;
   version: number;
   updatedAt: string;
   createdAt: string;
