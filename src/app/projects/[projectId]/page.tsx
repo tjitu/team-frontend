@@ -16,6 +16,10 @@ function dateLabel(value?: string | null) {
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
 }
 
+function dateInputValue(value?: string | null) {
+  return value ? new Date(value).toISOString().slice(0, 10) : '';
+}
+
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
 }
@@ -34,12 +38,14 @@ export default function ProjectPage() {
   const [query, setQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTaskOpen, setEditTaskOpen] = useState(false);
   const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [manageMembersOpen, setManageMembersOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [projectSaving, setProjectSaving] = useState(false);
   const [projectError, setProjectError] = useState('');
   const [formError, setFormError] = useState('');
+  const [taskFormError, setTaskFormError] = useState('');
   const [membershipError, setMembershipError] = useState('');
   const [membershipNotice, setMembershipNotice] = useState('');
   const [membershipBusy, setMembershipBusy] = useState('');
@@ -214,6 +220,48 @@ export default function ProjectPage() {
     }
   }
 
+  async function updateTask(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedTask) return;
+    setSaving(true);
+    setTaskFormError('');
+    const data = new FormData(event.currentTarget);
+    const dueAt = String(data.get('dueAt') ?? '');
+    const body = {
+      version: selectedTask.version,
+      title: String(data.get('title') ?? '').trim(),
+      description: String(data.get('description') ?? '').trim(),
+      priority: String(data.get('priority') ?? selectedTask.priority),
+      dueAt: dueAt ? new Date(`${dueAt}T23:59:00`).toISOString() : null,
+      ...(canManage ? { assignedMemberIds: data.getAll('assigneeIds').map(String) } : {}),
+    };
+    try {
+      await api.patch<Task>(`/team/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(selectedTask.id)}`, body);
+      setEditTaskOpen(false);
+      await load(false);
+      await openTask(selectedTask.id);
+    } catch (cause) {
+      setTaskFormError(cause instanceof Error ? cause.message : 'Task gagal diperbarui.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function archiveTask() {
+    if (!selectedTask || !window.confirm(`Arsipkan task ${selectedTask.title}?`)) return;
+    setSaving(true);
+    setDetailError('');
+    try {
+      await api.post(`/team/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(selectedTask.id)}/archive`, { version: selectedTask.version });
+      setSelectedTask(null);
+      await load(false);
+    } catch (cause) {
+      setDetailError(cause instanceof Error ? cause.message : 'Task gagal diarsipkan.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function addComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedTask || !comment.trim()) return;
@@ -287,6 +335,7 @@ export default function ProjectPage() {
           <div className="detail-header"><h2>{selectedTask.title}</h2><button className="icon-button" aria-label="Tutup detail task" onClick={() => setSelectedTask(null)}>×</button></div>
           <div className="detail-body">
             {detailError && <div className="inline-message error" role="alert">{detailError}</div>}
+            {(canWrite || canManage) && <div className="detail-actions">{canWrite && <button className="button button-secondary compact-button" onClick={() => { setTaskFormError(''); setEditTaskOpen(true); }}>Edit task</button>}{canManage && <button className="button button-quiet compact-button danger-action" disabled={saving} onClick={() => void archiveTask()}>Arsipkan</button>}</div>}
             <label className="detail-field"><span>Status</span><select className="filter-select" value={selectedTask.status} disabled={!canWrite || saving} onChange={(event) => void updateStatus(event.target.value as TaskStatus)}>{statuses.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label>
             <div className="detail-meta"><div className="detail-field"><span>Prioritas</span><strong>{priorityLabels[selectedTask.priority]}</strong></div><div className="detail-field"><span>Jatuh tempo</span><strong>{dateLabel(selectedTask.dueAt)}</strong></div></div>
             <div className="detail-field"><span>Deskripsi</span><p>{selectedTask.description || 'Belum ada deskripsi.'}</p></div>
@@ -309,6 +358,20 @@ export default function ProjectPage() {
             <div className="detail-meta"><label className="field-label">Prioritas<select className="filter-select" name="priority" defaultValue="NORMAL">{priorities.map((priority) => <option value={priority} key={priority}>{priorityLabels[priority]}</option>)}</select></label><label className="field-label">Jatuh tempo<input className="field-input" name="dueAt" type="date" /></label></div>
             {canManage && project?.members && project.members.length > 0 && <label className="field-label">Assignee<select className="filter-select" name="assigneeIds" multiple size={Math.min(project.members.length, 4)}>{project.members.map(({ teamMember }) => <option key={teamMember.id} value={teamMember.id}>{teamMember.name} · {teamMember.email}</option>)}</select><span className="subtle-link">Pilih satu atau beberapa anggota.</span></label>}
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setCreateOpen(false)}>Batal</button><button className="button button-primary" disabled={saving}>{saving ? 'Menyimpan…' : 'Buat task'}</button></div>
+          </form>
+        </section>
+      </div>}
+
+      {editTaskOpen && selectedTask && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditTaskOpen(false); }}>
+        <section className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-task-title">
+          <div className="modal-header"><div><h2 id="edit-task-title">Edit task</h2><p>Perbarui detail pekerjaan ini.</p></div><button className="icon-button" aria-label="Tutup" onClick={() => setEditTaskOpen(false)}>×</button></div>
+          <form className="form-stack" onSubmit={updateTask}>
+            {taskFormError && <p className="form-error" role="alert">{taskFormError}</p>}
+            <label className="field-label">Nama task<input className="field-input" name="title" key={`task-title-${selectedTask.id}`} defaultValue={selectedTask.title} minLength={2} maxLength={180} required autoFocus /></label>
+            <label className="field-label">Deskripsi <span className="subtle-link">Opsional</span><textarea className="field-textarea" name="description" key={`task-description-${selectedTask.id}`} defaultValue={selectedTask.description ?? ''} maxLength={10000} placeholder="Tambahkan konteks atau kriteria selesai" /></label>
+            <div className="detail-meta"><label className="field-label">Prioritas<select className="filter-select" name="priority" defaultValue={selectedTask.priority}>{priorities.map((priority) => <option value={priority} key={priority}>{priorityLabels[priority]}</option>)}</select></label><label className="field-label">Jatuh tempo<input className="field-input" name="dueAt" type="date" defaultValue={dateInputValue(selectedTask.dueAt)} /></label></div>
+            {canManage && project?.members && project.members.length > 0 && <label className="field-label">Assignee<select className="filter-select" name="assigneeIds" multiple size={Math.min(project.members.length, 4)} defaultValue={selectedTask.assignees.map(({ teamMember }) => teamMember.id)}>{project.members.map(({ teamMember }) => <option key={teamMember.id} value={teamMember.id}>{teamMember.name} · {teamMember.email}</option>)}</select><span className="subtle-link">Pilih satu atau beberapa anggota.</span></label>}
+            <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setEditTaskOpen(false)}>Batal</button><button className="button button-primary" disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan perubahan'}</button></div>
           </form>
         </section>
       </div>}
