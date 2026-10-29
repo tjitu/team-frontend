@@ -157,7 +157,7 @@ export default function DepartmentsPage() {
         {canManage && <button className="button button-primary" onClick={() => { setFormError(''); setEditing(null); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Departemen baru</button>}
       </div>
 
-      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Coba lagi</button></div>}
+      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Muat ulang</button></div>}
       {notice && <div className="inline-message success" role="status">{notice}<button className="icon-button" aria-label="Tutup pesan" onClick={() => setNotice('')}>×</button></div>}
 
       <div className="department-toolbar">

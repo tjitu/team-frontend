@@ -43,10 +43,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           <span className="brand-mark">T</span>
           <span>Team Platform</span>
         </Link>
-        <div className="sidebar-label">Workspace</div>
+        <div className="sidebar-label">Ruang kerja</div>
         <nav className="primary-nav">
           <Link className={`nav-link ${pathname === '/' ? 'is-active' : ''}`} href="/">
-            <span className="nav-icon" aria-hidden="true">⌂</span>Ringkasan
+            <span className="nav-icon" aria-hidden="true">⌂</span>Ikhtisar
           </Link>
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/team') ? 'is-active' : ''}`} href="/team">
             <span className="nav-icon" aria-hidden="true">T</span>Anggota tim
@@ -74,25 +74,24 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               <span className="truncate">{project.name}</span>
             </Link>
           ))}
-          {projects.length === 0 && !loadError && <p className="sidebar-empty">Belum ada proyek</p>}
+          {projects.length === 0 && !loadError && <p className="sidebar-empty">Belum ada proyek aktif</p>}
         </nav>
         <div className="sidebar-footer">
           <div className="avatar avatar-small">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</div>
           <div className="profile-copy">
-            <strong className="truncate">{member?.name ?? 'Memuat profil'}</strong>
-            <span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team member'}</span>
+            <strong className="truncate">{member?.name ?? 'Memuat akun…'}</strong>
+            <span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Anggota tim'}</span>
           </div>
         </div>
       </aside>
       <main className="main-area">
         <header className="topbar">
-          <div className="breadcrumb"><span>Team Platform</span><span className="breadcrumb-separator">/</span><span>{pathname === '/' ? 'Ringkasan' : 'Workspace'}</span></div>
+          <div className="breadcrumb"><span>Team Platform</span><span className="breadcrumb-separator">/</span><span>{pathname === '/' ? 'Ikhtisar' : 'Ruang kerja'}</span></div>
           <div className="topbar-profile">
             <span className="profile-email">{member?.email ?? ''}</span>
             <div className="avatar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</div>
           </div>
         </header>
-        {loadError && <div className="global-notice" role="status">{loadError}</div>}
         {children}
       </main>
     </div>

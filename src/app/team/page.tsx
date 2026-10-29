@@ -179,7 +179,7 @@ export default function TeamPage() {
         {isAdministrator(currentMember?.role) && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Undang anggota</button>}
       </div>
 
-      {error && <div className="inline-message error" role="alert">{error}{(!currentMember || isAdministrator(currentMember.role)) && <button className="button button-quiet" onClick={() => void load()}>Coba lagi</button>}</div>}
+      {error && <div className="inline-message error" role="alert">{error}{(!currentMember || isAdministrator(currentMember.role)) && <button className="button button-quiet" onClick={() => void load()}>Muat ulang</button>}</div>}
       {notice && <div className="inline-message success" role="status">{notice}<button className="icon-button" aria-label="Tutup pesan" onClick={() => setNotice('')}>×</button></div>}
 
       <div className="team-tabs" role="tablist" aria-label="Pengelolaan tim">

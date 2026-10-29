@@ -79,7 +79,7 @@ export function InvitationAcceptance({ token, completed }: { token: string | nul
         {state === 'error' && <>
           <p className="invitation-copy invitation-error" role="alert">{error}</p>
           {error.toLowerCase().includes('email') && <p className="invitation-copy">Pastikan kamu masuk dengan email undangan yang sama dan alamat emailnya sudah diverifikasi.</p>}
-          <div className="invitation-actions"><button className="button button-primary" onClick={() => void accept()}>Coba lagi</button><a className="subtle-link" href={signIn} target="_blank" rel="noreferrer">Buka halaman masuk</a></div>
+          <div className="invitation-actions"><button className="button button-primary" onClick={() => void accept()}>Muat ulang</button><a className="subtle-link" href={signIn} target="_blank" rel="noreferrer">Buka halaman masuk</a></div>
         </>}
 
         {state === 'invalid' && <p className="invitation-copy">Link tidak memiliki token undangan. Buka kembali link dari email undangan atau minta admin mengirimkannya ulang.</p>}

@@ -114,7 +114,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       cache: 'no-store',
     });
   } catch {
-    throw new Error('Tidak bisa terhubung ke server. Periksa koneksi backend lalu coba lagi.');
+    throw new Error('Layanan tidak dapat dihubungi. Periksa koneksi, lalu muat ulang.');
   }
 
   if (!response.ok) {

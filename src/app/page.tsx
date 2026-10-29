@@ -28,7 +28,7 @@ export default function HomePage() {
       setMember(currentMember);
       setError('');
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'Gagal memuat workspace.';
+      const message = cause instanceof Error ? cause.message : 'Data ruang kerja gagal dimuat.';
       if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
       else setError(message);
     } finally {
@@ -61,13 +61,13 @@ export default function HomePage() {
     <div className="page-content">
       <div className="page-heading">
         <div>
-          <h1>Ringkasan proyek</h1>
-          <p className="page-subtitle">Hai{member?.name ? `, ${member.name.split(' ')[0]}` : ''}. Lihat proyek dan progres kerja tim di sini.</p>
+          <h1>Ikhtisar proyek</h1>
+          <p className="page-subtitle">{member?.name ? `Selamat datang, ${member.name.split(' ')[0]}. ` : ''}Pantau proyek aktif dan perkembangan kerja tim.</p>
         </div>
         {isAdministrator(member?.role) && <button className="button button-primary" onClick={() => setCreateOpen(true)}><span className="button-symbol" aria-hidden="true">+</span>Proyek baru</button>}
       </div>
 
-      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Coba lagi</button></div>}
+      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Muat ulang</button></div>}
       <div className="section-heading">
         <h2>Proyek aktif</h2>
         {!loading && <span>{projects.length} proyek</span>}
@@ -95,8 +95,8 @@ export default function HomePage() {
         <section className="empty-state">
           <div>
             <div className="empty-state-icon" aria-hidden="true">□</div>
-            <h3>Belum ada proyek</h3>
-            <p>{isAdministrator(member?.role) ? 'Buat proyek pertama untuk mulai mengatur pekerjaan dan kolaborasi tim.' : 'Proyek yang menambahkan kamu sebagai anggota akan muncul di sini.'}</p>
+            <h3>Belum ada proyek aktif</h3>
+            <p>{isAdministrator(member?.role) ? 'Buat proyek pertama untuk mulai mengelola pekerjaan tim.' : 'Proyek yang melibatkan akun Anda akan ditampilkan di sini.'}</p>
             {isAdministrator(member?.role) && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat proyek</button>}
           </div>
         </section>
@@ -104,7 +104,7 @@ export default function HomePage() {
 
       {createOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateOpen(false); }}>
         <section className="modal" role="dialog" aria-modal="true" aria-labelledby="create-project-title">
-          <div className="modal-header"><div><h2 id="create-project-title">Buat proyek</h2><p>Proyek baru akan langsung tersedia di workspace tim.</p></div><button className="icon-button" aria-label="Tutup" onClick={() => setCreateOpen(false)}>×</button></div>
+          <div className="modal-header"><div><h2 id="create-project-title">Buat proyek</h2><p>Proyek baru akan tersedia bagi tim Anda.</p></div><button className="icon-button" aria-label="Tutup" onClick={() => setCreateOpen(false)}>×</button></div>
           <form className="form-stack" onSubmit={createProject}>
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Nama proyek<input className="field-input" name="name" placeholder="Contoh: Pengembangan Produk" minLength={2} maxLength={120} required autoFocus /></label>

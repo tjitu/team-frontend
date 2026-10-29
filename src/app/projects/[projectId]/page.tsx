@@ -299,7 +299,7 @@ export default function ProjectPage() {
         </div> : <p className="project-members-empty">Belum ada anggota di proyek ini.</p>}
       </section>}
 
-      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(false)}>Coba lagi</button></div>}
+      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(false)}>Muat ulang</button></div>}
       {detailError && !selectedTask && <div className="inline-message error" role="alert">{detailError}</div>}
 
       <div className="section-heading section-spacer"><h2>Task</h2><span className="task-count">{filteredCount} ditampilkan</span></div>

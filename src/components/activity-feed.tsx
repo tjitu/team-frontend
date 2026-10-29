@@ -171,7 +171,7 @@ export function ActivityFeed({ scope, projectId }: { scope: ActivityScope; proje
         </div>
       </div>
 
-      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => setReloadKey((value) => value + 1)}>Coba lagi</button></div>}
+      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => setReloadKey((value) => value + 1)}>Muat ulang</button></div>}
       {loading ? <div className="activity-loading"><div className="loading-skeleton" /><div className="loading-skeleton" /></div> : items.length ? <div className="activity-list">
         {items.map((item) => <article className="activity-item" key={item.id}>
           <div className="activity-avatar avatar" aria-hidden="true">{initials(item.actor.name)}</div>
