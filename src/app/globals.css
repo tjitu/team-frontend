@@ -215,6 +215,36 @@ h1 { margin-bottom: 7px; font-size: clamp(25px, 3vw, 32px); font-weight: 700; le
 .comment-form { display: grid; gap: 7px; }
 .comment-form .field-textarea { min-height: 61px; }
 .section-spacer { margin-top: 33px; }
+.team-tabs { display: flex; gap: 20px; border-bottom: 1px solid var(--line); margin: 0 0 17px; }
+.team-tab { position: relative; display: inline-flex; min-height: 39px; align-items: center; gap: 7px; border: 0; background: transparent; padding: 0 2px; color: var(--muted); cursor: pointer; font-size: 12px; }
+.team-tab span { color: var(--text-label); font-size: 10px; }
+.team-tab.is-active { color: var(--ink); font-weight: 700; }
+.team-tab.is-active::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--strong); content: ''; }
+.team-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.team-toolbar .page-subtitle { max-width: 500px; margin: 0; font-size: 11px; }
+.team-search-label { display: block; width: min(300px, 45vw); }
+.team-search-label .search-input { width: 100%; }
+.team-person { display: flex; min-width: 190px; align-items: center; gap: 9px; }
+.team-person > span:last-child { display: grid; min-width: 0; gap: 4px; }
+.team-person strong, .invitation-table td > strong { overflow: hidden; color: var(--text-table); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.team-person small { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.team-table th { white-space: nowrap; }
+.team-table td { white-space: nowrap; }
+.compact-select { min-height: 30px; padding-left: 8px; font-size: 10px; }
+.role-label { color: var(--text-body); font-size: 10px; }
+.department-list { display: inline-block; overflow: hidden; max-width: 180px; color: var(--text-priority); font-size: 10px; text-overflow: ellipsis; vertical-align: middle; }
+.member-status, .invitation-status { display: inline-flex; align-items: center; gap: 6px; color: var(--text-body); font-size: 10px; }
+.member-status::before, .invitation-status::before { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); content: ''; }
+.member-status.is-enabled::before, .invitation-status.status-SENT::before, .invitation-status.status-ACCEPTED::before { background: var(--success); }
+.member-status.is-disabled::before, .invitation-status.status-REVOKED::before, .invitation-status.status-FAILED::before { background: var(--text-timestamp); }
+.invitation-status.status-FAILED { color: var(--danger); }
+.invitation-status.status-FAILED::before { background: var(--danger); }
+.team-action-cell { min-width: 115px; text-align: right !important; }
+.compact-button { min-height: 30px; padding: 0 8px; font-size: 10px; }
+.danger-action { color: var(--danger); }
+.invitation-actions { display: flex; justify-content: flex-end; gap: 2px; }
+.invite-permission-note { margin: -3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.team-back-link { margin-top: 16px; }
 .subtle-link { color: var(--text-priority); font-size: 11px; }
 .subtle-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
@@ -244,6 +274,8 @@ h1 { margin-bottom: 7px; font-size: clamp(25px, 3vw, 32px); font-weight: 700; le
   .task-toolbar { align-items: stretch; flex-direction: column; }
   .toolbar-filters { width: 100%; }
   .search-input { width: 100%; }
+  .team-toolbar { align-items: stretch; flex-direction: column; }
+  .team-search-label { width: 100%; }
 }
 @media (max-width: 480px) {
   .page-heading { flex-direction: column; }
