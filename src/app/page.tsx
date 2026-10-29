@@ -94,7 +94,7 @@ export default function HomePage() {
       ) : (
         <section className="empty-state">
           <div>
-            <div className="empty-state-icon" aria-hidden="true">□</div>
+            <div className="empty-state-icon" aria-hidden="true" />
             <h3>Belum ada proyek aktif</h3>
             <p>{isAdministrator(member?.role) ? 'Buat proyek pertama untuk mulai mengelola pekerjaan tim.' : 'Proyek yang melibatkan akun Anda akan ditampilkan di sini.'}</p>
             {isAdministrator(member?.role) && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat proyek</button>}

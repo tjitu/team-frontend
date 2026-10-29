@@ -6,6 +6,16 @@ import { useEffect, useState } from 'react';
 import { api, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
+function NavIcon({ name }: { name: 'overview' | 'team' | 'activity' | 'departments' }) {
+  const paths = {
+    overview: <><path d="m3 10 9-7 9 7" /><path d="M5 9v12h14V9M9 21v-7h6v7" /></>,
+    team: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.5V20" /></>,
+    activity: <><path d="M3 12h4l3-8 4 16 3-8h4" /></>,
+    departments: <><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M9 7h2m2 0h2M9 11h2m2 0h2M9 15h2m2 0h2M10 21v-3h4v3" /></>,
+  };
+  return <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
+
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isInvitationRoute = pathname.startsWith('/invitations/accept');
@@ -13,6 +23,13 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadError, setLoadError] = useState('');
+  const activeProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
+  const pageLabel = pathname === '/' ? 'Ikhtisar'
+    : pathname.startsWith('/team') ? 'Anggota tim'
+      : pathname === '/activity' ? 'Aktivitas tim'
+        : pathname.startsWith('/departments') ? 'Departemen'
+          : pathname.endsWith('/activity') ? 'Aktivitas proyek'
+            : activeProject?.name ?? 'Ruang kerja';
 
   useEffect(() => {
     if (isInvitationRoute || isLoginRoute) return;
@@ -56,16 +73,16 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-label">Ruang kerja</div>
         <nav className="primary-nav">
           <Link className={`nav-link ${pathname === '/' ? 'is-active' : ''}`} href="/">
-            <span className="nav-icon" aria-hidden="true">⌂</span>Ikhtisar
+            <NavIcon name="overview" />Ikhtisar
           </Link>
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/team') ? 'is-active' : ''}`} href="/team">
-            <span className="nav-icon" aria-hidden="true">T</span>Anggota tim
+            <NavIcon name="team" />Anggota tim
           </Link>}
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname === '/activity' ? 'is-active' : ''}`} href="/activity">
-            <span className="nav-icon" aria-hidden="true">A</span>Aktivitas tim
+            <NavIcon name="activity" />Aktivitas tim
           </Link>}
           {member && <Link className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`} href="/departments">
-            <span className="nav-icon" aria-hidden="true">D</span>Departemen
+            <NavIcon name="departments" />Departemen
           </Link>}
         </nav>
         <div className="sidebar-section-heading">
@@ -96,7 +113,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       </aside>
       <main className="main-area">
         <header className="topbar">
-          <div className="breadcrumb"><span>Team Platform</span><span className="breadcrumb-separator">/</span><span>{pathname === '/' ? 'Ikhtisar' : 'Ruang kerja'}</span></div>
+          <div className="breadcrumb"><Link href="/">Team Platform</Link><span className="breadcrumb-separator">/</span><span aria-current="page">{pageLabel}</span></div>
           <div className="topbar-profile">
             <span className="profile-email">{member?.email ?? ''}</span>
             <button className="button button-quiet sign-out-button" onClick={() => void signOut()}>Keluar</button>

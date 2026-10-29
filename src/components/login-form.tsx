@@ -55,28 +55,38 @@ export function LoginForm({ nextPath, initialError }: { nextPath?: string; initi
   }
 
   return (
-    <section className="auth-card" aria-labelledby="login-title">
-      <a className="brand auth-brand" href="/" aria-label="Team Platform">
-        <span className="brand-mark">T</span><span>Team Platform</span>
-      </a>
-      <div className="auth-heading">
-        <p className="auth-eyebrow">AKSES TIM</p>
-        <h1 id="login-title">Masuk ke ruang kerja</h1>
-        <p>Gunakan akun yang telah diberikan akses ke Team Platform.</p>
-      </div>
-      <form className="form-stack auth-form" onSubmit={signIn}>
-        {error && <p className="inline-message error" role="alert">{error}</p>}
-        <label className="field-label" htmlFor="login-email">Email
-          <input id="login-email" className="field-input" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
-        </label>
-        <label className="field-label" htmlFor="login-password">Kata sandi
-          <input id="login-password" className="field-input" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-        </label>
-        <button className="button button-primary auth-submit" disabled={loading}>
-          {loading ? 'Memeriksa akun…' : 'Masuk'}
-        </button>
-      </form>
-      <p className="auth-footnote">Akun dikelola oleh administrator Team Platform.</p>
-    </section>
+    <div className="auth-layout">
+      <aside className="auth-aside">
+        <a className="brand auth-brand" href="/" aria-label="Team Platform">
+          <span className="brand-mark">T</span><span>Team Platform</span>
+        </a>
+        <div className="auth-aside-copy">
+          <p className="auth-eyebrow">JITU / TEAM WORKSPACE</p>
+          <h2>Ruang kerja yang tertata untuk tim yang bergerak.</h2>
+          <p>Kelola proyek, susun pekerjaan, dan ikuti perkembangan tim dari satu tempat.</p>
+        </div>
+        <p className="auth-aside-footer">PROYEK <span /> TASK <span /> ANGGOTA TIM</p>
+      </aside>
+      <section className="auth-card" aria-labelledby="login-title">
+        <div className="auth-heading">
+          <p className="auth-eyebrow">AKSES TIM</p>
+          <h1 id="login-title">Masuk ke ruang kerja</h1>
+          <p>Gunakan akun yang telah diberikan akses ke Team Platform.</p>
+        </div>
+        <form className="form-stack auth-form" onSubmit={signIn}>
+          {error && <p className="inline-message error" role="alert">{error}</p>}
+          <label className="field-label" htmlFor="login-email">Email
+            <input id="login-email" className="field-input" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          </label>
+          <label className="field-label" htmlFor="login-password">Kata sandi
+            <input id="login-password" className="field-input" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+          </label>
+          <button className="button button-primary auth-submit" disabled={loading}>
+            {loading ? 'Memeriksa akun…' : 'Masuk'}
+          </button>
+        </form>
+        <p className="auth-footnote">Akun dikelola oleh administrator Team Platform.</p>
+      </section>
+    </div>
   );
 }

@@ -177,7 +177,7 @@ export function ActivityFeed({ scope, projectId }: { scope: ActivityScope; proje
           <div className="activity-avatar avatar" aria-hidden="true">{initials(item.actor.name)}</div>
           <div className="activity-copy"><div className="activity-main"><strong>{item.actor.name}</strong><span>{summaryFor(item)}</span></div><div className="activity-meta"><time dateTime={item.createdAt}>{dateTime(item.createdAt)}</time><span className="activity-entity">{entityLabels[item.entityType] ?? item.entityType}</span>{scope === 'team' && item.project && <Link className="activity-project-link" href={`/projects/${encodeURIComponent(item.project.id)}`}>{item.project.name}</Link>}</div></div>
         </article>)}
-      </div> : <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true">A</div><h3>Tidak ada aktivitas</h3><p>{eventType || entityType || actorId ? 'Coba ubah filter aktivitas.' : 'Aktivitas baru akan tercatat di sini saat tim bekerja.'}</p></div></section>}
+      </div> : <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true" /><h3>Tidak ada aktivitas</h3><p>{eventType || entityType || actorId ? 'Coba ubah filter aktivitas.' : 'Aktivitas baru akan tercatat di sini saat tim bekerja.'}</p></div></section>}
 
       {!loading && hasMore && <div className="activity-load-more"><button className="button button-secondary" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? 'Memuat…' : 'Muat aktivitas sebelumnya'}</button></div>}
     </div>

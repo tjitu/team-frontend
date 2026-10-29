@@ -211,7 +211,7 @@ export default function TeamPage() {
               </tr>;
             })}</tbody>
           </table>
-        </div> : <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true">T</div><h3>Tidak ada anggota</h3><p>{appliedQuery || memberStatus !== 'true' ? 'Coba ubah kata kunci atau filter status.' : 'Anggota yang sudah bergabung akan muncul di sini.'}</p></div></section>}
+        </div> : <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true" /><h3>Tidak ada anggota</h3><p>{appliedQuery || memberStatus !== 'true' ? 'Coba ubah kata kunci atau filter status.' : 'Anggota yang sudah bergabung akan muncul di sini.'}</p></div></section>}
       </> : <>
         <div className="team-toolbar">
           <p className="page-subtitle">Undangan berlaku selama 72 jam. Undangan gagal dikirim dapat dicoba kembali.</p>
