@@ -7,11 +7,13 @@ import { api, CurrentMember, Project, signInUrl } from '@/lib/api';
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isInvitationRoute = pathname.startsWith('/invitations/accept');
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
+    if (isInvitationRoute) return;
     let active = true;
     Promise.all([
       api.get<CurrentMember>('/team/me'),
@@ -30,7 +32,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       setLoadError(error.message);
     });
     return () => { active = false; };
-  }, []);
+  }, [isInvitationRoute]);
+
+  if (isInvitationRoute) return <main className="invitation-shell">{children}</main>;
 
   return (
     <div className="workspace">

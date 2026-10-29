@@ -10,7 +10,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-The app runs on `http://localhost:3100`. Configure `NEXT_PUBLIC_TEAM_API_URL` to the Team Platform API and `NEXT_PUBLIC_SIGN_IN_URL` to the existing sign-in page.
+The app runs on `http://localhost:3100`. Configure `NEXT_PUBLIC_TEAM_API_URL` to the Team Platform API and `NEXT_PUBLIC_SIGN_IN_URL` to the existing Jitu sign-in page (locally, `http://localhost:5173/login`).
 
 ## Build
 

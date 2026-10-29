@@ -107,5 +107,5 @@ export const api = {
 export const isAdministrator = (role?: TeamRole) => role === 'SYSTEM_OWNER' || role === 'SYSTEM_ADMIN';
 
 export function signInUrl() {
-  return process.env.NEXT_PUBLIC_SIGN_IN_URL ?? 'http://localhost:3000/sign-in';
+  return process.env.NEXT_PUBLIC_SIGN_IN_URL ?? 'http://localhost:5173/login';
 }
