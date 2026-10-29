@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { api, CurrentMember, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskPriority, TaskStatus } from '@/lib/api';
 
 const statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE'];
@@ -22,6 +22,7 @@ function initials(name: string) {
 
 export default function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -33,8 +34,11 @@ export default function ProjectPage() {
   const [query, setQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [manageMembersOpen, setManageMembersOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [projectSaving, setProjectSaving] = useState(false);
+  const [projectError, setProjectError] = useState('');
   const [formError, setFormError] = useState('');
   const [membershipError, setMembershipError] = useState('');
   const [membershipNotice, setMembershipNotice] = useState('');
@@ -110,6 +114,38 @@ export default function ProjectPage() {
       setFormError(cause instanceof Error ? cause.message : 'Task gagal dibuat.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function updateProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!project) return;
+    setProjectSaving(true);
+    setProjectError('');
+    const data = new FormData(event.currentTarget);
+    const name = String(data.get('name') ?? '').trim();
+    const description = String(data.get('description') ?? '').trim();
+    try {
+      await api.patch<Project>(`/team/projects/${encodeURIComponent(projectId)}`, { name, description });
+      setEditProjectOpen(false);
+      await load(false);
+    } catch (cause) {
+      setProjectError(cause instanceof Error ? cause.message : 'Proyek gagal diperbarui.');
+    } finally {
+      setProjectSaving(false);
+    }
+  }
+
+  async function archiveProject() {
+    if (!project || !window.confirm(`Arsipkan proyek ${project.name}? Proyek ini akan hilang dari daftar aktif.`)) return;
+    setProjectSaving(true);
+    setProjectError('');
+    try {
+      await api.post(`/team/projects/${encodeURIComponent(projectId)}/archive`);
+      window.location.assign('/');
+    } catch (cause) {
+      setProjectError(cause instanceof Error ? cause.message : 'Proyek gagal diarsipkan.');
+      setProjectSaving(false);
     }
   }
 
@@ -204,9 +240,10 @@ export default function ProjectPage() {
           <h1>{project?.name ?? (loading ? 'Memuat proyek…' : 'Proyek')}</h1>
           <p className="page-subtitle">{project?.description || 'Atur pekerjaan dan pantau progres task proyek.'}</p>
         </div>
-        <div className="page-heading-actions"><Link className="button button-secondary" href={`/projects/${encodeURIComponent(projectId)}/activity`}>Aktivitas</Link>{canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Task baru</button>}</div>
+        <div className="page-heading-actions"><Link className="button button-secondary" href={`/projects/${encodeURIComponent(projectId)}/activity`}>Aktivitas</Link>{canManage && <><button className="button button-secondary" onClick={() => { setProjectError(''); setEditProjectOpen(true); }}>Edit proyek</button><button className="button button-quiet danger-action" disabled={projectSaving} onClick={() => void archiveProject()}>Arsipkan</button></>}{canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Task baru</button>}</div>
       </div>
 
+      {projectError && !editProjectOpen && <div className="inline-message error" role="alert">{projectError}</div>}
       {project && <section className="project-member-section" aria-labelledby="project-members-heading">
         <div className="section-heading"><div><h2 id="project-members-heading">Anggota proyek</h2><span>{project.members?.length ?? 0} anggota aktif</span></div>{canManage && <button className="button button-secondary" onClick={() => { setMembershipError(''); setMembershipNotice(''); setManageMembersOpen(true); }}>Kelola anggota</button>}</div>
         {project.members && project.members.length > 0 ? <div className="project-members" aria-label="Anggota proyek">
@@ -272,6 +309,18 @@ export default function ProjectPage() {
             <div className="detail-meta"><label className="field-label">Prioritas<select className="filter-select" name="priority" defaultValue="NORMAL">{priorities.map((priority) => <option value={priority} key={priority}>{priorityLabels[priority]}</option>)}</select></label><label className="field-label">Jatuh tempo<input className="field-input" name="dueAt" type="date" /></label></div>
             {canManage && project?.members && project.members.length > 0 && <label className="field-label">Assignee<select className="filter-select" name="assigneeIds" multiple size={Math.min(project.members.length, 4)}>{project.members.map(({ teamMember }) => <option key={teamMember.id} value={teamMember.id}>{teamMember.name} · {teamMember.email}</option>)}</select><span className="subtle-link">Pilih satu atau beberapa anggota.</span></label>}
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setCreateOpen(false)}>Batal</button><button className="button button-primary" disabled={saving}>{saving ? 'Menyimpan…' : 'Buat task'}</button></div>
+          </form>
+        </section>
+      </div>}
+
+      {editProjectOpen && project && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditProjectOpen(false); }}>
+        <section className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-project-title">
+          <div className="modal-header"><div><h2 id="edit-project-title">Edit proyek</h2><p>Perbarui nama dan deskripsi proyek.</p></div><button className="icon-button" aria-label="Tutup" onClick={() => setEditProjectOpen(false)}>×</button></div>
+          <form className="form-stack" onSubmit={updateProject}>
+            {projectError && <p className="form-error" role="alert">{projectError}</p>}
+            <label className="field-label">Nama proyek<input className="field-input" name="name" key={`project-name-${project.id}`} defaultValue={project.name} minLength={2} maxLength={120} required autoFocus /></label>
+            <label className="field-label">Deskripsi <span className="subtle-link">Opsional</span><textarea className="field-textarea" name="description" key={`project-description-${project.id}`} defaultValue={project.description ?? ''} maxLength={2000} placeholder="Tujuan atau ringkasan proyek" /></label>
+            <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setEditProjectOpen(false)}>Batal</button><button className="button button-primary" disabled={projectSaving}>{projectSaving ? 'Menyimpan…' : 'Simpan perubahan'}</button></div>
           </form>
         </section>
       </div>}

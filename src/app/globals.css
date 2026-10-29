@@ -262,7 +262,7 @@ h1 { margin-bottom: 7px; font-size: clamp(25px, 3vw, 32px); font-weight: 700; le
 .invitation-actions { display: flex; justify-content: flex-end; gap: 2px; }
 .invite-permission-note { margin: -3px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
 .team-back-link { margin-top: 16px; }
-.page-heading-actions { display: flex; align-items: center; gap: 8px; }
+.page-heading-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .activity-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .activity-count { color: var(--muted); font-size: 11px; }
 .activity-list { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
