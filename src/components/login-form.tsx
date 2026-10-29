@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -58,7 +59,7 @@ export function LoginForm({ nextPath, initialError }: { nextPath?: string; initi
     <div className="auth-layout">
       <aside className="auth-aside">
         <a className="brand auth-brand" href="/" aria-label="Team Platform">
-          <span className="brand-mark">T</span><span>Team Platform</span>
+          <Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} /><span>Team Platform</span>
         </a>
         <div className="auth-aside-copy">
           <p className="auth-eyebrow">JITU / TEAM WORKSPACE</p>

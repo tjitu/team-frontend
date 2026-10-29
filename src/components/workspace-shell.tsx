@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -96,9 +97,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="workspace">
       <aside className="sidebar" aria-label="Navigasi utama">
-        <Link className="brand" href="/" aria-label="Team Platform, beranda">
-          <span className="brand-mark">T</span>
-          <span>Team Platform</span>
+        <Link className="brand" href="/" aria-label="JituPTN Team Platform, beranda">
+          <Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} />
+          <span>JituPTN Team Platform</span>
         </Link>
         <div className="sidebar-label">Ruang kerja</div>
         <nav className="primary-nav">
@@ -143,7 +144,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       </aside>
       <main className="main-area">
         <header className="topbar">
-          <div className="breadcrumb"><Link href="/">Team Platform</Link><span className="breadcrumb-separator">/</span><span aria-current="page">{pageLabel}</span></div>
+          <div className="breadcrumb"><Link href="/">JituPTN Team Platform</Link><span className="breadcrumb-separator">/</span><span aria-current="page">{pageLabel}</span></div>
           <div className="account-control" ref={accountControlRef}>
             <button
               ref={accountTriggerRef}
@@ -155,11 +156,11 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               onClick={() => { setSignOutError(''); setAccountOpen((open) => !open); }}
             >
               <span className="avatar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</span>
-              <span className="account-trigger-copy"><strong className="truncate">{member?.name ?? 'Memuat akun…'}</strong><small className="truncate">{member?.email ?? 'Team Platform'}</small></span>
+              <span className="account-trigger-copy"><strong className="truncate">{member?.name ?? 'Memuat akun…'}</strong><small className="truncate">{member?.email ?? 'JituPTN Team Platform'}</small></span>
               <svg className={`account-chevron ${accountOpen ? 'is-open' : ''}`} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </button>
             {accountOpen && <div className="account-menu" id="account-menu" aria-label="Menu akun">
-              <div className="account-menu-identity"><strong className="truncate">{member?.name ?? 'Akun Team Platform'}</strong><span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Anggota tim'}</span></div>
+              <div className="account-menu-identity"><strong className="truncate">{member?.name ?? 'Akun JituPTN Team Platform'}</strong><span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Anggota tim'}</span></div>
               {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
               <button className="account-logout" type="button" disabled={signingOut} onClick={() => void signOut()}>
                 <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M8 3H4.75A1.75 1.75 0 0 0 3 4.75v10.5A1.75 1.75 0 0 0 4.75 17H8m3-3 4-4-4-4m4 4H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>

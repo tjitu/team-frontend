@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -61,7 +62,7 @@ export function InvitationAcceptance({ token, completed }: { token: string | nul
 
   return (
     <section className="invitation-panel" aria-labelledby="invitation-title" aria-live="polite">
-      <Link className="brand invitation-brand" href="/"><span className="brand-mark">T</span><span>Team Platform</span></Link>
+      <Link className="brand invitation-brand" href="/"><Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} /><span>Team Platform</span></Link>
       <div className="invitation-content">
         <h1 id="invitation-title">{state === 'success' ? 'Selamat bergabung' : state === 'signed-out' ? 'Masuk untuk melanjutkan' : state === 'checking' ? 'Memeriksa undangan' : 'Undangan tidak tersedia'}</h1>
         {state === 'checking' && <><p className="invitation-copy">Undangan sedang diverifikasi. Sebentar ya.</p><div className="invitation-progress" aria-label="Memproses undangan" /></>}
