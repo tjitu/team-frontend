@@ -321,6 +321,11 @@ export default function ProjectPage() {
     const data = new FormData(event.currentTarget);
     const email = String(data.get('email') ?? '').trim();
     const role = String(data.get('role') ?? 'MEMBER') as ProjectRole;
+    if (member?.email && email.toLowerCase() === member.email.toLowerCase()) {
+      setMembershipError('You cannot add yourself to a project or change your own project role.');
+      setSaving(false);
+      return;
+    }
     try {
       await api.post(`/team/projects/${encodeURIComponent(projectId)}/members`, { email, role });
       setMembershipNotice(`${email} was added to the project as a ${roleLabels[role]}.`);
@@ -618,8 +623,8 @@ export default function ProjectPage() {
               {project.members?.map(({ id, role, teamMember }) => <div className="project-member-row" key={id}>
                 <span className="avatar">{initials(teamMember.name)}</span>
                 <div className="project-member-identity"><strong>{teamMember.name}</strong><small>{teamMember.email}</small></div>
-                {teamMember.id === member?.id && role === 'PROJECT_MANAGER'
-                  ? <span className="project-role-current" title="Your Project Manager role cannot be changed from the member list."><strong>Project Manager</strong><small>Your account</small></span>
+                {teamMember.id === member?.id
+                  ? <span className="project-role-current" title="You cannot change your own project role."><strong>{roleLabels[role]}</strong><small>Your account</small></span>
                   : <label><span className="sr-only">Role {teamMember.name}</span><select className="filter-select compact-select" value={role} disabled={membershipBusy === teamMember.id} onChange={(event) => void updateProjectMemberRole(teamMember.id, event.target.value as ProjectRole)}><option value="PROJECT_MANAGER" disabled={!isAdministrator(member?.role)}>Project Manager</option><option value="MEMBER">Member</option><option value="VIEWER">Viewer</option></select></label>}
                 {teamMember.id !== member?.id && <button className="button button-quiet compact-button danger-action" disabled={membershipBusy === teamMember.id} onClick={() => void removeProjectMember(teamMember.id, teamMember.name)}>Remove</button>}
               </div>)}
