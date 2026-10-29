@@ -10,6 +10,7 @@ const priorities: TaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
 const statusLabels: Record<TaskStatus, string> = { TODO: 'Belum mulai', IN_PROGRESS: 'Dikerjakan', BLOCKED: 'Terhambat', DONE: 'Selesai' };
 const priorityLabels: Record<TaskPriority, string> = { LOW: 'Rendah', NORMAL: 'Normal', HIGH: 'Tinggi', URGENT: 'Mendesak' };
 const roleLabels: Record<ProjectRole, string> = { PROJECT_MANAGER: 'Project Manager', MEMBER: 'Anggota', VIEWER: 'Viewer' };
+type TaskView = 'board' | 'list';
 
 function dateLabel(value?: string | null) {
   if (!value) return 'Tidak ditentukan';
@@ -35,6 +36,7 @@ export default function ProjectPage() {
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
+  const [taskView, setTaskView] = useState<TaskView>('board');
   const [query, setQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -207,14 +209,21 @@ export default function ProjectPage() {
 
   async function updateStatus(status: TaskStatus) {
     if (!selectedTask) return;
+    await changeTaskStatus(selectedTask, status);
+  }
+
+  async function changeTaskStatus(task: Task, status: TaskStatus) {
     setSaving(true);
     setDetailError('');
     try {
-      const updated = await api.patch<Task>(`/team/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(selectedTask.id)}`, { version: selectedTask.version, status });
-      await openTask(updated.id);
-      await load(false);
+      const updated = await api.patch<Task>(`/team/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(task.id)}`, { version: task.version, status });
+      setTasks((current) => current.flatMap((item) => item.id !== updated.id ? [item] : filterStatus && updated.status !== filterStatus ? [] : [{ ...item, ...updated }]));
+      if (selectedTask?.id === updated.id) setSelectedTask({ ...selectedTask, ...updated });
+      if (selectedTask?.id === updated.id) await openTask(updated.id);
     } catch (cause) {
-      setDetailError(cause instanceof Error ? cause.message : 'Status task gagal diperbarui.');
+      const message = cause instanceof Error ? cause.message : 'Status task gagal diperbarui.';
+      if (selectedTask?.id === task.id) setDetailError(message);
+      else setError(message);
     } finally {
       setSaving(false);
     }
@@ -293,21 +302,26 @@ export default function ProjectPage() {
       </div>
 
       {projectError && !editProjectOpen && <div className="inline-message error" role="alert">{projectError}</div>}
-      <nav className="project-view-tabs" aria-label="Tampilan proyek">
-        <Link className="project-view-tab is-active" aria-current="page" href={`/projects/${encodeURIComponent(projectId)}`}>Daftar task</Link>
-        <Link className="project-view-tab" href={`/projects/${encodeURIComponent(projectId)}/activity`}>Aktivitas</Link>
-      </nav>
-      {project && <section className="project-member-section" aria-labelledby="project-members-heading">
-        <div className="section-heading"><div><h2 id="project-members-heading">Anggota proyek</h2><span>{project.members?.length ?? 0} anggota aktif</span></div>{canManage && <button className="button button-secondary" onClick={() => { setMembershipError(''); setMembershipNotice(''); setManageMembersOpen(true); }}>Kelola anggota</button>}</div>
-        {project.members && project.members.length > 0 ? <div className="project-members" aria-label="Anggota proyek">
-          {project.members.map(({ id, role, teamMember }) => <span className="member-chip" key={id} title={`${teamMember.email} · ${roleLabels[role]}`}><span className="avatar">{initials(teamMember.name)}</span>{teamMember.name}<span className="sr-only">, {roleLabels[role]}</span></span>)}
-        </div> : <p className="project-members-empty">Belum ada anggota di proyek ini.</p>}
-      </section>}
+      <div className="project-workspace-nav">
+        <div className="project-view-tabs" aria-label="Tampilan task">
+          <button className={`project-view-tab ${taskView === 'board' ? 'is-active' : ''}`} type="button" aria-pressed={taskView === 'board'} onClick={() => setTaskView('board')}>Papan</button>
+          <button className={`project-view-tab ${taskView === 'list' ? 'is-active' : ''}`} type="button" aria-pressed={taskView === 'list'} onClick={() => setTaskView('list')}>Daftar</button>
+        </div>
+        <div className="project-context-actions">
+          {project && <span className="project-member-summary"><span className="mini-people-icon" aria-hidden="true" />{project.members?.length ?? 0} anggota</span>}
+          {canManage && <button className="button button-secondary compact-button" onClick={() => { setMembershipError(''); setMembershipNotice(''); setManageMembersOpen(true); }}>Kelola anggota</button>}
+          <Link className="project-activity-link" href={`/projects/${encodeURIComponent(projectId)}/activity`}>Aktivitas proyek <span aria-hidden="true">→</span></Link>
+        </div>
+      </div>
+      {project && project.members && project.members.length > 0 && <div className="project-member-strip" aria-label="Anggota proyek">
+        {project.members.slice(0, 5).map(({ id, role, teamMember }) => <span className="member-chip" key={id} title={`${teamMember.email} · ${roleLabels[role]}`}><span className="avatar">{initials(teamMember.name)}</span>{teamMember.name}<span className="sr-only">, {roleLabels[role]}</span></span>)}
+        {project.members.length > 5 && <span className="member-overflow">+{project.members.length - 5} lainnya</span>}
+      </div>}
 
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(false)}>Muat ulang</button></div>}
       {detailError && !selectedTask && <div className="inline-message error" role="alert">{detailError}</div>}
 
-      <div className="section-heading section-spacer task-section-heading"><div><h2>Daftar task</h2><p>Kelola status, prioritas, penanggung jawab, dan tenggat pekerjaan.</p></div><span className="task-count">{filteredCount} ditampilkan</span></div>
+      <div className="section-heading section-spacer task-section-heading"><div><h2>{taskView === 'board' ? 'Papan task' : 'Daftar task'}</h2><p>{taskView === 'board' ? 'Pindahkan pekerjaan dengan mengubah status dari kartu task.' : 'Kelola status, prioritas, penanggung jawab, dan tenggat pekerjaan.'}</p></div><span className="task-count">{filteredCount} ditampilkan</span></div>
       <div className="task-layout">
         <div>
           <form className="task-toolbar" onSubmit={(event) => { event.preventDefault(); setAppliedQuery(query); }}>
@@ -318,7 +332,7 @@ export default function ProjectPage() {
               <button className="button button-secondary" type="submit">Cari</button>
             </div>
           </form>
-          {loading ? <div className="loading-skeleton" aria-label="Memuat task" /> : tasks.length ? (
+          {loading ? <div className="loading-skeleton" aria-label="Memuat task" /> : tasks.length && taskView === 'list' ? (
             <div className="task-table-wrap">
               <table className="task-table">
                 <thead><tr><th>Task</th><th>Status</th><th>Prioritas</th><th>Assignee</th><th>Jatuh tempo</th></tr></thead>
@@ -330,6 +344,26 @@ export default function ProjectPage() {
                   <td className="due-date">{dateLabel(task.dueAt)}</td>
                 </tr>)}</tbody>
               </table>
+            </div>
+          ) : loading ? null : tasks.length && taskView === 'board' ? (
+            <div className="task-board" aria-label="Papan task">
+              {statuses.map((status) => {
+                const columnTasks = tasks.filter((task) => task.status === status);
+                return <section className={`task-board-column column-${status}`} key={status} aria-labelledby={`column-${status}`}>
+                  <header className="task-board-column-heading"><h3 id={`column-${status}`}>{statusLabels[status]}</h3><span>{columnTasks.length}</span></header>
+                  <div className="task-board-column-content">
+                    {columnTasks.map((task) => <article className={`task-board-card ${selectedTask?.id === task.id ? 'is-selected' : ''}`} key={task.id}>
+                      <button className="task-board-title" type="button" onClick={() => void openTask(task.id)}>{task.title}</button>
+                      <div className="task-board-card-meta"><span className={`priority-badge priority-${task.priority}`}>{priorityLabels[task.priority]}</span>{task.dueAt && <time className="task-board-due" dateTime={task.dueAt}>Tenggat {dateLabel(task.dueAt)}</time>}<span className="task-board-comments">{task._count?.comments ?? 0} komentar</span></div>
+                      <footer className="task-board-card-footer">
+                        <div className="assignee-stack" aria-label={task.assignees.map(({ teamMember }) => teamMember.name).join(', ') || 'Belum ada assignee'}>{task.assignees.length ? task.assignees.slice(0, 2).map(({ teamMember }) => <span className="avatar" key={teamMember.id} title={teamMember.name}>{initials(teamMember.name)}</span>) : <span className="assignee-empty">Belum ditugaskan</span>}{task.assignees.length > 2 && <span className="avatar">+{task.assignees.length - 2}</span>}</div>
+                        <label className="task-board-status"><span className="sr-only">Ubah status {task.title}</span><select value={task.status} disabled={!canWrite || saving} onChange={(event) => void changeTaskStatus(task, event.target.value as TaskStatus)}>{statuses.map((item) => <option key={item} value={item}>{statusLabels[item]}</option>)}</select></label>
+                      </footer>
+                    </article>)}
+                    {!columnTasks.length && <p className="task-board-empty">Tidak ada task</p>}
+                  </div>
+                </section>;
+              })}
             </div>
           ) : (
             <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true">□</div><h3>{appliedQuery || filterStatus || filterPriority ? 'Task tidak ditemukan' : 'Belum ada task'}</h3><p>{appliedQuery || filterStatus || filterPriority ? 'Coba ubah kata kunci atau filter yang digunakan.' : 'Buat task pertama untuk mulai mencatat pekerjaan proyek.'}</p>{canWrite && !appliedQuery && !filterStatus && !filterPriority && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Buat task</button>}</div></section>

@@ -750,8 +750,15 @@ h1 { margin-bottom: 7px; font-size: clamp(26px, 2.4vw, 32px); font-weight: 650; 
 .project-view-tab:hover, .project-view-tab.is-active { color: #0755c9; }
 .project-view-tab.is-active { font-weight: 650; }
 .project-view-tab.is-active::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--brand); content: ''; }
-.project-member-section { margin-top: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 13px 15px; }
-.project-member-section .section-heading { margin-bottom: 10px; }
+.project-workspace-nav { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid var(--line); margin: -4px 0 10px; }
+.project-workspace-nav .project-view-tabs { gap: 20px; border: 0; margin: 0; }
+.project-context-actions { display: flex; align-items: center; gap: 14px; }
+.project-activity-link { color: #536277; font-size: 11px; font-weight: 550; }
+.project-activity-link:hover { color: #0755c9; }
+.project-activity-link span { padding-left: 3px; }
+.project-member-strip { display: flex; min-height: 32px; align-items: center; gap: 6px; overflow: hidden; }
+.project-member-strip .member-chip { flex: 0 0 auto; }
+.member-overflow { color: var(--muted); font-size: 10px; white-space: nowrap; }
 .project-members { gap: 6px; }
 .member-chip { gap: 6px; border-radius: 6px; padding: 4px 8px 4px 4px; font-size: 10px; }
 .member-chip .avatar { width: 22px; height: 22px; font-size: 8px; }
@@ -782,6 +789,27 @@ h1 { margin-bottom: 7px; font-size: clamp(26px, 2.4vw, 32px); font-weight: 650; 
 .auth-card { padding: clamp(30px, 4vw, 54px); }
 .auth-heading { margin-bottom: 26px; }
 .auth-heading h1 { font-size: 30px; }
+.task-layout > div { min-width: 0; }
+.task-board { display: grid; min-width: 0; grid-template-columns: repeat(4, minmax(205px, 1fr)); align-items: start; gap: 10px; overflow-x: auto; padding: 1px 1px 10px; }
+.task-board-column { min-width: 0; min-height: 170px; border: 1px solid #e5e8ee; border-radius: 8px; background: #f3f5f8; padding: 8px; }
+.task-board-column-heading { display: flex; min-height: 30px; align-items: center; justify-content: space-between; gap: 8px; padding: 0 3px 7px; }
+.task-board-column-heading h3 { margin: 0; color: #465367; font-size: 11px; font-weight: 650; }
+.task-board-column-heading > span { display: grid; min-width: 19px; height: 19px; place-items: center; border-radius: 5px; background: #e7ebf1; color: #657186; font-size: 10px; }
+.task-board-column-content { display: grid; align-content: start; gap: 7px; }
+.task-board-card { border: 1px solid #e4e7ec; border-radius: 7px; background: #fff; padding: 11px; box-shadow: 0 1px 2px rgb(16 24 40 / 4%); transition: border-color .14s ease, box-shadow .14s ease; }
+.task-board-card:hover, .task-board-card.is-selected { border-color: #b8ccef; box-shadow: 0 2px 7px rgb(16 24 40 / 7%); }
+.task-board-title { display: block; width: 100%; border: 0; background: none; padding: 0; color: #1c2738; cursor: pointer; font-size: 12px; font-weight: 620; line-height: 1.5; text-align: left; }
+.task-board-title:hover { color: #0755c9; }
+.task-board-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin-top: 10px; }
+.task-board-card-meta .priority-badge { padding: 3px 6px; font-size: 9px; }
+.task-board-due { color: #657186; font-size: 9px; white-space: nowrap; }
+.task-board-comments { overflow: hidden; color: #8590a0; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.task-board-card-footer { display: flex; min-height: 28px; align-items: center; justify-content: space-between; gap: 6px; margin-top: 9px; border-top: 1px solid #f0f1f3; padding-top: 8px; }
+.task-board-card-footer .avatar { width: 23px; height: 23px; font-size: 8px; }
+.task-board-card-footer .assignee-empty { font-size: 9px; }
+.task-board-status select { max-width: 112px; height: 25px; border: 1px solid #e2e6ed; border-radius: 5px; background: #fbfcfd; padding: 0 5px; color: #586579; font-size: 9px; }
+.task-board-status select:disabled { cursor: not-allowed; opacity: .72; }
+.task-board-empty { margin: 2px 0 0; border: 1px dashed #dce1e8; border-radius: 6px; padding: 14px 8px; color: #8993a3; font-size: 10px; text-align: center; }
 .global-notice { width: min(100% - 48px, 1350px); border-color: #dce3ef; border-radius: 7px; padding: 11px 14px; font-size: 12px; }
 
 @media (max-width: 1120px) {
@@ -800,4 +828,7 @@ h1 { margin-bottom: 7px; font-size: clamp(26px, 2.4vw, 32px); font-weight: 650; 
   .page-heading { align-items: flex-start; }
   .project-view-tabs { margin-top: 0; }
   .project-member-section { padding: 12px; }
+  .project-workspace-nav { align-items: flex-start; flex-direction: column; gap: 2px; margin-top: 0; padding-top: 3px; }
+  .project-context-actions { width: 100%; justify-content: space-between; gap: 8px; padding: 0 1px 9px; }
+  .task-board { grid-template-columns: repeat(4, minmax(230px, 1fr)); }
 }
