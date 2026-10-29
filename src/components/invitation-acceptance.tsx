@@ -68,7 +68,7 @@ export function InvitationAcceptance({ token, completed }: { token: string | nul
 
         {state === 'signed-out' && <>
           <p className="invitation-copy">Masuk memakai akun terverifikasi dengan email yang menerima undangan. Setelah masuk, kembali ke tab ini untuk menerima undangannya.</p>
-          <div className="invitation-actions"><a className="button button-primary" href={signIn} target="_blank" rel="noreferrer">Buka halaman masuk</a><button className="button button-secondary" onClick={() => void accept()}>Saya sudah masuk</button></div>
+          <div className="invitation-actions"><a className="button button-primary" href={signIn}>Buka halaman masuk</a><button className="button button-secondary" onClick={() => void accept()}>Saya sudah masuk</button></div>
         </>}
 
         {state === 'success' && <>
@@ -79,7 +79,7 @@ export function InvitationAcceptance({ token, completed }: { token: string | nul
         {state === 'error' && <>
           <p className="invitation-copy invitation-error" role="alert">{error}</p>
           {error.toLowerCase().includes('email') && <p className="invitation-copy">Pastikan kamu masuk dengan email undangan yang sama dan alamat emailnya sudah diverifikasi.</p>}
-          <div className="invitation-actions"><button className="button button-primary" onClick={() => void accept()}>Muat ulang</button><a className="subtle-link" href={signIn} target="_blank" rel="noreferrer">Buka halaman masuk</a></div>
+          <div className="invitation-actions"><button className="button button-primary" onClick={() => void accept()}>Muat ulang</button><a className="subtle-link" href={signIn}>Buka halaman masuk</a></div>
         </>}
 
         {state === 'invalid' && <p className="invitation-copy">Link tidak memiliki token undangan. Buka kembali link dari email undangan atau minta admin mengirimkannya ulang.</p>}

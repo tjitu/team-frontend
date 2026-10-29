@@ -295,6 +295,17 @@ h1 { margin-bottom: 7px; font-size: clamp(25px, 3vw, 32px); font-weight: 700; le
 .department-member-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 8px; border-bottom: 1px solid var(--line-soft); padding: 9px 0; }
 .department-member-row:last-child { border-bottom: 0; }
 .invitation-shell { display: grid; min-height: 100vh; place-items: center; padding: 24px; }
+.auth-page { display: grid; min-height: 100vh; place-items: center; padding: 24px; }
+.auth-card { width: min(100%, 420px); border: 1px solid var(--line); border-radius: 12px; background: var(--paper); padding: 28px; box-shadow: var(--shadow-soft); }
+.auth-brand { width: fit-content; padding: 0; }
+.auth-heading { margin: 42px 0 26px; }
+.auth-eyebrow { margin-bottom: 10px; color: var(--text-label); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+.auth-heading h1 { margin-bottom: 8px; font-size: 25px; }
+.auth-heading > p:last-child { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.auth-form { gap: 14px; padding: 0; }
+.auth-submit { width: 100%; margin-top: 4px; }
+.auth-footnote { margin: 22px 0 0; border-top: 1px solid var(--line); padding-top: 15px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.sign-out-button { min-height: 30px; padding: 0 8px; }
 .invitation-panel { width: min(100%, 520px); border: 1px solid var(--line); border-radius: 12px; background: var(--paper); padding: 24px; }
 .invitation-brand { width: fit-content; padding: 0; }
 .invitation-content { padding: 36px 8px 28px; }

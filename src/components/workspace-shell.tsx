@@ -4,16 +4,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api, CurrentMember, Project, signInUrl } from '@/lib/api';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isInvitationRoute = pathname.startsWith('/invitations/accept');
+  const isLoginRoute = pathname === '/login';
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    if (isInvitationRoute) return;
+    if (isInvitationRoute || isLoginRoute) return;
     let active = true;
     Promise.all([
       api.get<CurrentMember>('/team/me'),
@@ -32,9 +34,17 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       setLoadError(error.message);
     });
     return () => { active = false; };
-  }, [isInvitationRoute]);
+  }, [isInvitationRoute, isLoginRoute]);
 
-  if (isInvitationRoute) return <main className="invitation-shell">{children}</main>;
+  if (isInvitationRoute || isLoginRoute) return <main className={isLoginRoute ? 'auth-page' : 'invitation-shell'}>{children}</main>;
+
+  async function signOut() {
+    try {
+      await createSupabaseBrowserClient().auth.signOut();
+    } finally {
+      window.location.assign('/login');
+    }
+  }
 
   return (
     <div className="workspace">
@@ -89,6 +99,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           <div className="breadcrumb"><span>Team Platform</span><span className="breadcrumb-separator">/</span><span>{pathname === '/' ? 'Ikhtisar' : 'Ruang kerja'}</span></div>
           <div className="topbar-profile">
             <span className="profile-email">{member?.email ?? ''}</span>
+            <button className="button button-quiet sign-out-button" onClick={() => void signOut()}>Keluar</button>
             <div className="avatar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</div>
           </div>
         </header>

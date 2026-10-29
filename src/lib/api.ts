@@ -1,3 +1,5 @@
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+
 const API_URL = (process.env.NEXT_PUBLIC_TEAM_API_URL ?? 'http://localhost:3200/api').replace(/\/$/, '');
 
 export type TeamRole = 'SYSTEM_OWNER' | 'SYSTEM_ADMIN' | 'MEMBER';
@@ -102,13 +104,16 @@ export interface Task {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const { data: { session }, error: sessionError } = await createSupabaseBrowserClient().auth.getSession();
+  if (sessionError || !session?.access_token) throw new Error('SESSION_EXPIRED');
+
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, {
       ...init,
-      credentials: 'include',
       headers: {
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${session.access_token}`,
         ...init?.headers,
       },
       cache: 'no-store',
@@ -144,5 +149,7 @@ export const api = {
 export const isAdministrator = (role?: TeamRole) => role === 'SYSTEM_OWNER' || role === 'SYSTEM_ADMIN';
 
 export function signInUrl() {
-  return process.env.NEXT_PUBLIC_SIGN_IN_URL ?? 'http://localhost:5173/login';
+  if (typeof window === 'undefined') return '/login';
+  const returnTo = `${window.location.pathname}${window.location.search}`;
+  return `/login?next=${encodeURIComponent(returnTo)}`;
 }
