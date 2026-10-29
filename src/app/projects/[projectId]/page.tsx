@@ -16,11 +16,11 @@ type TaskView = 'board' | 'list';
 
 function dateLabel(value?: string | null) {
   if (!value) return 'Tidak ditentukan';
-  return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
+  return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(value));
 }
 
 function dateInputValue(value?: string | null) {
-  return value ? new Date(value).toISOString().slice(0, 10) : '';
+  return value ? value.slice(0, 10) : '';
 }
 
 function initials(name: string) {
@@ -465,7 +465,7 @@ export default function ProjectPage() {
       {detailError && !selectedTask && <div className="inline-message error" role="alert">{detailError}</div>}
 
       <div className="section-heading section-spacer task-section-heading"><div><h2>{taskView === 'board' ? 'Papan task' : 'Daftar task'}</h2><p>{taskView === 'board' ? 'Pindahkan pekerjaan dengan mengubah status dari kartu task.' : 'Kelola status, prioritas, penanggung jawab, dan tenggat pekerjaan.'}</p></div><span className="task-count">{filteredCount} ditampilkan</span></div>
-      <div className="task-layout">
+      <div className={`task-layout ${selectedTask ? 'has-selection' : ''}`}>
         <div>
           <form className="task-toolbar" onSubmit={(event) => { event.preventDefault(); setAppliedQuery(query); }}>
             <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari task…" aria-label="Cari task" />
