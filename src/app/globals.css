@@ -186,8 +186,64 @@ h1, h2, h3 { text-wrap: balance; }
 .breadcrumb > a:hover { color: var(--black); }
 .breadcrumb span:last-child { overflow: hidden; color: var(--ink); font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
 .breadcrumb-separator { color: #b4b4b4; }
-.topbar-profile { display: flex; align-items: center; gap: 13px; }
-.profile-email { max-width: 240px; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.account-control { position: relative; }
+.account-trigger {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  padding: 4px 8px 4px 5px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s ease, background .15s ease;
+}
+.account-trigger:hover, .account-trigger[aria-expanded="true"] { border-color: var(--line); background: var(--paper); }
+.account-trigger-copy { display: grid; min-width: 0; gap: 3px; }
+.account-trigger-copy strong { max-width: 160px; font-size: 12px; font-weight: 650; }
+.account-trigger-copy small { max-width: 180px; color: var(--muted); font-size: 10px; }
+.account-chevron { width: 15px; height: 15px; color: var(--muted); transition: transform .15s ease; }
+.account-chevron.is-open { transform: rotate(180deg); }
+.account-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: 264px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  padding: 7px;
+  box-shadow: 0 14px 38px rgb(0 0 0 / 12%);
+}
+.account-menu-identity { display: grid; gap: 5px; overflow: hidden; border-bottom: 1px solid var(--line); padding: 11px 10px 13px; }
+.account-menu-identity strong { font-size: 12px; font-weight: 650; }
+.account-menu-identity span { color: var(--muted); font-size: 10px; text-transform: capitalize; }
+.account-menu-error { margin: 8px 8px 4px; color: #333; font-size: 11px; line-height: 1.5; }
+.account-logout {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0 10px;
+  color: #333;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+.account-logout:hover { border-color: var(--line); background: var(--surface-hover); color: var(--black); }
+.account-logout:disabled { cursor: wait; opacity: .62; }
+.account-logout svg { width: 17px; height: 17px; flex: 0 0 auto; }
+.account-logout-spinner { width: 13px; height: 13px; margin-left: auto; border: 1.5px solid #ccc; border-top-color: #222; border-radius: 50%; animation: account-spin .75s linear infinite; }
+@keyframes account-spin { to { transform: rotate(360deg); } }
 .global-notice {
   width: min(100% - 64px, 1360px);
   margin: 22px auto 0;
@@ -490,7 +546,6 @@ h1 {
 .auth-form { gap: 19px; padding: 0; }
 .auth-submit { width: 100%; min-height: 46px; margin-top: 4px; }
 .auth-footnote { margin: 24px 0 0; border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); font-size: 11px; line-height: 1.6; }
-.sign-out-button { min-height: 34px; padding: 0 10px; }
 
 .invitation-shell { display: grid; min-height: 100vh; place-items: center; background: var(--canvas); padding: 24px; }
 .invitation-panel { width: min(100%, 560px); border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--paper); padding: 30px; box-shadow: 0 12px 36px rgb(0 0 0 / 5%); }
@@ -550,7 +605,7 @@ h1 {
   .nav-icon { width: 18px; height: 18px; }
   .main-area { margin-left: 0; padding-bottom: 80px; }
   .topbar { height: 58px; padding: 0 18px; }
-  .profile-email { display: none; }
+  .account-trigger-copy { display: none; }
   .page-content { padding: 31px 20px 48px; }
   .page-heading { align-items: flex-start; flex-direction: column; gap: 16px; margin-bottom: 28px; }
   .page-heading > .button, .page-heading-actions { width: 100%; }
@@ -579,8 +634,9 @@ h1 {
 @media (max-width: 480px) {
   .topbar { padding: 0 14px; }
   .breadcrumb { gap: 7px; font-size: 11px; }
-  .topbar-profile { gap: 8px; }
-  .topbar-profile .avatar { width: 30px; height: 30px; }
+  .account-trigger { min-height: 40px; padding-right: 5px; }
+  .account-trigger .avatar { width: 30px; height: 30px; }
+  .account-menu { width: min(264px, calc(100vw - 24px)); }
   .page-content { padding-right: 15px; padding-left: 15px; }
   .page-heading h1 { font-size: 29px; }
   .project-grid, .department-grid { grid-template-columns: 1fr; }

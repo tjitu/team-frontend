@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
@@ -23,6 +23,11 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadError, setLoadError] = useState('');
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState('');
+  const accountControlRef = useRef<HTMLDivElement>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
   const activeProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
   const pageLabel = pathname === '/' ? 'Ikhtisar'
     : pathname.startsWith('/team') ? 'Anggota tim'
@@ -53,13 +58,38 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [isInvitationRoute, isLoginRoute]);
 
+  useEffect(() => {
+    if (!accountOpen) return;
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (event.target instanceof Node && !accountControlRef.current?.contains(event.target)) setAccountOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setAccountOpen(false);
+        accountTriggerRef.current?.focus();
+      }
+    }
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [accountOpen]);
+
   if (isInvitationRoute || isLoginRoute) return <main className={isLoginRoute ? 'auth-page' : 'invitation-shell'}>{children}</main>;
 
   async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    setSignOutError('');
     try {
-      await createSupabaseBrowserClient().auth.signOut();
-    } finally {
-      window.location.assign('/login');
+      const { error } = await createSupabaseBrowserClient().auth.signOut();
+      if (error) throw error;
+      window.location.replace('/login');
+    } catch {
+      setSignOutError('Gagal keluar dari akun. Periksa koneksi lalu coba lagi.');
+      setSigningOut(false);
     }
   }
 
@@ -114,10 +144,29 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       <main className="main-area">
         <header className="topbar">
           <div className="breadcrumb"><Link href="/">Team Platform</Link><span className="breadcrumb-separator">/</span><span aria-current="page">{pageLabel}</span></div>
-          <div className="topbar-profile">
-            <span className="profile-email">{member?.email ?? ''}</span>
-            <button className="button button-quiet sign-out-button" onClick={() => void signOut()}>Keluar</button>
-            <div className="avatar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</div>
+          <div className="account-control" ref={accountControlRef}>
+            <button
+              ref={accountTriggerRef}
+              className="account-trigger"
+              type="button"
+              aria-label="Buka menu akun"
+              aria-expanded={accountOpen}
+              aria-controls="account-menu"
+              onClick={() => { setSignOutError(''); setAccountOpen((open) => !open); }}
+            >
+              <span className="avatar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</span>
+              <span className="account-trigger-copy"><strong className="truncate">{member?.name ?? 'Memuat akun…'}</strong><small className="truncate">{member?.email ?? 'Team Platform'}</small></span>
+              <svg className={`account-chevron ${accountOpen ? 'is-open' : ''}`} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+            {accountOpen && <div className="account-menu" id="account-menu" aria-label="Menu akun">
+              <div className="account-menu-identity"><strong className="truncate">{member?.name ?? 'Akun Team Platform'}</strong><span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Anggota tim'}</span></div>
+              {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
+              <button className="account-logout" type="button" disabled={signingOut} onClick={() => void signOut()}>
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M8 3H4.75A1.75 1.75 0 0 0 3 4.75v10.5A1.75 1.75 0 0 0 4.75 17H8m3-3 4-4-4-4m4 4H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                <span>{signingOut ? 'Keluar…' : 'Keluar dari akun'}</span>
+                {signingOut && <span className="account-logout-spinner" aria-hidden="true" />}
+              </button>
+            </div>}
           </div>
         </header>
         {children}
