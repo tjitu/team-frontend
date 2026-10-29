@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api, CurrentMember, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskPriority, TaskStatus } from '@/lib/api';
@@ -23,6 +24,82 @@ function dateInputValue(value?: string | null) {
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
+}
+
+function TaskStatusPicker({ task, disabled, onChange, fullWidth = false }: { task: Task; disabled: boolean; onChange: (status: TaskStatus) => void; fullWidth?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<CSSProperties | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const updatePosition = useCallback(() => {
+    const bounds = triggerRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const width = Math.min(fullWidth ? bounds.width : 190, window.innerWidth - 16);
+    const left = Math.max(8, Math.min(bounds.right - width, window.innerWidth - width - 8));
+    const top = bounds.bottom + 7;
+    setMenuPosition({ position: 'fixed', top, left, width, maxHeight: Math.max(80, window.innerHeight - top - 8) });
+  }, [fullWidth]);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const focusFrame = window.requestAnimationFrame(() => optionRefs.current[statuses.indexOf(task.status)]?.focus());
+    function dismiss(event: PointerEvent) {
+      if (event.target instanceof Node && !pickerRef.current?.contains(event.target) && !menuRef.current?.contains(event.target)) setOpen(false);
+    }
+    function escape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', escape);
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', escape);
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [open, task.status, updatePosition]);
+
+  function showMenu() {
+    if (disabled) return;
+    updatePosition();
+    setOpen(true);
+  }
+
+  function navigateOptions(event: React.KeyboardEvent<HTMLDivElement>) {
+    const keyMoves: Record<string, number> = { ArrowDown: 1, ArrowUp: -1 };
+    if (event.key in keyMoves || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      const currentIndex = optionRefs.current.indexOf(document.activeElement as HTMLButtonElement);
+      const nextIndex = event.key === 'Home' ? 0
+        : event.key === 'End' ? statuses.length - 1
+          : (currentIndex + keyMoves[event.key] + statuses.length) % statuses.length;
+      optionRefs.current[nextIndex]?.focus();
+    }
+  }
+
+  return (
+    <div className={`task-status-picker ${fullWidth ? 'is-full-width' : ''}`} ref={pickerRef}>
+      <button ref={triggerRef} className={`task-status-trigger status-${task.status}`} type="button" aria-label={`Status ${task.title}: ${statusLabels[task.status]}`} aria-haspopup="menu" aria-expanded={open} disabled={disabled} onClick={() => open ? setOpen(false) : showMenu()} onKeyDown={(event) => { if (event.key === 'ArrowDown' && !open) { event.preventDefault(); showMenu(); } }}>
+        <span>{statusLabels[task.status]}</span>
+        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      </button>
+      {open && menuPosition && createPortal(<div ref={menuRef} className="task-status-menu" style={menuPosition} role="menu" aria-label={`Ubah status ${task.title}`} onKeyDown={navigateOptions}>
+        {statuses.map((status, index) => <button ref={(element) => { optionRefs.current[index] = element; }} className={`task-status-option status-${status} ${task.status === status ? 'is-current' : ''}`} key={status} type="button" role="menuitemradio" aria-checked={task.status === status} onClick={() => { setOpen(false); onChange(status); }}>
+          <span>{statusLabels[status]}</span>{task.status === status && <span className="task-status-check" aria-hidden="true">✓</span>}
+        </button>)}
+      </div>, document.body)}
+    </div>
+  );
 }
 
 export default function ProjectPage() {
@@ -358,7 +435,7 @@ export default function ProjectPage() {
                       {task.dueAt && <time className="task-board-due" dateTime={task.dueAt}>Tenggat {dateLabel(task.dueAt)}</time>}
                       <footer className="task-board-card-footer">
                         <div className="assignee-stack" aria-label={task.assignees.map(({ teamMember }) => teamMember.name).join(', ') || 'Belum ada assignee'}>{task.assignees.length ? task.assignees.slice(0, 2).map(({ teamMember }) => <span className="avatar" key={teamMember.id} title={teamMember.name}>{initials(teamMember.name)}</span>) : <span className="assignee-empty">Belum ditugaskan</span>}{task.assignees.length > 2 && <span className="avatar">+{task.assignees.length - 2}</span>}</div>
-                        <label className="task-board-status"><span className="sr-only">Ubah status {task.title}</span><select value={task.status} disabled={!canWrite || saving} onChange={(event) => void changeTaskStatus(task, event.target.value as TaskStatus)}>{statuses.map((item) => <option key={item} value={item}>{statusLabels[item]}</option>)}</select></label>
+                        <TaskStatusPicker task={task} disabled={!canWrite || saving} onChange={(status) => void changeTaskStatus(task, status)} />
                       </footer>
                     </article>)}
                     {!columnTasks.length && <p className="task-board-empty">Tidak ada task</p>}
@@ -376,7 +453,7 @@ export default function ProjectPage() {
           <div className="detail-body">
             {detailError && <div className="inline-message error" role="alert">{detailError}</div>}
             {(canWrite || canManage) && <div className="detail-actions">{canWrite && <button className="button button-secondary compact-button" onClick={() => { setTaskFormError(''); setEditTaskOpen(true); }}>Edit task</button>}{canManage && <button className="button button-quiet compact-button danger-action" disabled={saving} onClick={() => void archiveTask()}>Arsipkan</button>}</div>}
-            <label className="detail-field"><span>Status</span><select className="filter-select" value={selectedTask.status} disabled={!canWrite || saving} onChange={(event) => void updateStatus(event.target.value as TaskStatus)}>{statuses.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label>
+            <div className="detail-field"><span>Status</span><TaskStatusPicker task={selectedTask} disabled={!canWrite || saving} onChange={updateStatus} fullWidth /></div>
             <div className="detail-meta"><div className="detail-field"><span>Prioritas</span><strong>{priorityLabels[selectedTask.priority]}</strong></div><div className="detail-field"><span>Jatuh tempo</span><strong>{dateLabel(selectedTask.dueAt)}</strong></div></div>
             <div className="detail-field"><span>Deskripsi</span><p>{selectedTask.description || 'Belum ada deskripsi.'}</p></div>
             <div className="detail-field"><span>Assignee</span><div className="project-members">{selectedTask.assignees.length ? selectedTask.assignees.map(({ teamMember }) => <span className="member-chip" key={teamMember.id}><span className="avatar">{initials(teamMember.name)}</span>{teamMember.name}</span>) : <p>Belum ada assignee.</p>}</div></div>

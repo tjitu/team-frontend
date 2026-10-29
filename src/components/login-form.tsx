@@ -66,7 +66,6 @@ export function LoginForm({ nextPath, initialError }: { nextPath?: string; initi
           <h2>Ruang kerja yang tertata untuk tim yang bergerak.</h2>
           <p>Kelola proyek, susun pekerjaan, dan ikuti perkembangan tim dari satu tempat.</p>
         </div>
-        <p className="auth-aside-footer">PROYEK <span /> TASK <span /> ANGGOTA TIM</p>
       </aside>
       <section className="auth-card" aria-labelledby="login-title">
         <div className="auth-heading">
