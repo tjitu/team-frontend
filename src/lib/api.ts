@@ -19,9 +19,10 @@ export interface CurrentMember extends TeamMember {
   departments: Array<{ id: string; name: string; slug: string }>;
 }
 
-export interface ManagedMember extends CurrentMember {
+export interface ManagedMember extends Omit<CurrentMember, 'departments'> {
   isActive: boolean;
   createdAt: string;
+  departments: Array<{ department: { id: string; name: string; slug: string } }>;
 }
 
 export type InvitationStatus = 'PENDING' | 'SENT' | 'FAILED' | 'ACCEPTED' | 'REVOKED';

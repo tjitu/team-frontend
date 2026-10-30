@@ -162,7 +162,7 @@ export default function TeamPage() {
               <td><div className="team-person"><span className="avatar">{initials(member.name)}</span><span><strong>{member.name}</strong><small>{member.email}</small></span></div></td>
               <td>{canChangeRole ? <label><span className="sr-only">Role {member.name}</span><select className="filter-select compact-select" value={member.role} disabled={busyMember === member.id} onChange={(event) => void updateMemberRole(member, event.target.value as TeamRole)}><option value="MEMBER">Member</option><option value="SYSTEM_ADMIN">System Admin</option></select></label> : <span className="role-label">{roleLabels[member.role]}</span>}</td>
               <td>{member.departments?.length
-                ? <span className="department-list">{member.departments.map(({ name }) => name).join(', ')}</span>
+                ? <span className="department-list">{member.departments.map(({ department }) => department.name).join(', ')}</span>
                 : member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN'
                   ? <span className="team-workspace-scope">Workspace-wide</span>
                   : <span className="department-list">Not assigned</span>}</td>
