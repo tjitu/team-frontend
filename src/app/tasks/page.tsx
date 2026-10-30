@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { api, CurrentMember, Task, TaskListPage, TaskPriority, TaskStatus, TeamMember, isAdministrator, signInUrl } from '@/lib/api';
 
 const STATUSES: Array<{ value: TaskStatus; label: string }> = [
@@ -28,6 +28,69 @@ function canEdit(task: Task, member: CurrentMember) {
   return isAdministrator(member.role) || task.createdBy.id === member.id || task.assignees.some(({ teamMember }) => teamMember.id === member.id);
 }
 
+function AssigneePicker({
+  members,
+  selectedIds,
+  onChange,
+  disabled,
+}: {
+  members: TeamMember[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+  disabled: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selectedMembers = members.filter((candidate) => selectedIds.includes(candidate.id));
+  const visibleMembers = members.filter((candidate) =>
+    `${candidate.name} ${candidate.email}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    function dismiss(event: MouseEvent | KeyboardEvent) {
+      if (event instanceof KeyboardEvent && event.key === 'Escape') setOpen(false);
+      if (event instanceof MouseEvent && rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', dismiss);
+    document.addEventListener('keydown', dismiss);
+    return () => {
+      document.removeEventListener('mousedown', dismiss);
+      document.removeEventListener('keydown', dismiss);
+    };
+  }, [open]);
+
+  function toggle(id: string) {
+    onChange(selectedIds.includes(id) ? selectedIds.filter((item) => item !== id) : [...selectedIds, id]);
+  }
+
+  return (
+    <div className={`assignee-picker${open ? ' is-open' : ''}`} ref={rootRef}>
+      {selectedIds.map((id) => <input key={id} type="hidden" name="assignedMemberIds" value={id} />)}
+      <button className="assignee-picker-trigger" type="button" aria-expanded={open} disabled={disabled} onClick={() => setOpen((value) => !value)}>
+        <span className="assignee-picker-summary">
+          <span className="assignee-picker-count">{selectedIds.length}</span>
+          <span>{selectedMembers.length ? selectedMembers.map((item) => item.name).join(', ') : 'Select team members'}</span>
+        </span>
+        <svg aria-hidden="true" viewBox="0 0 20 20"><path d="m5 7.5 5 5 5-5" /></svg>
+      </button>
+      {open && <div className="assignee-picker-menu">
+        <label className="assignee-picker-search"><span className="sr-only">Search team members</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a team member…" autoFocus /></label>
+        <div className="assignee-picker-options">
+          {visibleMembers.map((candidate) => <label className="assignee-picker-option" key={candidate.id}>
+            <input type="checkbox" checked={selectedIds.includes(candidate.id)} onChange={() => toggle(candidate.id)} />
+            <span className="assignee-picker-avatar" aria-hidden="true">{candidate.name.trim().charAt(0).toUpperCase()}</span>
+            <span className="assignee-picker-identity"><strong>{candidate.name}</strong><small>{candidate.email}</small></span>
+          </label>)}
+          {!visibleMembers.length && <p className="assignee-picker-empty">No team members found.</p>}
+        </div>
+        <div className="assignee-picker-footer">{selectedIds.length ? `${selectedIds.length} selected` : 'Assign to one or more people'}</div>
+      </div>}
+    </div>
+  );
+}
+
 export default function StandaloneTasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -41,6 +104,7 @@ export default function StandaloneTasksPage() {
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | ''>('');
   const [modalTask, setModalTask] = useState<Task | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
   const [commentBody, setCommentBody] = useState('');
   const [commentError, setCommentError] = useState('');
   const [commentSaving, setCommentSaving] = useState(false);
@@ -179,7 +243,7 @@ export default function StandaloneTasksPage() {
     <div className="page-content standalone-tasks-page">
       <div className="page-heading">
         <div><p className="page-eyebrow">Workspace</p><h1>Tasks</h1><p className="page-subtitle">Track quick fixes and team work that does not belong to a project.</p></div>
-        {member && <button className="button button-primary" type="button" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>New task</button>}
+        {member && <button className="button button-primary" type="button" onClick={() => { setFormError(''); setSelectedAssigneeIds([]); setModalTask(null); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>New task</button>}
       </div>
 
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Reload</button></div>}
@@ -199,7 +263,7 @@ export default function StandaloneTasksPage() {
               <div className="task-board-column-heading"><h2>{label}</h2><span>{column.length}</span></div>
               <div className="task-board-column-content">
                 {column.map((task) => <article className="task-board-card standalone-task-card" key={task.id}>
-                  <button className="task-board-title" type="button" onClick={() => { setFormError(''); setCreateOpen(false); setModalTask(task); }}>{task.title}</button>
+                  <button className="task-board-title" type="button" onClick={() => { setFormError(''); setCreateOpen(false); setSelectedAssigneeIds(task.assignees.map(({ teamMember }) => teamMember.id)); setModalTask(task); }}>{task.title}</button>
                   {task.description && <p className="standalone-task-description">{task.description}</p>}
                   <div className="task-board-card-meta"><span className={`priority-badge priority-${task.priority.toLowerCase()}`}>{PRIORITIES.find((item) => item.value === task.priority)?.label}</span><span className="task-board-comments">{task._count?.comments ?? 0} comments</span></div>
                   {task.dueAt && <time className="task-board-due" dateTime={task.dueAt}>Due {displayDate(task.dueAt)}</time>}
@@ -223,15 +287,13 @@ export default function StandaloneTasksPage() {
           <form className="form-stack" onSubmit={(event) => void saveTask(event)}>
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Task title<input className="field-input" name="title" minLength={2} maxLength={180} required autoFocus disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.title ?? ''} placeholder="e.g. Fix mobile navigation spacing" /></label>
-            <label className="field-label">Description <span className="subtle-link">Optional</span><textarea className="field-textarea" name="description" maxLength={10000} disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.description ?? ''} placeholder="Add context or acceptance notes" /></label>
+            <label className="field-label">Description <span className="subtle-link">Optional</span><textarea className="field-textarea standalone-description-input" name="description" maxLength={10000} disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.description ?? ''} placeholder="Add context or acceptance notes" /></label>
             <div className="standalone-form-grid">
-              <label className="field-label">Priority<select className="filter-select" name="priority" disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.priority ?? 'NORMAL'}>{PRIORITIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>
               {modalTask && <label className="field-label">Status<select className="filter-select" name="status" disabled={Boolean(member && !canEdit(modalTask, member))} defaultValue={modalTask.status}>{STATUSES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
-            </div>
-            <div className="standalone-form-grid">
+              <label className="field-label">Priority<select className="filter-select" name="priority" disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.priority ?? 'NORMAL'}>{PRIORITIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label className="field-label">Due date<input className="field-input" name="dueAt" type="date" disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={dateInput(modalTask?.dueAt ?? null)} /></label>
-              <label className="field-label">Assignees<select className="filter-select standalone-assignee-select" name="assignedMemberIds" multiple disabled={Boolean(modalTask && member && !isAdministrator(member.role) && modalTask.createdBy.id !== member.id)} defaultValue={modalTask?.assignees.map(({ teamMember }) => teamMember.id) ?? []} aria-describedby="standalone-assignee-help">{members.map((teamMember) => <option key={teamMember.id} value={teamMember.id}>{teamMember.name} · {teamMember.email}</option>)}</select><small id="standalone-assignee-help" className="field-hint">{modalTask && member && !isAdministrator(member.role) && modalTask.createdBy.id !== member.id ? 'Only the creator can change assignees.' : 'Use Ctrl or Cmd to select more than one person.'}</small></label>
             </div>
+            <label className="field-label">Assignees<AssigneePicker members={members} selectedIds={selectedAssigneeIds} onChange={setSelectedAssigneeIds} disabled={Boolean(modalTask && member && !isAdministrator(member.role) && modalTask.createdBy.id !== member.id)} /><small className="field-hint">{modalTask && member && !isAdministrator(member.role) && modalTask.createdBy.id !== member.id ? 'Only the creator can change assignees.' : 'Choose one or more people on your team.'}</small></label>
             <div className="form-footer form-footer-between">
               {modalTask && member && (isAdministrator(member.role) || modalTask.createdBy.id === member.id) ? <button className="button button-quiet standalone-archive-button" type="button" disabled={saving} onClick={() => void archiveTask()}>Archive task</button> : <span />}
               <div><button className="button button-secondary" type="button" disabled={saving} onClick={() => { setModalTask(null); setCreateOpen(false); }}>Cancel</button><button className="button button-primary" disabled={saving || Boolean(modalTask && member && !canEdit(modalTask, member))}>{saving ? 'Saving…' : modalTask ? 'Save changes' : 'Create task'}</button></div>
