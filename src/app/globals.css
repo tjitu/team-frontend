@@ -1053,3 +1053,26 @@ input[type="date"] { color-scheme: light; }
   .revenue-chart { gap: 5px; }
   .revenue-chart-label { font-size: 8px; }
 }
+
+/* Control Center service shortcuts */
+.control-services { margin-bottom: 34px; }
+.control-section-heading { align-items: flex-end; margin-bottom: 14px; }
+.control-section-heading > div { display: grid; gap: 4px; }
+.control-section-heading h2 { margin: 0; font-size: 16px; }
+.control-section-heading p { margin: 0; color: #69768a; font-size: 12px; line-height: 1.5; }
+.control-section-heading > span { color: #7b8798; font-size: 11px; }
+.control-service-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.control-service-card { display: grid; min-height: 158px; grid-template-columns: 34px minmax(0, 1fr); align-content: start; align-items: start; gap: 13px; border: 1px solid #e1e5ec; border-radius: 8px; background: #fff; padding: 17px; box-shadow: 0 1px 2px rgb(16 24 40 / 3%); transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease; }
+.control-service-card:hover { transform: translateY(-1px); border-color: #c7d4e8; box-shadow: 0 5px 16px rgb(16 24 40 / 6%); }
+.control-service-icon { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid #e1e5ec; border-radius: 7px; background: #f7f8fa; color: #344054; font-size: 11px; font-weight: 700; }
+.control-service-copy { display: grid; gap: 6px; }
+.control-service-copy strong { color: #1d2939; font-size: 13px; font-weight: 650; line-height: 1.4; }
+.control-service-copy > span { color: #69768a; font-size: 11px; line-height: 1.55; }
+.control-service-action { display: flex; grid-column: 2; align-items: center; gap: 5px; margin-top: 5px; color: #315a98; font-size: 11px; font-weight: 600; }
+.control-service-action svg { width: 13px; height: 13px; }
+.control-service-note { margin: 10px 0 0; color: #8993a3; font-size: 10px; }
+.control-revenue { scroll-margin-top: 78px; }
+.control-revenue > .section-heading { margin-bottom: 14px; }
+.control-revenue .section-heading .button { flex: 0 0 auto; }
+@media (max-width: 1000px) { .control-service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .control-service-grid { grid-template-columns: 1fr; } .control-service-card { min-height: 135px; } .control-revenue > .section-heading { align-items: flex-start; } }
