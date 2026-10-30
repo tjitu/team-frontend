@@ -139,7 +139,7 @@ export default function TeamPage() {
           <h1>Team members</h1>
           <p className="page-subtitle">Manage workspace accounts, access, and roles.</p>
         </div>
-        {currentMember?.role === 'SYSTEM_OWNER' && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Add member</button>}
+        {isAdministrator(currentMember?.role) && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Add member</button>}
       </div>
 
       {error && <div className="inline-message error" role="alert">{error}{(!currentMember || isAdministrator(currentMember.role)) && <button className="button button-quiet" onClick={() => void load()}>Reload</button>}</div>}
@@ -168,7 +168,7 @@ export default function TeamPage() {
             </tr>;
           })}</tbody>
         </table>
-      </div> : <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true" /><h3>No members</h3><p>{appliedQuery || memberStatus !== 'true' ? 'Try changing your search or status filter.' : 'Add a team account to give someone workspace access.'}</p>{currentMember?.role === 'SYSTEM_OWNER' && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}>Add member</button>}</div></section>}
+      </div> : <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true" /><h3>No members</h3><p>{appliedQuery || memberStatus !== 'true' ? 'Try changing your search or status filter.' : 'Add a team account to give someone workspace access.'}</p>{isAdministrator(currentMember?.role) && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}>Add member</button>}</div></section>}
 
       {!isAdministrator(currentMember?.role) && !loading && <div className="team-back-link"><Link className="button button-secondary" href="/">Back to workspace</Link></div>}
 
@@ -179,7 +179,7 @@ export default function TeamPage() {
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Full name<input className="field-input" name="name" minLength={2} maxLength={120} autoComplete="name" required autoFocus /></label>
             <label className="field-label">Email address<input className="field-input" name="email" type="email" placeholder="name@company.com" maxLength={320} autoComplete="email" required /></label>
-            <label className="field-label">Team role<select className="filter-select" name="role" defaultValue="MEMBER"><option value="MEMBER">Member</option><option value="SYSTEM_ADMIN">System Admin</option></select></label>
+            {currentMember?.role === 'SYSTEM_OWNER' ? <label className="field-label">Team role<select className="filter-select" name="role" defaultValue="MEMBER"><option value="MEMBER">Member</option><option value="SYSTEM_ADMIN">System Admin</option></select></label> : <label className="field-label">Team role<input className="field-input" value="Member" readOnly /><input type="hidden" name="role" value="MEMBER" /><span className="subtle-link">Only a System Owner can create System Admin accounts.</span></label>}
             <label className="field-label">Initial password<input className="field-input" name="password" type="password" minLength={12} maxLength={72} autoComplete="new-password" required /><span className="subtle-link">Use at least 12 characters. Share it with the member through a secure channel.</span></label>
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? 'Creating account…' : 'Create account'}</button></div>
           </form>
