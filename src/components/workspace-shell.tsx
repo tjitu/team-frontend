@@ -64,6 +64,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   // Global Ctrl+B shortcut to toggle sidebar
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) {
+        return;
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
         event.preventDefault();
         toggleSidebar();
@@ -147,20 +151,20 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       {/* SIDEBAR */}
       <aside className={`sidebar ${isCollapsed ? 'is-collapsed' : ''}`} aria-label="Main navigation">
         <div className="sidebar-header">
-          <Link className="brand-mark-link" href="/" aria-label="Jitu Team Home" title="JituPTN Team Platform">
-            <BrandLogo size={32} />
-          </Link>
           {!isCollapsed && (
-            <button
-              type="button"
-              className="sidebar-collapse-btn"
-              onClick={() => toggleSidebar()}
-              title="Close sidebar (Ctrl+B)"
-              aria-label="Close sidebar"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
+            <Link className="brand-mark-link" href="/" aria-label="Jitu Team Home" title="JituPTN Team Platform">
+              <BrandLogo size={32} />
+            </Link>
           )}
+          <button
+            type="button"
+            className="sidebar-collapse-btn"
+            onClick={() => toggleSidebar()}
+            title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Close sidebar (Ctrl+B)'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Close sidebar'}
+          >
+            {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
         </div>
 
         <div className="sidebar-label">Workspace</div>
@@ -281,16 +285,6 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       <main className={`main-area ${isCollapsed ? 'is-collapsed' : ''}`} id="main-content" tabIndex={-1}>
         <header className="topbar">
           <div className="topbar-left">
-            <button
-              type="button"
-              className="sidebar-trigger-btn"
-              onClick={toggleSidebar}
-              title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-            </button>
-            <div className="topbar-separator" aria-hidden="true" />
             <nav className="breadcrumb" aria-label="Breadcrumb">
               <Link href="/" className="breadcrumb-root">Workspace</Link>
               <span className="breadcrumb-separator">/</span>
