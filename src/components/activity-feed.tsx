@@ -114,9 +114,18 @@ export function ActivityFeed({ scope, projectId }: { scope: ActivityScope; proje
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
+    const cacheKey = `${basePath}?${query.toString()}`;
+    const cached = api.getCached<ActivityPageData>(cacheKey);
+    if (cached) {
+      setItems(cached.items);
+      setHasMore(cached.hasMore);
+      setNextCursor(cached.nextCursor);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setError('');
-    api.get<ActivityPageData>(`${basePath}?${query.toString()}`).then((page) => {
+    api.get<ActivityPageData>(cacheKey).then((page) => {
       if (!active) return;
       setItems(page.items);
       setHasMore(page.hasMore);

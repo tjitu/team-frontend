@@ -16,9 +16,9 @@ function initials(name: string) {
 }
 
 export default function DepartmentsPage() {
-  const [member, setMember] = useState<CurrentMember | null>(null);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
+  const [departments, setDepartments] = useState<Department[]>(() => api.getCached<Department[]>('/team/departments') ?? []);
+  const [loading, setLoading] = useState(() => !api.getCached<Department[]>('/team/departments'));
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
@@ -32,12 +32,14 @@ export default function DepartmentsPage() {
   const [formError, setFormError] = useState('');
   const [memberError, setMemberError] = useState('');
 
-  async function load() {
-    setLoading(true);
+  async function load(force = false) {
+    if (!api.getCached<Department[]>('/team/departments')) {
+      setLoading(true);
+    }
     try {
       const [currentMember, list] = await Promise.all([
-        api.get<CurrentMember>('/team/me'),
-        api.get<Department[]>('/team/departments'),
+        api.get<CurrentMember>('/team/me', { force }),
+        api.get<Department[]>('/team/departments', { force }),
       ]);
       setMember(currentMember);
       setDepartments(list);
@@ -79,7 +81,7 @@ export default function DepartmentsPage() {
         setNotice(`Department ${body.name} was created.`);
         setCreateOpen(false);
       }
-      await load();
+      await load(true);
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Could not save the department.');
     } finally {
@@ -159,7 +161,7 @@ export default function DepartmentsPage() {
         {canManage && <button className="button button-primary" onClick={() => { setFormError(''); setEditing(null); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>New department</button>}
       </div>
 
-      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Reload</button></div>}
+      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(true)}>Reload</button></div>}
       {notice && <div className="inline-message success" role="status">{notice}<button className="icon-button" aria-label="Close message" onClick={() => setNotice('')}>×</button></div>}
 
       <div className="department-toolbar">

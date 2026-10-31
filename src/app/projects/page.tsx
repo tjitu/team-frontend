@@ -16,14 +16,14 @@ function initials(name: string) {
 }
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [member, setMember] = useState<CurrentMember | null>(null);
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [projects, setProjects] = useState<Project[]>(() => api.getCached<Project[]>('/team/projects') ?? []);
+  const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
+  const [departments, setDepartments] = useState<Department[]>(() => (api.getCached<Department[]>('/team/departments') ?? []).filter((d) => d.isActive));
   const [projectQuery, setProjectQuery] = useState('');
   const [appliedProjectQuery, setAppliedProjectQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [ownerFilter, setOwnerFilter] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !api.getCached<Project[]>('/team/projects'));
   const [error, setError] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,13 +53,15 @@ export default function ProjectsPage() {
     [projects],
   );
 
-  async function load() {
-    setLoading(true);
+  async function load(force = false) {
+    if (!api.getCached<Project[]>('/team/projects')) {
+      setLoading(true);
+    }
     try {
       const [projectList, currentMember, departmentList] = await Promise.all([
-        api.get<Project[]>('/team/projects'),
-        api.get<CurrentMember>('/team/me'),
-        api.get<Department[]>('/team/departments'),
+        api.get<Project[]>('/team/projects', { force }),
+        api.get<CurrentMember>('/team/me', { force }),
+        api.get<Department[]>('/team/departments', { force }),
       ]);
       setProjects(projectList);
       setMember(currentMember);
@@ -90,7 +92,7 @@ export default function ProjectsPage() {
         endsAt: data.get('endsAt') ? new Date(`${String(data.get('endsAt'))}T00:00:00.000Z`).toISOString() : undefined,
       });
       setCreateOpen(false);
-      await load();
+      await load(true);
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Could not create project.');
     } finally {
@@ -121,7 +123,7 @@ export default function ProjectsPage() {
       {error && (
         <div className="inline-message error" role="alert">
           {error}
-          <button className="button button-quiet" onClick={() => void load()}>Reload</button>
+          <button className="button button-quiet" onClick={() => void load(true)}>Reload</button>
         </div>
       )}
 

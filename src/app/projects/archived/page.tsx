@@ -9,15 +9,18 @@ function formatDate(value: string) {
 }
 
 export default function ArchivedProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<Project[]>(() => api.getCached<Project[]>('/team/projects/archived') ?? []);
+  const [loading, setLoading] = useState(() => !api.getCached<Project[]>('/team/projects/archived'));
   const [error, setError] = useState('');
   const [restoring, setRestoring] = useState('');
 
   useEffect(() => {
     let active = true;
     api.get<Project[]>('/team/projects/archived').then((items) => {
-      if (active) setProjects(items);
+      if (active) {
+        setProjects(items);
+        setLoading(false);
+      }
     }).catch((cause) => {
       if (!active) return;
       const message = cause instanceof Error ? cause.message : 'Could not load archived projects.';

@@ -37,12 +37,12 @@ function errorMessage(error: unknown) {
 
 export default function ControlCenterPage() {
   const [section, setSection] = useState<Section>('tryouts');
-  const [member, setMember] = useState<CurrentMember | null>(null);
-  const [tryouts, setTryouts] = useState<Tryout[]>([]);
-  const [packages, setPackages] = useState<Package[]>([]);
+  const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
+  const [tryouts, setTryouts] = useState<Tryout[]>(() => api.getCached<Tryout[]>('/team/control-center/tryouts') ?? []);
+  const [packages, setPackages] = useState<Package[]>(() => api.getCached<Package[]>('/team/control-center/packages') ?? []);
   const [users, setUsers] = useState<User[]>([]);
   const [applications, setApplications] = useState<CareerApplication[]>([]);
-  const [summary, setSummary] = useState<RevenueSummary | null>(null);
+  const [summary, setSummary] = useState<RevenueSummary | null>(() => api.getCached<RevenueSummary>('/team/control-center/revenue'));
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -55,15 +55,21 @@ export default function ControlCenterPage() {
   const [editingTryout, setEditingTryout] = useState<string | null>(null);
   const [editingPackage, setEditingPackage] = useState<string | null>(null);
 
-  const loadSection = useCallback(async (target: Section, query = '') => {
-    setLoading(true);
+  const loadSection = useCallback(async (target: Section, query = '', force = false) => {
+    const cachedUrl = target === 'tryouts' ? '/team/control-center/tryouts'
+      : target === 'pricing' ? '/team/control-center/packages'
+      : target === 'revenue' ? '/team/control-center/revenue'
+      : '';
+    if (!cachedUrl || !api.getCached(cachedUrl)) {
+      setLoading(true);
+    }
     setError('');
     try {
-      if (target === 'tryouts') setTryouts(await api.get<Tryout[]>('/team/control-center/tryouts'));
-      if (target === 'pricing') setPackages(await api.get<Package[]>('/team/control-center/packages'));
-      if (target === 'users') setUsers(await api.get<User[]>(`/team/control-center/users${query ? `?search=${encodeURIComponent(query)}` : ''}`));
-      if (target === 'careers') setApplications(await api.get<CareerApplication[]>(`/team/control-center/careers/applications${query ? `?search=${encodeURIComponent(query)}` : ''}`));
-      if (target === 'revenue') setSummary(await api.get<RevenueSummary>('/team/control-center/revenue'));
+      if (target === 'tryouts') setTryouts(await api.get<Tryout[]>('/team/control-center/tryouts', { force }));
+      if (target === 'pricing') setPackages(await api.get<Package[]>('/team/control-center/packages', { force }));
+      if (target === 'users') setUsers(await api.get<User[]>(`/team/control-center/users${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
+      if (target === 'careers') setApplications(await api.get<CareerApplication[]>(`/team/control-center/careers/applications${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
+      if (target === 'revenue') setSummary(await api.get<RevenueSummary>('/team/control-center/revenue', { force }));
     } catch (cause) {
       const message = errorMessage(cause);
       if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
@@ -153,7 +159,7 @@ export default function ControlCenterPage() {
   return <div className="page-content control-center-page">
     <div className="page-heading">
       <div><h1>Control Center</h1><p className="page-subtitle">Manage Jitu services from one workspace.</p></div>
-      <button className="button button-secondary" onClick={() => { setNotice(''); void loadSection(section, search); }} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</button>
+      <button className="button button-secondary" onClick={() => { setNotice(''); void loadSection(section, search, true); }} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</button>
     </div>
 
     <nav className="control-tabs" aria-label="Control Center sections">

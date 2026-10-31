@@ -181,9 +181,9 @@ function relativeDaysLabel(dateStr?: string | null) {
 }
 
 export default function OverviewPage() {
-  const [data, setData] = useState<OverviewResponse | null>(null);
-  const [member, setMember] = useState<CurrentMember | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<OverviewResponse | null>(() => api.getCached<OverviewResponse>('/team/control-center/overview'));
+  const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
+  const [loading, setLoading] = useState(() => !api.getCached<OverviewResponse>('/team/control-center/overview'));
   const [error, setError] = useState('');
   const [chartMetric, setChartMetric] = useState<'revenue' | 'coins' | 'users'>('revenue');
   const [analyticsTab, setAnalyticsTab] = useState<'pages' | 'countries' | 'sources' | 'devices' | 'events'>('pages');
@@ -191,13 +191,15 @@ export default function OverviewPage() {
   const [visitorRevenueMode, setVisitorRevenueMode] = useState<'both' | 'visitors' | 'revenue'>('both');
   const [hoveredTrendIdx, setHoveredTrendIdx] = useState<number | null>(null);
 
-  async function load() {
-    setLoading(true);
+  async function load(force = false) {
+    if (!data && !api.getCached<OverviewResponse>('/team/control-center/overview')) {
+      setLoading(true);
+    }
     setError('');
     try {
       const [overviewData, currentMember] = await Promise.all([
-        api.get<OverviewResponse>('/team/control-center/overview'),
-        api.get<CurrentMember>('/team/me'),
+        api.get<OverviewResponse>('/team/control-center/overview', { force, cacheMs: 60_000 }),
+        api.get<CurrentMember>('/team/me', { force, cacheMs: 60_000 }),
       ]);
       setData(overviewData);
       setMember(currentMember);
@@ -211,7 +213,7 @@ export default function OverviewPage() {
   }
 
   useEffect(() => {
-    void load();
+    void load(false);
   }, []);
 
   const visitorRevenueGeometry = useMemo(() => {
@@ -381,7 +383,7 @@ export default function OverviewPage() {
           <button
             type="button"
             className="button button-primary"
-            onClick={() => void load()}
+            onClick={() => void load(true)}
             disabled={loading}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
@@ -393,7 +395,7 @@ export default function OverviewPage() {
       {error && (
         <div className="inline-message error" role="alert">
           {error}
-          <button className="button button-quiet" onClick={() => void load()}>
+          <button className="button button-quiet" onClick={() => void load(true)}>
             Retry
           </button>
         </div>

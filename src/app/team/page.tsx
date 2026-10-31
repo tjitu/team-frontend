@@ -21,12 +21,12 @@ function initials(name: string) {
 }
 
 export default function TeamPage() {
-  const [currentMember, setCurrentMember] = useState<CurrentMember | null>(null);
-  const [members, setMembers] = useState<ManagedMember[]>([]);
+  const [currentMember, setCurrentMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
+  const [members, setMembers] = useState<ManagedMember[]>(() => api.getCached<ManagedMember[]>('/team/members?isActive=true') ?? []);
   const [query, setQuery] = useState('');
   const [appliedQuery, setAppliedQuery] = useState('');
   const [memberStatus, setMemberStatus] = useState('true');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !api.getCached<ManagedMember[]>('/team/members?isActive=true'));
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -34,20 +34,23 @@ export default function TeamPage() {
   const [formError, setFormError] = useState('');
   const [busyMember, setBusyMember] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (force = false) => {
+    const memberParams = new URLSearchParams();
+    if (memberStatus) memberParams.set('isActive', memberStatus);
+    if (appliedQuery.trim()) memberParams.set('q', appliedQuery.trim());
+    const queryPath = `/team/members?${memberParams.toString()}`;
+    if (!api.getCached<ManagedMember[]>(queryPath)) {
+      setLoading(true);
+    }
     try {
-      const member = await api.get<CurrentMember>('/team/me');
+      const member = await api.get<CurrentMember>('/team/me', { force });
       setCurrentMember(member);
       if (!isAdministrator(member.role)) {
         setMembers([]);
         setError('This page is only available to System Owners and System Admins.');
         return;
       }
-      const memberParams = new URLSearchParams();
-      if (memberStatus) memberParams.set('isActive', memberStatus);
-      if (appliedQuery.trim()) memberParams.set('q', appliedQuery.trim());
-      const memberList = await api.get<ManagedMember[]>(`/team/members?${memberParams.toString()}`);
+      const memberList = await api.get<ManagedMember[]>(queryPath, { force });
       setMembers(memberList);
       setError('');
     } catch (cause) {
@@ -102,7 +105,7 @@ export default function TeamPage() {
     try {
       await api.patch(`/team/members/${encodeURIComponent(member.id)}/role`, { role });
       setNotice(`${member.name}'s role was updated to ${roleLabels[role]}.`);
-      await load();
+      await load(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not update role.');
     } finally {
@@ -144,7 +147,7 @@ export default function TeamPage() {
         {isAdministrator(currentMember?.role) && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>Add member</button>}
       </div>
 
-      {error && <div className="inline-message error" role="alert">{error}{(!currentMember || isAdministrator(currentMember.role)) && <button className="button button-quiet" onClick={() => void load()}>Reload</button>}</div>}
+      {error && <div className="inline-message error" role="alert">{error}{(!currentMember || isAdministrator(currentMember.role)) && <button className="button button-quiet" onClick={() => void load(true)}>Reload</button>}</div>}
       {notice && <div className="inline-message success" role="status">{notice}<button className="icon-button" aria-label="Dismiss message" onClick={() => setNotice('')}>×</button></div>}
 
       <form className="team-toolbar" onSubmit={submitSearch}>

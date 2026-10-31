@@ -20,7 +20,7 @@ import {
   Sun,
   Moon,
 } from 'lucide-react';
-import { api, CurrentMember, Project, signInUrl } from '@/lib/api';
+import { api, clearSessionCache, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { BrandLogo } from '@/components/brand-logo';
@@ -41,8 +41,8 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const isInvitationRoute = pathname.startsWith('/invitations/accept');
   const isLoginRoute = pathname === '/login';
 
-  const [member, setMember] = useState<CurrentMember | null>(null);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
+  const [projects, setProjects] = useState<Project[]>(() => api.getCached<Project[]>('/team/projects') ?? []);
   const [fallbackProject, setFallbackProject] = useState<Project | null>(null);
   const [loadError, setLoadError] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
@@ -178,7 +178,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       setLoadError(error.message);
     });
     return () => { active = false; };
-  }, [isInvitationRoute, isLoginRoute, pathname]);
+  }, [isInvitationRoute, isLoginRoute]);
 
   useEffect(() => {
     if (!accountOpen && !breadcrumbMenuOpen) return;
@@ -220,6 +220,8 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     setSigningOut(true);
     setSignOutError('');
     try {
+      clearSessionCache();
+      api.invalidate();
       const { error } = await createSupabaseBrowserClient().auth.signOut();
       if (error) throw error;
       window.location.replace('/login');

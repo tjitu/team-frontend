@@ -95,10 +95,10 @@ function AssigneePicker({
 }
 
 export default function StandaloneTasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [member, setMember] = useState<CurrentMember | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState<Task[]>(() => api.getCached<Task[]>('/team/tasks/standalone/all') ?? []);
+  const [members, setMembers] = useState<TeamMember[]>(() => api.getCached<TeamMember[]>('/team/tasks/standalone/assignees') ?? []);
+  const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
+  const [loading, setLoading] = useState(() => !api.getCached<Task[]>('/team/tasks/standalone/all'));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
@@ -117,12 +117,14 @@ export default function StandaloneTasksPage() {
   const [commentError, setCommentError] = useState('');
   const [commentSaving, setCommentSaving] = useState(false);
 
-  async function load() {
-    setLoading(true);
+  async function load(force = false) {
+    if (!api.getCached<Task[]>('/team/tasks/standalone/all')) {
+      setLoading(true);
+    }
     try {
       const [current, assignees] = await Promise.all([
-        api.get<CurrentMember>('/team/me'),
-        api.get<TeamMember[]>('/team/tasks/standalone/assignees'),
+        api.get<CurrentMember>('/team/me', { force }),
+        api.get<TeamMember[]>('/team/tasks/standalone/assignees', { force }),
       ]);
       let cursor = '';
       let all: Task[] = [];
@@ -130,12 +132,13 @@ export default function StandaloneTasksPage() {
       while (hasMore) {
         const params = new URLSearchParams({ limit: '100' });
         if (cursor) params.set('cursor', cursor);
-        const page = await api.get<TaskListPage>(`/team/tasks/standalone?${params.toString()}`);
+        const page = await api.get<TaskListPage>(`/team/tasks/standalone?${params.toString()}`, { force });
         all = all.concat(page.items);
         hasMore = page.hasMore;
         cursor = page.nextCursor ?? '';
         if (!cursor) hasMore = false;
       }
+      api.setCached('/team/tasks/standalone/all', all);
       setMember(current);
       setMembers(assignees);
       setTasks(all);
@@ -198,7 +201,7 @@ export default function StandaloneTasksPage() {
       else await api.post('/team/tasks/standalone', payload);
       setModalTask(null);
       setCreateOpen(false);
-      await load();
+      await load(true);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Could not save task.';
       if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
@@ -225,7 +228,7 @@ export default function StandaloneTasksPage() {
     try {
       await api.post(`/team/tasks/standalone/${encodeURIComponent(modalTask.id)}/archive`, { version: modalTask.version });
       setModalTask(null);
-      await load();
+      await load(true);
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Could not archive task.');
     } finally {
@@ -263,7 +266,7 @@ export default function StandaloneTasksPage() {
         {member && <button className="button button-primary" type="button" onClick={() => { setFormError(''); setSelectedAssigneeIds([]); setModalTask(null); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>New task</button>}
       </div>
 
-      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load()}>Reload</button></div>}
+      {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(true)}>Reload</button></div>}
 
       <div className="standalone-toolbar">
         <label className="standalone-search"><span className="sr-only">Search tasks</span><input className="search-input" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search standalone tasks…" /></label>

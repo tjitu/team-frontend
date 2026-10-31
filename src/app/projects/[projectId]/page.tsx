@@ -112,9 +112,9 @@ export default function ProjectPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const taskView: TaskView = searchParams.get('view') === 'list' || searchParams.get('view') === 'timeline' ? searchParams.get('view') as TaskView : 'board';
-  const [project, setProject] = useState<Project | null>(null);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [member, setMember] = useState<CurrentMember | null>(null);
+  const [project, setProject] = useState<Project | null>(() => api.getCached<Project>(`/team/projects/${encodeURIComponent(projectId)}`));
+  const [departments, setDepartments] = useState<Department[]>(() => api.getCached<Department[]>('/team/departments') ?? []);
+  const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
   const [tasks, setTasks] = useState<Task[]>([]);
   const [timelineMonth, setTimelineMonth] = useState(() => {
     const now = new Date();
@@ -125,7 +125,7 @@ export default function ProjectPage() {
   const [loadingMoreTasks, setLoadingMoreTasks] = useState(false);
   const taskRequestVersion = useRef(0);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !api.getCached<Project>(`/team/projects/${encodeURIComponent(projectId)}`));
   const [error, setError] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
@@ -173,19 +173,21 @@ export default function ProjectPage() {
     return `/projects/${encodeURIComponent(projectId)}?${params.toString()}`;
   }
 
-  const load = useCallback(async (keepSelected = true) => {
+  const load = useCallback(async (keepSelected = true, force = false) => {
     const requestVersion = ++taskRequestVersion.current;
-    setLoading(true);
+    if (!api.getCached<Project>(`/team/projects/${encodeURIComponent(projectId)}`)) {
+      setLoading(true);
+    }
     setLoadingMoreTasks(false);
     try {
       const search = new URLSearchParams(taskFilters);
       search.set('limit', '100');
       const suffix = search.size ? `?${search.toString()}` : '';
       const [projectData, taskPage, currentMember, departmentList] = await Promise.all([
-        api.get<Project>(`/team/projects/${encodeURIComponent(projectId)}`),
-        api.get<TaskListPage>(`/team/projects/${encodeURIComponent(projectId)}/tasks${suffix}`),
-        api.get<CurrentMember>('/team/me'),
-        api.get<Department[]>('/team/departments'),
+        api.get<Project>(`/team/projects/${encodeURIComponent(projectId)}`, { force }),
+        api.get<TaskListPage>(`/team/projects/${encodeURIComponent(projectId)}/tasks${suffix}`, { force }),
+        api.get<CurrentMember>('/team/me', { force }),
+        api.get<Department[]>('/team/departments', { force }),
       ]);
       if (requestVersion !== taskRequestVersion.current) return;
       setProject(projectData);

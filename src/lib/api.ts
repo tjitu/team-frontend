@@ -131,9 +131,72 @@ export interface TaskListPage {
   nextCursor: string | null;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export interface RequestOptions {
+  /** Maximum age in milliseconds for using cached data. Default: 60_000 (1 min). */
+  cacheMs?: number;
+  /** When true, bypasses the in-memory cache and forces a fresh network call. */
+  force?: boolean;
+}
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const memoryCache = new Map<string, CacheEntry<unknown>>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
+let cachedSessionToken: { token: string; expiresAt: number } | null = null;
+
+export function clearSessionCache() {
+  cachedSessionToken = null;
+  memoryCache.clear();
+  inFlightRequests.clear();
+}
+
+async function getAccessToken(): Promise<string> {
+  const now = Date.now();
+  if (cachedSessionToken && cachedSessionToken.expiresAt > now) {
+    return cachedSessionToken.token;
+  }
   const { data: { session }, error: sessionError } = await createSupabaseBrowserClient().auth.getSession();
-  if (sessionError || !session?.access_token) throw new Error('SESSION_EXPIRED');
+  if (sessionError || !session?.access_token) {
+    cachedSessionToken = null;
+    throw new Error('SESSION_EXPIRED');
+  }
+  // Cache token in memory for up to 30 seconds to prevent constant async storage locks
+  cachedSessionToken = {
+    token: session.access_token,
+    expiresAt: now + 30_000,
+  };
+  return session.access_token;
+}
+
+function invalidateForPath(path: string) {
+  if (path.includes('/projects')) {
+    api.invalidate('/team/projects');
+    api.invalidate('/team/control-center/overview');
+  }
+  if (path.includes('/tasks')) {
+    api.invalidate('/team/tasks');
+    api.invalidate('/team/projects');
+    api.invalidate('/team/activity');
+  }
+  if (path.includes('/departments')) {
+    api.invalidate('/team/departments');
+    api.invalidate('/team/projects');
+  }
+  if (path.includes('/members') || path.includes('/invitations')) {
+    api.invalidate('/team/members');
+    api.invalidate('/team/me');
+    api.invalidate('/team/invitations');
+  }
+  if (path.includes('/control-center')) {
+    api.invalidate('/team/control-center');
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const accessToken = await getAccessToken();
 
   let response: Response;
   try {
@@ -141,7 +204,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: {
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
         ...init?.headers,
       },
       cache: 'no-store',
@@ -151,7 +214,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    if (response.status === 401) throw new Error('SESSION_EXPIRED');
+    if (response.status === 401) {
+      cachedSessionToken = null;
+      throw new Error('SESSION_EXPIRED');
+    }
     const payload = await response.json().catch(() => null) as { message?: string | string[] } | null;
     const message = Array.isArray(payload?.message) ? payload.message.join(' ') : payload?.message;
     throw new Error(message || `Request failed (${response.status}).`);
@@ -162,16 +228,79 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: unknown) => request<T>(path, {
-    method: 'POST',
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  }),
-  patch: <T>(path: string, body: unknown) => request<T>(path, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  }),
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  get: <T>(path: string, options?: RequestOptions): Promise<T> => {
+    const cacheMs = options?.cacheMs ?? 60_000;
+    const force = Boolean(options?.force);
+
+    if (!force) {
+      const cached = memoryCache.get(path);
+      if (cached && Date.now() - cached.timestamp < cacheMs) {
+        return Promise.resolve(cached.data as T);
+      }
+
+      const pending = inFlightRequests.get(path);
+      if (pending) {
+        return pending as Promise<T>;
+      }
+    }
+
+    const requestPromise = request<T>(path)
+      .then((data) => {
+        memoryCache.set(path, { data, timestamp: Date.now() });
+        return data;
+      })
+      .finally(() => {
+        inFlightRequests.delete(path);
+      });
+
+    inFlightRequests.set(path, requestPromise);
+    return requestPromise;
+  },
+
+  getCached: <T>(path: string, maxAgeMs = 600_000): T | null => {
+    const cached = memoryCache.get(path);
+    if (!cached) return null;
+    if (Date.now() - cached.timestamp > maxAgeMs) {
+      memoryCache.delete(path);
+      return null;
+    }
+    return cached.data as T;
+  },
+
+  setCached: <T>(path: string, data: T): void => {
+    memoryCache.set(path, { data, timestamp: Date.now() });
+  },
+
+  invalidate: (pattern?: string | RegExp): void => {
+    if (!pattern) {
+      memoryCache.clear();
+      return;
+    }
+    for (const key of Array.from(memoryCache.keys())) {
+      if (typeof pattern === 'string' ? key.includes(pattern) : pattern.test(key)) {
+        memoryCache.delete(key);
+      }
+    }
+  },
+
+  post: <T>(path: string, body?: unknown) => {
+    invalidateForPath(path);
+    return request<T>(path, {
+      method: 'POST',
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  },
+  patch: <T>(path: string, body: unknown) => {
+    invalidateForPath(path);
+    return request<T>(path, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  },
+  delete: <T>(path: string) => {
+    invalidateForPath(path);
+    return request<T>(path, { method: 'DELETE' });
+  },
 };
 
 export const isAdministrator = (role?: TeamRole) => role === 'SYSTEM_OWNER' || role === 'SYSTEM_ADMIN';

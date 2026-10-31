@@ -31,15 +31,15 @@ type VercelConfigStatus = {
 };
 
 export default function SettingsPage() {
-  const [member, setMember] = useState<CurrentMember | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
+  const [loading, setLoading] = useState(() => !api.getCached<CurrentMember>('/team/me'));
   const [error, setError] = useState('');
 
   // Vercel config state
-  const [vercelStatus, setVercelStatus] = useState<VercelConfigStatus | null>(null);
+  const [vercelStatus, setVercelStatus] = useState<VercelConfigStatus | null>(() => api.getCached<VercelConfigStatus>('/team/control-center/vercel-config'));
   const [tokenInput, setTokenInput] = useState('');
-  const [projectIdInput, setProjectIdInput] = useState('');
-  const [teamIdInput, setTeamIdInput] = useState('');
+  const [projectIdInput, setProjectIdInput] = useState(() => api.getCached<VercelConfigStatus>('/team/control-center/vercel-config')?.projectId || '');
+  const [teamIdInput, setTeamIdInput] = useState(() => api.getCached<VercelConfigStatus>('/team/control-center/vercel-config')?.teamId || '');
   const [showToken, setShowToken] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{
