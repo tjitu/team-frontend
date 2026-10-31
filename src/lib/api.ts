@@ -112,6 +112,7 @@ export interface Task {
   id: string;
   title: string;
   description: string | null;
+  attachments?: string[];
   status: TaskStatus;
   priority: TaskPriority;
   version: number;

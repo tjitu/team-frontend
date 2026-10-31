@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { TaskTimeline } from '@/components/task-timeline';
+import { TaskAttachmentEditor, TaskAttachmentLinks } from '@/components/task-attachments';
 import { api, CurrentMember, Task, TaskListPage, TaskPriority, TaskStatus, TeamMember, isAdministrator, signInUrl } from '@/lib/api';
 
 const STATUSES: Array<{ value: TaskStatus; label: string }> = [
@@ -179,10 +180,12 @@ export default function StandaloneTasksPage() {
     setSaving(true);
     setFormError('');
     const data = new FormData(event.currentTarget);
+    const attachments = data.getAll('attachments').map(String).map((link) => link.trim()).filter(Boolean);
     const canManageAssignees = !modalTask || !member || isAdministrator(member.role) || modalTask.createdBy.id === member.id;
     const payload = {
       title: String(data.get('title') ?? '').trim(),
       description: String(data.get('description') ?? '').trim() || null,
+      attachments,
       priority: String(data.get('priority') ?? 'NORMAL') as TaskPriority,
       dueAt: data.get('dueAt') ? new Date(`${String(data.get('dueAt'))}T00:00:00.000Z`).toISOString() : null,
       ...(canManageAssignees ? { assignedMemberIds: data.getAll('assignedMemberIds').map(String) } : {}),
@@ -283,7 +286,7 @@ export default function StandaloneTasksPage() {
                 {column.map((task) => <article className="task-board-card standalone-task-card" key={task.id}>
                   <button className="task-board-title" type="button" onClick={() => openTask(task)}>{task.title}</button>
                   {task.description && <p className="standalone-task-description">{task.description}</p>}
-                  <div className="task-board-card-meta"><span className={`priority-badge priority-${task.priority.toLowerCase()}`}>{PRIORITIES.find((item) => item.value === task.priority)?.label}</span><span className="task-board-comments">{task._count?.comments ?? 0} comments</span></div>
+                  <div className="task-board-card-meta"><span className={`priority-badge priority-${task.priority.toLowerCase()}`}>{PRIORITIES.find((item) => item.value === task.priority)?.label}</span><span className="task-board-comments">{task._count?.comments ?? 0} comments · {task.attachments?.length ?? 0} links</span></div>
                   {task.dueAt && <time className="task-board-due" dateTime={task.dueAt}>Due {displayDate(task.dueAt)}</time>}
                   <div className="task-board-card-footer">
                     <span className="standalone-task-people" title={`Created by ${task.createdBy.name}`}>{task.assignees.length ? task.assignees.map(({ teamMember }) => teamMember.name).join(', ') : `Created by ${task.createdBy.name}`}</span>
@@ -306,6 +309,7 @@ export default function StandaloneTasksPage() {
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Task title<input className="field-input" name="title" minLength={2} maxLength={180} required autoFocus disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.title ?? ''} placeholder="e.g. Fix mobile navigation spacing" /></label>
             <label className="field-label">Description <span className="subtle-link">Optional</span><textarea className="field-textarea standalone-description-input" name="description" maxLength={10000} disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.description ?? ''} placeholder="Add context or acceptance notes" /></label>
+            <div className="field-label">Attachments <span className="subtle-link">Optional</span><TaskAttachmentEditor key={`standalone-attachments-${modalTask?.id ?? 'new'}`} initialLinks={modalTask?.attachments ?? []} /></div>
             <div className="standalone-form-grid">
               {modalTask && <label className="field-label">Status<select className="filter-select" name="status" disabled={Boolean(member && !canEdit(modalTask, member))} defaultValue={modalTask.status}>{STATUSES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
               <label className="field-label">Priority<select className="filter-select" name="priority" disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.priority ?? 'NORMAL'}>{PRIORITIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -317,6 +321,7 @@ export default function StandaloneTasksPage() {
               <div><button className="button button-secondary" type="button" disabled={saving} onClick={() => { setModalTask(null); setCreateOpen(false); }}>Cancel</button><button className="button button-primary" disabled={saving || Boolean(modalTask && member && !canEdit(modalTask, member))}>{saving ? 'Saving…' : modalTask ? 'Save changes' : 'Create task'}</button></div>
             </div>
           </form>
+          {modalTask && Boolean(modalTask.attachments?.length) && <section className="standalone-comments" aria-label="Task attachments"><h3>Attachments</h3><TaskAttachmentLinks links={modalTask.attachments} /></section>}
           {modalTask && <section className="standalone-comments" aria-labelledby="standalone-comments-title">
             <h3 id="standalone-comments-title">Comments ({modalTask._count?.comments ?? modalTask.comments?.length ?? 0})</h3>
             {commentError && <p className="form-error" role="alert">{commentError}</p>}

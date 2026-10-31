@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { AssigneePicker } from '@/components/assignee-picker';
 import { TaskTimeline } from '@/components/task-timeline';
+import { TaskAttachmentEditor, TaskAttachmentLinks } from '@/components/task-attachments';
 import { api, CurrentMember, Department, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskListPage, TaskPriority, TaskStatus } from '@/lib/api';
 
 const statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE'];
@@ -262,10 +263,12 @@ export default function ProjectPage() {
     setFormError('');
     const data = new FormData(event.currentTarget);
     const assigneeIds = data.getAll('assigneeIds').map(String);
+    const attachments = data.getAll('attachments').map(String).map((link) => link.trim()).filter(Boolean);
     try {
       await api.post<Task>(`/team/projects/${encodeURIComponent(projectId)}/tasks`, {
         title: String(data.get('title') ?? '').trim(),
         description: String(data.get('description') ?? '').trim(),
+        attachments,
         priority: String(data.get('priority') ?? 'NORMAL'),
         dueAt: data.get('dueAt') ? new Date(`${String(data.get('dueAt'))}T23:59:00`).toISOString() : undefined,
         assignedMemberIds: assigneeIds,
@@ -403,10 +406,12 @@ export default function ProjectPage() {
     setTaskFormError('');
     const data = new FormData(event.currentTarget);
     const dueAt = String(data.get('dueAt') ?? '');
+    const attachments = data.getAll('attachments').map(String).map((link) => link.trim()).filter(Boolean);
     const body = {
       version: selectedTask.version,
       title: String(data.get('title') ?? '').trim(),
       description: String(data.get('description') ?? '').trim(),
+      attachments,
       priority: String(data.get('priority') ?? selectedTask.priority),
       dueAt: dueAt ? new Date(`${dueAt}T23:59:00`).toISOString() : null,
       ...(canManage ? { assignedMemberIds: data.getAll('assigneeIds').map(String) } : {}),
@@ -512,7 +517,7 @@ export default function ProjectPage() {
               <table className="task-table">
                 <thead><tr><th>Task</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Due date</th></tr></thead>
                 <tbody>{tasks.map((task) => <tr className={selectedTask?.id === task.id ? 'is-selected' : ''} key={task.id}>
-                  <td><button className="task-title-button" onClick={() => void openTask(task.id)}>{task.title}</button><div className="task-subtitle">{task._count?.comments ?? 0} comments · updated {dateLabel(task.updatedAt)}</div></td>
+                  <td><button className="task-title-button" onClick={() => void openTask(task.id)}>{task.title}</button><div className="task-subtitle">{task._count?.comments ?? 0} comments · {task.attachments?.length ?? 0} links · updated {dateLabel(task.updatedAt)}</div></td>
                   <td><span className={`status-badge status-${task.status}`}>{statusLabels[task.status]}</span></td>
                   <td><span className={`priority-badge priority-${task.priority}`}>{priorityLabels[task.priority]}</span></td>
                   <td><div className="assignee-stack" aria-label={task.assignees.map(({ teamMember }) => teamMember.name).join(', ') || 'Unassigned'}>{task.assignees.length ? task.assignees.slice(0, 3).map(({ teamMember }) => <span className="avatar" key={teamMember.id} title={teamMember.name}>{initials(teamMember.name)}</span>) : <span className="assignee-empty">None</span>}{task.assignees.length > 3 && <span className="avatar">+{task.assignees.length - 3}</span>}</div></td>
@@ -531,7 +536,7 @@ export default function ProjectPage() {
                   <div className="task-board-column-content">
                     {columnTasks.map((task) => <article className={`task-board-card ${selectedTask?.id === task.id ? 'is-selected' : ''}`} key={task.id}>
                       <button className="task-board-title" type="button" onClick={() => void openTask(task.id)}>{task.title}</button>
-                      <div className="task-board-card-meta"><span className={`priority-badge priority-${task.priority}`}>{priorityLabels[task.priority]}</span><span className="task-board-comments">{task._count?.comments ?? 0} comments</span></div>
+                      <div className="task-board-card-meta"><span className={`priority-badge priority-${task.priority}`}>{priorityLabels[task.priority]}</span><span className="task-board-comments">{task._count?.comments ?? 0} comments · {task.attachments?.length ?? 0} links</span></div>
                       {task.dueAt && <time className="task-board-due" dateTime={task.dueAt}>Due {dateLabel(task.dueAt)}</time>}
                       <footer className="task-board-card-footer">
                         <div className="assignee-stack" aria-label={task.assignees.map(({ teamMember }) => teamMember.name).join(', ') || 'Unassigned'}>{task.assignees.length ? task.assignees.slice(0, 2).map(({ teamMember }) => <span className="avatar" key={teamMember.id} title={teamMember.name}>{initials(teamMember.name)}</span>) : <span className="assignee-empty">Unassigned</span>}{task.assignees.length > 2 && <span className="avatar">+{task.assignees.length - 2}</span>}</div>
@@ -558,6 +563,7 @@ export default function ProjectPage() {
             <div className="task-detail-main">
               {detailError && <div className="inline-message error" role="alert">{detailError}</div>}
               <div className="detail-field"><span>Description</span><p>{selectedTask.description || 'No description yet.'}</p></div>
+              {Boolean(selectedTask.attachments?.length) && <div className="detail-field"><span>Attachments</span><TaskAttachmentLinks links={selectedTask.attachments} /></div>}
               <div className="detail-field"><span>Comments ({selectedTask.comments?.length ?? 0})</span>
                 <div className="comment-list">{selectedTask.comments?.map((item) => <article className="comment-item" key={item.id}><div className="comment-meta"><strong>{item.author.name}</strong><time dateTime={item.createdAt}>{dateLabel(item.createdAt)}</time></div><p>{item.body}</p></article>)}</div>
                 {canWrite && <form className="comment-form" onSubmit={addComment}><label className="sr-only" htmlFor="task-comment">Write a comment</label><textarea className="field-textarea" id="task-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={5000} placeholder="Write a comment…" required /><button className="button button-secondary" disabled={saving || !comment.trim()}>Send comment</button></form>}
@@ -580,6 +586,7 @@ export default function ProjectPage() {
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Task name<input className="field-input" name="title" placeholder="e.g. Review user requirements" minLength={2} maxLength={180} required autoFocus /></label>
             <label className="field-label">Description <span className="subtle-link">Optional</span><textarea className="field-textarea" name="description" placeholder="Add context or completion criteria" maxLength={10000} /></label>
+            <div className="field-label">Attachments <span className="subtle-link">Optional</span><TaskAttachmentEditor /></div>
             <div className="detail-meta"><label className="field-label">Priority<select className="filter-select" name="priority" defaultValue="NORMAL">{priorities.map((priority) => <option value={priority} key={priority}>{priorityLabels[priority]}</option>)}</select></label><label className="field-label">Due date<input className="field-input" name="dueAt" type="date" /></label></div>
             {canWrite && project?.members && project.members.length > 0 && <label className="field-label">Assignee<AssigneePicker members={project.members} /></label>}
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? 'Saving…' : 'Create task'}</button></div>
@@ -594,6 +601,7 @@ export default function ProjectPage() {
             {taskFormError && <p className="form-error" role="alert">{taskFormError}</p>}
             <label className="field-label">Task name<input className="field-input" name="title" key={`task-title-${selectedTask.id}`} defaultValue={selectedTask.title} minLength={2} maxLength={180} required autoFocus /></label>
             <label className="field-label">Description <span className="subtle-link">Optional</span><textarea className="field-textarea" name="description" key={`task-description-${selectedTask.id}`} defaultValue={selectedTask.description ?? ''} maxLength={10000} placeholder="Add context or completion criteria" /></label>
+            <div className="field-label">Attachments <span className="subtle-link">Optional</span><TaskAttachmentEditor key={`task-attachments-${selectedTask.id}`} initialLinks={selectedTask.attachments ?? []} /></div>
             <div className="detail-meta"><label className="field-label">Priority<select className="filter-select" name="priority" defaultValue={selectedTask.priority}>{priorities.map((priority) => <option value={priority} key={priority}>{priorityLabels[priority]}</option>)}</select></label><label className="field-label">Due date<input className="field-input" name="dueAt" type="date" defaultValue={dateInputValue(selectedTask.dueAt)} /></label></div>
             {canManage && project?.members && project.members.length > 0 && <label className="field-label">Assignee<AssigneePicker members={project.members} initialIds={selectedTask.assignees.map(({ teamMember }) => teamMember.id)} /></label>}
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setEditTaskOpen(false)}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>

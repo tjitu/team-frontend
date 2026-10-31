@@ -1641,6 +1641,15 @@ input[type="date"] { color-scheme: light; }
 .standalone-task-modal .modal-header { padding: 20px 23px 16px; }
 .standalone-task-modal .form-stack { gap: 14px; padding: 18px 23px 20px; }
 .standalone-task-modal .field-label { gap: 6px; }
+.task-attachment-editor { display: grid; min-width: 0; gap: 8px; }
+.task-attachment-editor-row { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.task-attachment-editor-row .field-input { min-width: 0; }
+.task-attachment-add { justify-self: start; }
+.task-attachment-links { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.task-attachment-links li { min-width: 0; }
+.task-attachment-links a { display: block; overflow-wrap: anywhere; color: var(--brand); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
+.task-attachment-links a:hover { color: var(--literal-foreground-38); }
+.task-attachment-empty { margin: 0; color: var(--literal-foreground-62); font-size: 12px; }
 .standalone-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .standalone-form-grid .field-label { min-width: 0; }
 .standalone-description-input { min-height: 82px; padding: 10px 12px; resize: vertical; }
