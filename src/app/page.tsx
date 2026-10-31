@@ -29,6 +29,7 @@ import {
 import { api, CurrentMember, signInUrl } from '@/lib/api';
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 import { PixelCoin } from '@/components/pixel-coin';
+import { ComboboxSelect } from '@/components/ui/combobox';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
 
 type VisitorPerPageItem = {
@@ -497,18 +498,16 @@ export default function OverviewPage() {
               <h2>Visitors Trend</h2>
               <p>Daily website visitors and traffic volume</p>
             </div>
-            <div className="chart-select-wrapper">
-              <select
-                className="chart-interval-select"
-                value={visitorInterval}
-                onChange={(e) => setVisitorInterval(e.target.value as '14d' | '7d' | '30d')}
-                aria-label="Select visitor interval"
-              >
-                <option value="14d">Last 14 Days</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-              </select>
-            </div>
+            <ComboboxSelect
+              value={visitorInterval}
+              onValueChange={(val) => setVisitorInterval(val as '14d' | '7d' | '30d')}
+              options={[
+                { label: 'Last 14 Days', value: '14d' },
+                { label: 'Last 7 Days', value: '7d' },
+                { label: 'Last 30 Days', value: '30d' },
+              ]}
+              ariaLabel="Select visitor interval"
+            />
           </div>
 
           <div className="overview-line-chart-wrap" style={{ marginTop: '8px' }}>
@@ -595,17 +594,15 @@ export default function OverviewPage() {
                   : 'Monthly confirmed coin purchases over the last 6 months'}
               </p>
             </div>
-            <div className="chart-select-wrapper">
-              <select
-                className="chart-interval-select"
-                value={coinChartMode}
-                onChange={(e) => setCoinChartMode(e.target.value as 'daily' | 'monthly')}
-                aria-label="Select coin trend interval"
-              >
-                <option value="daily">Last 14 Days</option>
-                <option value="monthly">Last 6 Months</option>
-              </select>
-            </div>
+            <ComboboxSelect
+              value={coinChartMode}
+              onValueChange={(val) => setCoinChartMode(val as 'daily' | 'monthly')}
+              options={[
+                { label: 'Last 14 Days', value: 'daily' },
+                { label: 'Last 6 Months', value: 'monthly' },
+              ]}
+              ariaLabel="Select coin interval"
+            />
           </div>
 
           {coinChartMode === 'daily' ? (

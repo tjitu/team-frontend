@@ -1,12 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import * as React from 'react';
 import type { FormEvent } from 'react';
+import { createColumnHelper } from '@tanstack/react-table';
 import { api, CurrentMember, RevenueSummary, signInUrl } from '@/lib/api';
+import { DataTable } from '@/components/ui/data-table';
+import { type DataTableFeatures } from '@/components/ui/data-table-features';
+import { ComboboxSelect } from '@/components/ui/combobox';
+import { ExternalLink, Eye, Edit, Trash2 } from 'lucide-react';
 
-type Section = 'tryouts' | 'pricing' | 'users' | 'articles' | 'careers' | 'revenue';
+export type Section = 'tryouts' | 'pricing' | 'users' | 'articles' | 'careers' | 'revenue';
 
-type Tryout = {
+export type Tryout = {
   id: string;
   code: number;
   title: string;
@@ -21,7 +26,7 @@ type Tryout = {
   referralCode: string | null;
 };
 
-type Package = {
+export type Package = {
   id: string;
   name: string;
   tokenAmount: number;
@@ -30,7 +35,7 @@ type Package = {
   paymentCount?: number;
 };
 
-type User = {
+export type User = {
   id: string;
   name: string;
   email: string;
@@ -40,7 +45,25 @@ type User = {
   createdAt: string;
 };
 
-type CareerApplication = {
+export type Article = {
+  id: string;
+  title: string;
+  slug: string;
+  summary: string | null;
+  content: string;
+  coverImageUrl: string | null;
+  category: string;
+  tags: string;
+  authorName: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  readTimeMinutes: number;
+  viewsCount: number;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CareerApplication = {
   id: string;
   fullName: string;
   email: string;
@@ -64,24 +87,6 @@ type CareerApplication = {
   commitmentAgreed: boolean | null;
   status: 'SUBMITTED' | 'UNDER_REVIEW' | 'INTERVIEW' | 'ACCEPTED' | 'REJECTED';
   adminNotes: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type Article = {
-  id: string;
-  title: string;
-  slug: string;
-  summary: string | null;
-  content: string;
-  coverImageUrl: string | null;
-  category: string;
-  tags: string;
-  authorName: string;
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-  readTimeMinutes: number;
-  viewsCount: number;
-  publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -187,40 +192,47 @@ function autoSlug(str: string): string {
     .replace(/(^-|-$)+/g, '');
 }
 
+// Column Helpers for Data Tables
+const tryoutColHelper = createColumnHelper<DataTableFeatures, Tryout>();
+const packageColHelper = createColumnHelper<DataTableFeatures, Package>();
+const userColHelper = createColumnHelper<DataTableFeatures, User>();
+const articleColHelper = createColumnHelper<DataTableFeatures, Article>();
+const careerColHelper = createColumnHelper<DataTableFeatures, CareerApplication>();
+
 export default function ControlCenterPage() {
-  const [section, setSection] = useState<Section>('tryouts');
-  const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
-  const [tryouts, setTryouts] = useState<Tryout[]>(() => api.getCached<Tryout[]>('/team/control-center/tryouts') ?? []);
-  const [packages, setPackages] = useState<Package[]>(() => api.getCached<Package[]>('/team/control-center/packages') ?? []);
-  const [users, setUsers] = useState<User[]>([]);
-  const [articles, setArticles] = useState<Article[]>(() => api.getCached<Article[]>('/team/control-center/articles') ?? []);
-  const [applications, setApplications] = useState<CareerApplication[]>([]);
-  const [summary, setSummary] = useState<RevenueSummary | null>(() => api.getCached<RevenueSummary>('/team/control-center/revenue'));
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
-  const [search, setSearch] = useState('');
+  const [section, setSection] = React.useState<Section>('tryouts');
+  const [member, setMember] = React.useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
+  const [tryouts, setTryouts] = React.useState<Tryout[]>(() => api.getCached<Tryout[]>('/team/control-center/tryouts') ?? []);
+  const [packages, setPackages] = React.useState<Package[]>(() => api.getCached<Package[]>('/team/control-center/packages') ?? []);
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [articles, setArticles] = React.useState<Article[]>(() => api.getCached<Article[]>('/team/control-center/articles') ?? []);
+  const [applications, setApplications] = React.useState<CareerApplication[]>([]);
+  const [summary, setSummary] = React.useState<RevenueSummary | null>(() => api.getCached<RevenueSummary>('/team/control-center/revenue'));
+  const [loading, setLoading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [notice, setNotice] = React.useState('');
+  const [search, setSearch] = React.useState('');
 
   // Form states
-  const [tryoutForm, setTryoutForm] = useState<TryoutForm>(initialTryoutForm);
-  const [packageForm, setPackageForm] = useState<PackageForm>(initialPackageForm);
-  const [articleForm, setArticleForm] = useState<ArticleForm>(initialArticleForm);
-  const [tryoutFormOpen, setTryoutFormOpen] = useState(false);
-  const [packageFormOpen, setPackageFormOpen] = useState(false);
-  const [articleFormOpen, setArticleFormOpen] = useState(false);
-  const [editingTryout, setEditingTryout] = useState<string | null>(null);
-  const [editingPackage, setEditingPackage] = useState<string | null>(null);
-  const [editingArticle, setEditingArticle] = useState<string | null>(null);
-  const [previewArticle, setPreviewArticle] = useState<Article | null>(null);
+  const [tryoutForm, setTryoutForm] = React.useState<TryoutForm>(initialTryoutForm);
+  const [packageForm, setPackageForm] = React.useState<PackageForm>(initialPackageForm);
+  const [articleForm, setArticleForm] = React.useState<ArticleForm>(initialArticleForm);
+  const [tryoutFormOpen, setTryoutFormOpen] = React.useState(false);
+  const [packageFormOpen, setPackageFormOpen] = React.useState(false);
+  const [articleFormOpen, setArticleFormOpen] = React.useState(false);
+  const [editingTryout, setEditingTryout] = React.useState<string | null>(null);
+  const [editingPackage, setEditingPackage] = React.useState<string | null>(null);
+  const [editingArticle, setEditingArticle] = React.useState<string | null>(null);
+  const [previewArticle, setPreviewArticle] = React.useState<Article | null>(null);
 
-  // Career Candidate Details Modal State
-  const [selectedApplicant, setSelectedApplicant] = useState<CareerApplication | null>(null);
-  const [applicantStatusDraft, setApplicantStatusDraft] = useState<CareerApplication['status']>('SUBMITTED');
-  const [applicantNotesDraft, setApplicantNotesDraft] = useState('');
-  const [savingApplicant, setSavingApplicant] = useState(false);
+  // Candidate Details Modal State
+  const [selectedApplicant, setSelectedApplicant] = React.useState<CareerApplication | null>(null);
+  const [applicantStatusDraft, setApplicantStatusDraft] = React.useState<CareerApplication['status']>('SUBMITTED');
+  const [applicantNotesDraft, setApplicantNotesDraft] = React.useState('');
+  const [savingApplicant, setSavingApplicant] = React.useState(false);
 
-  const loadSection = useCallback(async (target: Section, query = '', force = false) => {
+  const loadSection = React.useCallback(async (target: Section, query = '', force = false) => {
     const cachedUrl = target === 'tryouts' ? '/team/control-center/tryouts'
       : target === 'pricing' ? '/team/control-center/packages'
       : target === 'articles' ? '/team/control-center/articles'
@@ -246,13 +258,13 @@ export default function ControlCenterPage() {
     }
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     void api.get<CurrentMember>('/team/me').then(setMember).catch((cause: unknown) => {
       if (errorMessage(cause) === 'SESSION_EXPIRED') window.location.assign(signInUrl());
     });
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     void loadSection(section);
   }, [section, loadSection]);
 
@@ -383,6 +395,14 @@ export default function ControlCenterPage() {
     } catch (cause) { setError(errorMessage(cause)); }
   }
 
+  async function updateApplicationStatus(item: CareerApplication, status: CareerApplication['status']) {
+    setError(''); setNotice('');
+    try {
+      await api.patch(`/team/control-center/careers/applications/${encodeURIComponent(item.id)}`, { status });
+      await loadSection('careers', search); setNotice(`Application status updated for ${item.fullName}.`);
+    } catch (cause) { setError(errorMessage(cause)); }
+  }
+
   function openApplicantModal(item: CareerApplication) {
     setSelectedApplicant(item);
     setApplicantStatusDraft(item.status);
@@ -416,6 +436,292 @@ export default function ControlCenterPage() {
     await loadSection(section, search.trim());
   }
 
+  // TANSTACK TABLE COLUMNS FOR TRYOUTS
+  const tryoutColumns = React.useMemo(() => [
+    tryoutColHelper.accessor('title', {
+      header: 'Tryout',
+      cell: ({ row }) => (
+        <div>
+          <strong>{row.original.title}</strong>
+          <small className="block text-[var(--muted-fg)]">
+            #{row.original.code} · {row.original.isPublic ? 'Public' : 'Private'}
+          </small>
+        </div>
+      ),
+    }),
+    tryoutColHelper.accessor('batch', {
+      header: 'Batch',
+      cell: ({ getValue }) => <span className="font-semibold text-xs">{getValue()}</span>,
+    }),
+    tryoutColHelper.accessor('scheduledStart', {
+      header: 'Schedule',
+      cell: ({ row }) => (
+        <div>
+          <span>{formatDate(row.original.scheduledStart)}</span>
+          <small className="block text-[var(--muted-fg)]">Ends {formatDate(row.original.scheduledEnd)}</small>
+        </div>
+      ),
+    }),
+    tryoutColHelper.accessor('solutionPrice', {
+      header: 'Solution Price',
+      cell: ({ getValue }) => <span>{getValue()} coins</span>,
+    }),
+    tryoutColHelper.accessor('status', {
+      header: 'Status',
+      cell: ({ getValue }) => (
+        <span className="control-status">{String(getValue()).replaceAll('_', ' ')}</span>
+      ),
+    }),
+    tryoutColHelper.display({
+      id: 'actions',
+      header: () => <div className="text-right">Action</div>,
+      cell: ({ row }) => (
+        <div className="text-right">
+          <button
+            type="button"
+            className="control-text-button"
+            onClick={() => editTryout(row.original)}
+          >
+            Edit
+          </button>
+        </div>
+      ),
+    }),
+  ], []);
+
+  // TANSTACK TABLE COLUMNS FOR PRICING
+  const packageColumns = React.useMemo(() => [
+    packageColHelper.accessor('name', {
+      header: 'Package',
+      cell: ({ getValue }) => <strong>{getValue()}</strong>,
+    }),
+    packageColHelper.accessor('tokenAmount', {
+      header: 'Coins',
+      cell: ({ getValue }) => <span>{getValue()}</span>,
+    }),
+    packageColHelper.accessor('price', {
+      header: 'Price (IDR)',
+      cell: ({ getValue }) => <span>{currency.format(getValue())}</span>,
+    }),
+    packageColHelper.accessor('paymentCount', {
+      header: 'Purchases',
+      cell: ({ getValue }) => <span>{getValue() ?? '—'}</span>,
+    }),
+    packageColHelper.accessor('isActive', {
+      header: 'Status',
+      cell: ({ getValue }) => (
+        <span className={`control-status ${getValue() ? 'status-accepted' : 'status-submitted'}`}>
+          {getValue() ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    }),
+    packageColHelper.display({
+      id: 'actions',
+      header: () => <div className="text-right">Action</div>,
+      cell: ({ row }) => (
+        <div className="text-right">
+          <button
+            type="button"
+            className="control-text-button"
+            onClick={() => editPackage(row.original)}
+          >
+            Edit
+          </button>
+        </div>
+      ),
+    }),
+  ], []);
+
+  // TANSTACK TABLE COLUMNS FOR USERS
+  const userColumns = React.useMemo(() => [
+    userColHelper.accessor('name', {
+      header: 'User',
+      cell: ({ row }) => (
+        <div>
+          <strong>{row.original.name}</strong>
+          <small className="block text-[var(--muted-fg)]">{row.original.email}</small>
+        </div>
+      ),
+    }),
+    userColHelper.accessor('role', {
+      header: 'Jitu Role',
+      cell: ({ row }) => (
+        <ComboboxSelect
+          value={row.original.role}
+          onValueChange={(newRole) => void updateUserRole(row.original, newRole as User['role'])}
+          disabled={member?.role !== 'SYSTEM_OWNER'}
+          options={[
+            { label: 'User', value: 'USER' },
+            { label: 'Admin', value: 'ADMIN' },
+          ]}
+          triggerClassName="h-7 text-xs w-[100px]"
+        />
+      ),
+    }),
+    userColHelper.accessor('target', {
+      header: 'Target',
+      cell: ({ getValue }) => <span>{getValue() || 'Not set'}</span>,
+    }),
+    userColHelper.accessor('tokenBalance', {
+      header: 'Coins',
+      cell: ({ getValue }) => <span className="font-semibold">{getValue()}</span>,
+    }),
+    userColHelper.display({
+      id: 'accessNotes',
+      header: '',
+      cell: ({ row }) =>
+        member?.role !== 'SYSTEM_OWNER' && row.original.role !== 'USER' ? (
+          <span className="control-muted text-xs">Owner managed</span>
+        ) : null,
+    }),
+  ], [member]);
+
+  // TANSTACK TABLE COLUMNS FOR ARTICLES
+  const articleColumns = React.useMemo(() => [
+    articleColHelper.accessor('title', {
+      header: 'Article',
+      cell: ({ row }) => (
+        <div className="article-thumbnail-cell">
+          {row.original.coverImageUrl ? (
+            <img src={row.original.coverImageUrl} alt="" className="article-thumb-img" />
+          ) : (
+            <div className="article-thumb-img flex items-center justify-center text-lg">
+              📰
+            </div>
+          )}
+          <div>
+            <strong>{row.original.title}</strong>
+            <small className="block text-[var(--muted-fg)]">/{row.original.slug}</small>
+          </div>
+        </div>
+      ),
+    }),
+    articleColHelper.accessor('category', {
+      header: 'Category & Tags',
+      cell: ({ row }) => (
+        <div>
+          <span className="article-badge-category">{row.original.category}</span>
+          {row.original.tags && (
+            <small className="block text-[var(--muted-fg)] text-[11px] truncate max-w-[180px]">
+              {row.original.tags}
+            </small>
+          )}
+        </div>
+      ),
+    }),
+    articleColHelper.accessor('authorName', {
+      header: 'Author',
+      cell: ({ getValue }) => <span>{getValue()}</span>,
+    }),
+    articleColHelper.accessor('viewsCount', {
+      header: 'Views',
+      cell: ({ getValue }) => <span>{getValue().toLocaleString()}</span>,
+    }),
+    articleColHelper.accessor('status', {
+      header: 'Status',
+      cell: ({ getValue }) => (
+        <span className={`applicant-status-badge ${getValue() === 'PUBLISHED' ? 'status-accepted' : 'status-submitted'}`}>
+          {getValue()}
+        </span>
+      ),
+    }),
+    articleColHelper.accessor('publishedAt', {
+      header: 'Published',
+      cell: ({ getValue }) => <span>{getValue() ? formatDate(getValue()) : 'Draft'}</span>,
+    }),
+    articleColHelper.display({
+      id: 'actions',
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            className="button button-secondary h-7 px-2 text-xs flex items-center gap-1"
+            onClick={() => setPreviewArticle(row.original)}
+            title="Preview article"
+          >
+            <Eye className="h-3 w-3" /> Preview
+          </button>
+          <button
+            type="button"
+            className="button button-secondary h-7 px-2 text-xs flex items-center gap-1"
+            onClick={() => editArticleItem(row.original)}
+            title="Edit article"
+          >
+            <Edit className="h-3 w-3" /> Edit
+          </button>
+          <button
+            type="button"
+            className="button button-secondary h-7 px-2 text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+            onClick={() => void deleteArticleItem(row.original)}
+            title="Delete article"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
+      ),
+    }),
+  ], []);
+
+  // TANSTACK TABLE COLUMNS FOR CAREERS
+  const careerColumns = React.useMemo(() => [
+    careerColHelper.accessor('fullName', {
+      header: 'Applicant',
+      cell: ({ row }) => (
+        <div>
+          <strong>{row.original.fullName}</strong>
+          <small className="block text-[var(--muted-fg)]">
+            {row.original.email} · {row.original.university}
+          </small>
+        </div>
+      ),
+    }),
+    careerColHelper.accessor('primaryRole', {
+      header: 'Role Applied',
+      cell: ({ getValue }) => <span className="font-medium">{getValue()}</span>,
+    }),
+    careerColHelper.accessor('primaryDivision', {
+      header: 'Division',
+      cell: ({ getValue }) => <span>{getValue()}</span>,
+    }),
+    careerColHelper.accessor('createdAt', {
+      header: 'Applied Date',
+      cell: ({ getValue }) => <span>{formatDate(getValue())}</span>,
+    }),
+    careerColHelper.accessor('status', {
+      header: 'Status',
+      cell: ({ row }) => (
+        <ComboboxSelect
+          value={row.original.status}
+          onValueChange={(val) => void updateApplicationStatus(row.original, val as CareerApplication['status'])}
+          options={[
+            { label: 'Submitted', value: 'SUBMITTED' },
+            { label: 'Under Review', value: 'UNDER_REVIEW' },
+            { label: 'Interview', value: 'INTERVIEW' },
+            { label: 'Accepted', value: 'ACCEPTED' },
+            { label: 'Rejected', value: 'REJECTED' },
+          ]}
+          triggerClassName={`h-7 text-xs w-[125px] font-semibold status-${row.original.status.toLowerCase()}`}
+        />
+      ),
+    }),
+    careerColHelper.display({
+      id: 'candidateDetails',
+      header: () => <div className="text-right">Candidate Details</div>,
+      cell: ({ row }) => (
+        <div className="text-right">
+          <button
+            type="button"
+            className="button button-secondary h-7 px-3 text-xs font-semibold inline-flex items-center gap-1"
+            onClick={() => openApplicantModal(row.original)}
+          >
+            View details <ExternalLink className="h-3 w-3" />
+          </button>
+        </div>
+      ),
+    }),
+  ], []);
+
   const maxRevenue = Math.max(1, ...(summary?.monthlyRevenue.map(({ revenue }) => revenue) ?? []));
 
   return (
@@ -434,13 +740,19 @@ export default function ControlCenterPage() {
         </button>
       </div>
 
+      {/* SECTION TABS: Explicitly includes Articles */}
       <nav className="control-tabs" aria-label="Control Center sections">
         {sections.map((item) => (
           <button
             className={`control-tab ${section === item.id ? 'is-active' : ''}`}
             type="button"
             key={item.id}
-            onClick={() => { setSection(item.id); setSearch(''); setError(''); setNotice(''); }}
+            onClick={() => {
+              setSection(item.id);
+              setSearch('');
+              setError('');
+              setNotice('');
+            }}
           >
             {item.label}
           </button>
@@ -471,7 +783,7 @@ export default function ControlCenterPage() {
         </form>
       )}
 
-      {/* SECTION 1: TRYOUTS */}
+      {/* SECTION 1: TRYOUTS DATA TABLE */}
       {section === 'tryouts' && (
         <section className="control-panel" aria-labelledby="tryout-heading">
           <div className="section-heading control-panel-heading">
@@ -492,6 +804,7 @@ export default function ControlCenterPage() {
               New tryout
             </button>
           </div>
+
           {tryoutFormOpen && (
             <form className="control-edit-form" onSubmit={saveTryout}>
               <h3>{editingTryout ? 'Edit tryout' : 'Create tryout'}</h3>
@@ -508,14 +821,15 @@ export default function ControlCenterPage() {
                 </label>
                 <label className="field-label">
                   Batch
-                  <select
-                    className="field-input"
+                  <ComboboxSelect
                     value={tryoutForm.batch}
-                    onChange={(event) => setTryoutForm({ ...tryoutForm, batch: event.target.value as TryoutForm['batch'] })}
-                  >
-                    <option value="SNBT">SNBT</option>
-                    <option value="MANDIRI">Mandiri</option>
-                  </select>
+                    onValueChange={(val) => setTryoutForm({ ...tryoutForm, batch: val as TryoutForm['batch'] })}
+                    options={[
+                      { label: 'SNBT', value: 'SNBT' },
+                      { label: 'Mandiri', value: 'MANDIRI' },
+                    ]}
+                    triggerClassName="w-full h-9"
+                  />
                 </label>
                 <label className="field-label">
                   Solution price (coins)
@@ -602,54 +916,20 @@ export default function ControlCenterPage() {
               </div>
             </form>
           )}
+
           {loading ? (
             <div className="control-empty">Loading tryouts…</div>
-          ) : error ? null : tryouts.length === 0 ? (
-            <div className="control-empty">No tryouts found.</div>
-          ) : (
-            <div className="control-table-wrap">
-              <table className="control-table">
-                <thead>
-                  <tr>
-                    <th>Tryout</th>
-                    <th>Batch</th>
-                    <th>Schedule</th>
-                    <th>Solution price</th>
-                    <th>Status</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {tryouts.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <strong>{item.title}</strong>
-                        <small>#{item.code} · {item.isPublic ? 'Public' : 'Private'}</small>
-                      </td>
-                      <td>{item.batch}</td>
-                      <td>
-                        {formatDate(item.scheduledStart)}
-                        <small>Ends {formatDate(item.scheduledEnd)}</small>
-                      </td>
-                      <td>{item.solutionPrice} coins</td>
-                      <td>
-                        <span className="control-status">{item.status.replaceAll('_', ' ')}</span>
-                      </td>
-                      <td>
-                        <button className="control-text-button" onClick={() => editTryout(item)}>
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          ) : error ? null : (
+            <DataTable
+              columns={tryoutColumns}
+              data={tryouts}
+              emptyMessage="No tryouts found."
+            />
           )}
         </section>
       )}
 
-      {/* SECTION 2: PRICING */}
+      {/* SECTION 2: PRICING DATA TABLE */}
       {section === 'pricing' && (
         <section className="control-panel" aria-labelledby="pricing-heading">
           <div className="section-heading control-panel-heading">
@@ -670,6 +950,7 @@ export default function ControlCenterPage() {
               New package
             </button>
           </div>
+
           {packageFormOpen && (
             <form className="control-edit-form" onSubmit={savePackage}>
               <h3>{editingPackage ? 'Edit package' : 'Create package'}</h3>
@@ -733,50 +1014,20 @@ export default function ControlCenterPage() {
               </div>
             </form>
           )}
+
           {loading ? (
             <div className="control-empty">Loading packages…</div>
-          ) : error ? null : packages.length === 0 ? (
-            <div className="control-empty">No packages found.</div>
-          ) : (
-            <div className="control-table-wrap">
-              <table className="control-table">
-                <thead>
-                  <tr>
-                    <th>Package</th>
-                    <th>Coins</th>
-                    <th>Price</th>
-                    <th>Purchases</th>
-                    <th>Status</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {packages.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <strong>{item.name}</strong>
-                      </td>
-                      <td>{item.tokenAmount}</td>
-                      <td>{currency.format(item.price)}</td>
-                      <td>{item.paymentCount ?? '—'}</td>
-                      <td>
-                        <span className="control-status">{item.isActive ? 'Active' : 'Inactive'}</span>
-                      </td>
-                      <td>
-                        <button className="control-text-button" onClick={() => editPackage(item)}>
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          ) : error ? null : (
+            <DataTable
+              columns={packageColumns}
+              data={packages}
+              emptyMessage="No packages found."
+            />
           )}
         </section>
       )}
 
-      {/* SECTION 3: USERS */}
+      {/* SECTION 3: USERS DATA TABLE */}
       {section === 'users' && (
         <section className="control-panel" aria-labelledby="users-heading">
           <div className="section-heading control-panel-heading">
@@ -786,57 +1037,20 @@ export default function ControlCenterPage() {
             </div>
             <span>{users.length} shown</span>
           </div>
+
           {loading ? (
             <div className="control-empty">Loading users…</div>
-          ) : error ? null : users.length === 0 ? (
-            <div className="control-empty">No users found.</div>
-          ) : (
-            <div className="control-table-wrap">
-              <table className="control-table">
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Jitu role</th>
-                    <th>Target</th>
-                    <th>Coins</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <strong>{item.name}</strong>
-                        <small>{item.email}</small>
-                      </td>
-                      <td>
-                        <select
-                          className="control-inline-select"
-                          value={item.role}
-                          disabled={member?.role !== 'SYSTEM_OWNER'}
-                          onChange={(event) => void updateUserRole(item, event.target.value as User['role'])}
-                        >
-                          <option value="USER">User</option>
-                          <option value="ADMIN">Admin</option>
-                        </select>
-                      </td>
-                      <td>{item.target || 'Not set'}</td>
-                      <td>{item.tokenBalance}</td>
-                      <td>
-                        {member?.role !== 'SYSTEM_OWNER' && item.role !== 'USER' ? (
-                          <span className="control-muted">Owner managed</span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          ) : error ? null : (
+            <DataTable
+              columns={userColumns}
+              data={users}
+              emptyMessage="No users found."
+            />
           )}
         </section>
       )}
 
-      {/* SECTION 4: ARTICLES (NEW MENU) */}
+      {/* SECTION 4: ARTICLES DATA TABLE (NEW MENU) */}
       {section === 'articles' && (
         <section className="control-panel" aria-labelledby="articles-heading">
           <div className="section-heading control-panel-heading">
@@ -892,17 +1106,18 @@ export default function ControlCenterPage() {
                 </label>
                 <label className="field-label">
                   Category
-                  <select
-                    className="field-input"
+                  <ComboboxSelect
                     value={articleForm.category}
-                    onChange={(event) => setArticleForm({ ...articleForm, category: event.target.value })}
-                  >
-                    <option value="UTBK-SNBT">UTBK-SNBT</option>
-                    <option value="Tips & Trik">Tips & Trik</option>
-                    <option value="Info Kampus">Info Kampus</option>
-                    <option value="Materi Soal">Materi Soal</option>
-                    <option value="Edukasi">Edukasi</option>
-                  </select>
+                    onValueChange={(val) => setArticleForm({ ...articleForm, category: val })}
+                    options={[
+                      { label: 'UTBK-SNBT', value: 'UTBK-SNBT' },
+                      { label: 'Tips & Trik', value: 'Tips & Trik' },
+                      { label: 'Info Kampus', value: 'Info Kampus' },
+                      { label: 'Materi Soal', value: 'Materi Soal' },
+                      { label: 'Edukasi', value: 'Edukasi' },
+                    ]}
+                    triggerClassName="w-full h-9"
+                  />
                 </label>
                 <label className="field-label">
                   Author Name
@@ -915,15 +1130,16 @@ export default function ControlCenterPage() {
                 </label>
                 <label className="field-label">
                   Publication Status
-                  <select
-                    className="field-input"
+                  <ComboboxSelect
                     value={articleForm.status}
-                    onChange={(event) => setArticleForm({ ...articleForm, status: event.target.value as ArticleForm['status'] })}
-                  >
-                    <option value="PUBLISHED">Published</option>
-                    <option value="DRAFT">Draft</option>
-                    <option value="ARCHIVED">Archived</option>
-                  </select>
+                    onValueChange={(val) => setArticleForm({ ...articleForm, status: val as ArticleForm['status'] })}
+                    options={[
+                      { label: 'Published', value: 'PUBLISHED' },
+                      { label: 'Draft', value: 'DRAFT' },
+                      { label: 'Archived', value: 'ARCHIVED' },
+                    ]}
+                    triggerClassName="w-full h-9"
+                  />
                 </label>
                 <label className="field-label">
                   Read time (minutes)
@@ -955,7 +1171,7 @@ export default function ControlCenterPage() {
                   />
                 </label>
                 <label className="field-label control-form-wide">
-                  Summary / Excerpt (shown in previews & social cards)
+                  Summary / Excerpt
                   <textarea
                     className="field-input"
                     rows={2}
@@ -997,87 +1213,17 @@ export default function ControlCenterPage() {
 
           {loading ? (
             <div className="control-empty">Loading articles…</div>
-          ) : error ? null : articles.length === 0 ? (
-            <div className="control-empty">No articles found. Create your first article above!</div>
-          ) : (
-            <div className="control-table-wrap">
-              <table className="control-table">
-                <thead>
-                  <tr>
-                    <th>Article</th>
-                    <th>Category</th>
-                    <th>Author</th>
-                    <th>Views</th>
-                    <th>Status</th>
-                    <th>Published</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {articles.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <div className="article-thumbnail-cell">
-                          {item.coverImageUrl ? (
-                            <img src={item.coverImageUrl} alt="" className="article-thumb-img" />
-                          ) : (
-                            <div className="article-thumb-img" style={{ display: 'grid', placeItems: 'center', fontSize: '18px' }}>
-                              📰
-                            </div>
-                          )}
-                          <div>
-                            <strong>{item.title}</strong>
-                            <small style={{ display: 'block', color: 'var(--muted-fg)' }}>/{item.slug}</small>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="article-badge-category">{item.category}</span>
-                        {item.tags && <small style={{ display: 'block', color: 'var(--muted-fg)', fontSize: '11px' }}>{item.tags}</small>}
-                      </td>
-                      <td>{item.authorName}</td>
-                      <td>{item.viewsCount.toLocaleString()}</td>
-                      <td>
-                        <span className={`applicant-status-badge ${item.status === 'PUBLISHED' ? 'status-accepted' : 'status-submitted'}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td>{item.publishedAt ? formatDate(item.publishedAt) : <span className="control-muted">Draft</span>}</td>
-                      <td>
-                        <div style={{ display: 'inline-flex', gap: '8px' }}>
-                          <button
-                            className="button button-secondary"
-                            style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
-                            onClick={() => setPreviewArticle(item)}
-                          >
-                            Preview
-                          </button>
-                          <button
-                            className="button button-secondary"
-                            style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
-                            onClick={() => editArticleItem(item)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="control-text-button"
-                            style={{ color: '#ef4444', fontSize: '11px' }}
-                            onClick={() => void deleteArticleItem(item)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          ) : error ? null : (
+            <DataTable
+              columns={articleColumns}
+              data={articles}
+              emptyMessage="No articles found. Click 'New article' to publish one!"
+            />
           )}
         </section>
       )}
 
-      {/* SECTION 5: CAREERS (WITH FULL CANDIDATE DETAILS MODAL) */}
+      {/* SECTION 5: CAREERS DATA TABLE (WITH VIEW DETAILS) */}
       {section === 'careers' && (
         <section className="control-panel" aria-labelledby="careers-heading">
           <div className="section-heading control-panel-heading">
@@ -1090,51 +1236,12 @@ export default function ControlCenterPage() {
 
           {loading ? (
             <div className="control-empty">Loading applications…</div>
-          ) : error ? null : applications.length === 0 ? (
-            <div className="control-empty">No applications found.</div>
-          ) : (
-            <div className="control-table-wrap">
-              <table className="control-table">
-                <thead>
-                  <tr>
-                    <th>Applicant</th>
-                    <th>Role Applied</th>
-                    <th>Division</th>
-                    <th>Applied</th>
-                    <th>Status</th>
-                    <th>Candidate Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {applications.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <strong>{item.fullName}</strong>
-                        <small>{item.email} · {item.university}</small>
-                      </td>
-                      <td>{item.primaryRole}</td>
-                      <td>{item.primaryDivision}</td>
-                      <td>{formatDate(item.createdAt)}</td>
-                      <td>
-                        <span className={`applicant-status-badge status-${item.status.toLowerCase()}`}>
-                          {item.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="button button-secondary"
-                          style={{ padding: '4px 12px', fontSize: '12px', height: '30px', fontWeight: 600 }}
-                          onClick={() => openApplicantModal(item)}
-                        >
-                          View details
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          ) : error ? null : (
+            <DataTable
+              columns={careerColumns}
+              data={applications}
+              emptyMessage="No applications found."
+            />
           )}
         </section>
       )}
@@ -1378,7 +1485,7 @@ export default function ControlCenterPage() {
                 </div>
               )}
 
-              {/* Review & Status Editor */}
+              {/* Review & Status Editor with Combobox */}
               <div style={{ background: 'var(--card-subtle)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px' }}>
                 <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 650, color: 'var(--foreground)' }}>
                   Internal Review & Status Update
@@ -1386,17 +1493,18 @@ export default function ControlCenterPage() {
                 <div className="control-form-grid" style={{ marginBottom: '12px' }}>
                   <label className="field-label">
                     Recruitment Stage / Status
-                    <select
-                      className="field-input"
+                    <ComboboxSelect
                       value={applicantStatusDraft}
-                      onChange={(e) => setApplicantStatusDraft(e.target.value as CareerApplication['status'])}
-                    >
-                      <option value="SUBMITTED">Submitted</option>
-                      <option value="UNDER_REVIEW">Under Review</option>
-                      <option value="INTERVIEW">Interview</option>
-                      <option value="ACCEPTED">Accepted</option>
-                      <option value="REJECTED">Rejected</option>
-                    </select>
+                      onValueChange={(val) => setApplicantStatusDraft(val as CareerApplication['status'])}
+                      options={[
+                        { label: 'Submitted', value: 'SUBMITTED' },
+                        { label: 'Under Review', value: 'UNDER_REVIEW' },
+                        { label: 'Interview', value: 'INTERVIEW' },
+                        { label: 'Accepted', value: 'ACCEPTED' },
+                        { label: 'Rejected', value: 'REJECTED' },
+                      ]}
+                      triggerClassName="w-full h-9 font-semibold"
+                    />
                   </label>
                   <label className="field-label control-form-wide">
                     Admin Notes (visible only to team admins)
