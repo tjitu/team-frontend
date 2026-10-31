@@ -189,6 +189,7 @@ export default function OverviewPage() {
   const [chartMetric, setChartMetric] = useState<'revenue' | 'coins' | 'users'>('revenue');
   const [analyticsTab, setAnalyticsTab] = useState<'pages' | 'countries' | 'sources' | 'devices' | 'events'>('pages');
 
+  const [visitorInterval, setVisitorInterval] = useState<'7d' | '14d' | '30d'>('14d');
   const [coinChartMode, setCoinChartMode] = useState<'daily' | 'monthly'>('daily');
   const [hoveredTrendIdx, setHoveredTrendIdx] = useState<number | null>(null);
   const [hoveredCoinIdx, setHoveredCoinIdx] = useState<number | null>(null);
@@ -219,10 +220,13 @@ export default function OverviewPage() {
   }, []);
 
   const visitorSvgGeometry = useMemo(() => {
-    const pts = data?.visitorTrend ?? [];
-    if (pts.length === 0) return { visitorLine: '', visitorArea: '', maxVisitor: 1, totalVisitors: 0, coordsVisitor: [] };
+    const rawPts = data?.visitorTrend ?? [];
+    if (rawPts.length === 0) return { visitorLine: '', visitorArea: '', maxVisitor: 1, totalVisitors: 0, coordsVisitor: [], pts: [] };
+    const sliceCount = visitorInterval === '7d' ? 7 : visitorInterval === '14d' ? 14 : rawPts.length;
+    const pts = rawPts.slice(-sliceCount);
+
     const width = 560;
-    const height = 180;
+    const height = 190;
     const padX = 20;
     const padY = 24;
     const maxV = Math.max(1, ...pts.map((p) => p.visitors));
@@ -239,8 +243,8 @@ export default function OverviewPage() {
     const visitorArea = `${visitorLine} L${coordsVisitor[coordsVisitor.length - 1].x.toFixed(1)},${height - padY} L${coordsVisitor[0].x.toFixed(1)},${height - padY} Z`;
     const totalVisitors = pts.reduce((sum, p) => sum + p.visitors, 0);
 
-    return { visitorLine, visitorArea, maxVisitor: maxV, totalVisitors, coordsVisitor };
-  }, [data]);
+    return { visitorLine, visitorArea, maxVisitor: maxV, totalVisitors, coordsVisitor, pts };
+  }, [data, visitorInterval]);
 
   const coinsGeometry = useMemo(() => {
     const pts = data?.visitorTrend ?? [];
@@ -493,41 +497,49 @@ export default function OverviewPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h2>Visitors Trend</h2>
                 <span className="source-pill" style={{ fontSize: '11px' }}>
-                  14-Day Performance
+                  {visitorInterval}
                 </span>
               </div>
-              <p>Daily website visitors and traffic volume over the last 14 days</p>
+              <p>Daily website visitors and traffic volume</p>
             </div>
-            <div className="overview-chart-legend">
-              <span className="legend-item">
-                <span style={{ width: '9px', height: '9px', borderRadius: '50%', border: '2px solid var(--foreground)', display: 'inline-block', marginRight: '5px' }} />
-                Unique Visitors
-              </span>
+            <div className="project-view-tabs" role="tablist" aria-label="Visitors interval switcher">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={visitorInterval === '14d'}
+                className={`project-view-tab ${visitorInterval === '14d' ? 'is-active' : ''}`}
+                onClick={() => setVisitorInterval('14d')}
+              >
+                14d
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={visitorInterval === '7d'}
+                className={`project-view-tab ${visitorInterval === '7d' ? 'is-active' : ''}`}
+                onClick={() => setVisitorInterval('7d')}
+              >
+                7d
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={visitorInterval === '30d'}
+                className={`project-view-tab ${visitorInterval === '30d' ? 'is-active' : ''}`}
+                onClick={() => setVisitorInterval('30d')}
+              >
+                30d
+              </button>
             </div>
           </div>
 
-          <div className="chart-summary-strip">
-            <div className="chart-summary-item">
-              <span className="chart-summary-label">14-Day Visitors</span>
-              <span className="chart-summary-val">{compactNumber.format(visitorSvgGeometry.totalVisitors)}</span>
-            </div>
-            <div className="chart-summary-item">
-              <span className="chart-summary-label">Total Pageviews</span>
-              <span className="chart-summary-val">{compactNumber.format(data?.visitors.totalPageViews ?? 0)}</span>
-            </div>
-            <div className="chart-summary-item">
-              <span className="chart-summary-label">Peak Day</span>
-              <span className="chart-summary-val">{compactNumber.format(visitorSvgGeometry.maxVisitor)}</span>
-            </div>
-          </div>
-
-          <div className="overview-line-chart-wrap">
+          <div className="overview-line-chart-wrap" style={{ marginTop: '8px' }}>
             <svg
               className="overview-line-svg"
-              viewBox="0 0 560 180"
+              viewBox="0 0 560 190"
               preserveAspectRatio="none"
               role="img"
-              aria-label="14-day visitors trend graph"
+              aria-label="Visitors trend graph"
             >
               <defs>
                 <linearGradient id="visOnlyGrad" x1="0" y1="0" x2="0" y2="1">
@@ -537,8 +549,8 @@ export default function OverviewPage() {
               </defs>
 
               <line x1="20" y1="36" x2="540" y2="36" className="chart-grid-line" />
-              <line x1="20" y1="90" x2="540" y2="90" className="chart-grid-line" />
-              <line x1="20" y1="144" x2="540" y2="144" className="chart-grid-line" />
+              <line x1="20" y1="95" x2="540" y2="95" className="chart-grid-line" />
+              <line x1="20" y1="154" x2="540" y2="154" className="chart-grid-line" />
 
               {visitorSvgGeometry.visitorArea && (
                 <path d={visitorSvgGeometry.visitorArea} fill="url(#visOnlyGrad)" />
@@ -570,16 +582,16 @@ export default function OverviewPage() {
               ))}
             </svg>
 
-            {hoveredTrendIdx !== null && data?.visitorTrend?.[hoveredTrendIdx] && (
+            {hoveredTrendIdx !== null && visitorSvgGeometry.coordsVisitor[hoveredTrendIdx] && (
               <div className="chart-tooltip-panel">
-                <strong>{data.visitorTrend[hoveredTrendIdx].label} ({data.visitorTrend[hoveredTrendIdx].date})</strong>
-                <span>Unique Visitors: <strong>{compactNumber.format(data.visitorTrend[hoveredTrendIdx].visitors)}</strong></span>
-                <span>Pageviews: <strong>{compactNumber.format(data.visitorTrend[hoveredTrendIdx].pageViews)}</strong></span>
+                <strong>{visitorSvgGeometry.coordsVisitor[hoveredTrendIdx].pt.label} ({visitorSvgGeometry.coordsVisitor[hoveredTrendIdx].pt.date})</strong>
+                <span>Unique Visitors: <strong>{compactNumber.format(visitorSvgGeometry.coordsVisitor[hoveredTrendIdx].pt.visitors)}</strong></span>
+                <span>Pageviews: <strong>{compactNumber.format(visitorSvgGeometry.coordsVisitor[hoveredTrendIdx].pt.pageViews)}</strong></span>
               </div>
             )}
 
             <div className="overview-line-labels">
-              {(data?.visitorTrend ?? [])
+              {(visitorSvgGeometry.pts ?? [])
                 .filter((_, idx, arr) => idx % 2 === 0 || idx === arr.length - 1)
                 .map((pt) => (
                   <span key={pt.date}>{pt.label}</span>
@@ -601,7 +613,7 @@ export default function OverviewPage() {
               </div>
               <p>
                 {coinChartMode === 'daily'
-                  ? 'Daily coin distribution and purchasing velocity (last 14 days)'
+                  ? 'Daily coin distribution and purchasing velocity'
                   : 'Monthly confirmed coin purchases over the last 6 months'}
               </p>
             </div>
@@ -613,7 +625,7 @@ export default function OverviewPage() {
                 className={`project-view-tab ${coinChartMode === 'daily' ? 'is-active' : ''}`}
                 onClick={() => setCoinChartMode('daily')}
               >
-                Daily (14d)
+                14d
               </button>
               <button
                 type="button"
@@ -622,34 +634,16 @@ export default function OverviewPage() {
                 className={`project-view-tab ${coinChartMode === 'monthly' ? 'is-active' : ''}`}
                 onClick={() => setCoinChartMode('monthly')}
               >
-                Monthly (6m)
+                6m
               </button>
             </div>
           </div>
 
-          <div className="chart-summary-strip">
-            <div className="chart-summary-item">
-              <span className="chart-summary-label">Total Coins Sold</span>
-              <span className="chart-summary-val" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#f59e0b' }}>
-                {compactNumber.format(data?.revenue.coinsSold ?? 0)}
-                <PixelCoin size={15} />
-              </span>
-            </div>
-            <div className="chart-summary-item">
-              <span className="chart-summary-label">Gross Revenue</span>
-              <span className="chart-summary-val" style={{ color: '#10b981' }}>{idrFormatter.format(data?.revenue.totalRevenue ?? 0)}</span>
-            </div>
-            <div className="chart-summary-item">
-              <span className="chart-summary-label">Confirmed Orders</span>
-              <span className="chart-summary-val">{compactNumber.format(data?.revenue.confirmedPayments ?? 0)}</span>
-            </div>
-          </div>
-
           {coinChartMode === 'daily' ? (
-            <div className="overview-line-chart-wrap">
+            <div className="overview-line-chart-wrap" style={{ marginTop: '8px' }}>
               <svg
                 className="overview-line-svg"
-                viewBox="0 0 560 180"
+                viewBox="0 0 560 190"
                 preserveAspectRatio="none"
                 role="img"
                 aria-label="14-day daily coins trend graph"
@@ -662,8 +656,8 @@ export default function OverviewPage() {
                 </defs>
 
                 <line x1="20" y1="36" x2="540" y2="36" className="chart-grid-line" />
-                <line x1="20" y1="90" x2="540" y2="90" className="chart-grid-line" />
-                <line x1="20" y1="144" x2="540" y2="144" className="chart-grid-line" />
+                <line x1="20" y1="95" x2="540" y2="95" className="chart-grid-line" />
+                <line x1="20" y1="154" x2="540" y2="154" className="chart-grid-line" />
 
                 {coinsGeometry.coinsArea && (
                   <path d={coinsGeometry.coinsArea} fill="url(#coinDailyGrad)" />
@@ -715,7 +709,7 @@ export default function OverviewPage() {
               </div>
             </div>
           ) : (
-            <div className="overview-bar-chart" role="img" aria-label="Monthly coins distribution bar chart">
+            <div className="overview-bar-chart" role="img" aria-label="Monthly coins distribution bar chart" style={{ marginTop: '8px' }}>
               {(data?.monthlySeries ?? []).map((pt) => {
                 const maxC = Math.max(1, ...(data?.monthlySeries ?? []).map((m) => m.coinsSold));
                 const heightPct = Math.max(12, Math.round((pt.coinsSold / maxC) * 100));
