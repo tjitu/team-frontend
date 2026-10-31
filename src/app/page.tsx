@@ -188,7 +188,7 @@ export default function OverviewPage() {
   const [showVercelModal, setShowVercelModal] = useState(false);
   const [vercelToken, setVercelToken] = useState('');
   const [vercelProjectId, setVercelProjectId] = useState('');
-  const [vercelTeamId, setVercelTeamId] = useState('team_AwXSFqNTh675u2W43i6HDQzY');
+  const [vercelTeamId, setVercelTeamId] = useState('');
   const [savingVercel, setSavingVercel] = useState(false);
   const [vercelModalError, setVercelModalError] = useState('');
   const [vercelModalSuccess, setVercelModalSuccess] = useState('');
@@ -1079,7 +1079,7 @@ export default function OverviewPage() {
                     onChange={(e) => setVercelTeamId(e.target.value)}
                   />
                   <small style={{ color: 'var(--muted-fg)', fontSize: '11px' }}>
-                    Defaults to your workspace team ID (<code>team_AwXSFqNTh675u2W43i6HDQzY</code>).
+                    Leave blank if your project is in a Personal Account (Hobby). Only fill this if your project is owned by a Vercel Team.
                   </small>
                 </div>
               </div>
