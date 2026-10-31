@@ -12,7 +12,17 @@ const priorities: TaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
 const statusLabels: Record<TaskStatus, string> = { TODO: 'To do', IN_PROGRESS: 'In progress', BLOCKED: 'Blocked', DONE: 'Done' };
 const priorityLabels: Record<TaskPriority, string> = { LOW: 'Low', NORMAL: 'Normal', HIGH: 'High', URGENT: 'Urgent' };
 const roleLabels: Record<ProjectRole, string> = { PROJECT_MANAGER: 'Project Manager', MEMBER: 'Member', VIEWER: 'Viewer' };
-type TaskView = 'board' | 'list';
+type TaskView = 'board' | 'list' | 'timeline';
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function utcDay(value: string) {
+  const date = new Date(value);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function monthLabel(value: Date) {
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(value);
+}
 
 function dateLabel(value?: string | null) {
   if (!value) return 'Not set';
@@ -107,11 +117,15 @@ export default function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const taskView: TaskView = searchParams.get('view') === 'list' ? 'list' : 'board';
+  const taskView: TaskView = searchParams.get('view') === 'list' || searchParams.get('view') === 'timeline' ? searchParams.get('view') as TaskView : 'board';
   const [project, setProject] = useState<Project | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [timelineMonth, setTimelineMonth] = useState(() => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  });
   const [hasMoreTasks, setHasMoreTasks] = useState(false);
   const [nextTaskCursor, setNextTaskCursor] = useState<string | null>(null);
   const [loadingMoreTasks, setLoadingMoreTasks] = useState(false);
@@ -451,6 +465,14 @@ export default function ProjectPage() {
   }
 
   const filteredCount = tasks.length;
+  const timelineMonthStart = timelineMonth.getTime();
+  const timelineDayCount = new Date(Date.UTC(timelineMonth.getUTCFullYear(), timelineMonth.getUTCMonth() + 1, 0)).getUTCDate();
+  const timelineMonthEnd = timelineMonthStart + (timelineDayCount - 1) * DAY_MS;
+  const timelineTasks = tasks
+    .filter((task) => task.dueAt && utcDay(task.createdAt) <= timelineMonthEnd && utcDay(task.dueAt) >= timelineMonthStart)
+    .sort((a, b) => utcDay(a.createdAt) - utcDay(b.createdAt));
+  const unscheduledTasks = tasks.filter((task) => !task.dueAt);
+  const timelineGridStyle = { gridTemplateColumns: `minmax(210px, 250px) repeat(${timelineDayCount}, 32px)` } as CSSProperties;
 
   return (
     <div className="page-content">
@@ -468,6 +490,7 @@ export default function ProjectPage() {
         <div className="project-view-tabs" aria-label="Task view">
           <Link className={`project-view-tab ${taskView === 'board' ? 'is-active' : ''}`} href={taskViewHref('board')} aria-current={taskView === 'board' ? 'page' : undefined} scroll={false}>Board</Link>
           <Link className={`project-view-tab ${taskView === 'list' ? 'is-active' : ''}`} href={taskViewHref('list')} aria-current={taskView === 'list' ? 'page' : undefined} scroll={false}>List</Link>
+          <Link className={`project-view-tab ${taskView === 'timeline' ? 'is-active' : ''}`} href={taskViewHref('timeline')} aria-current={taskView === 'timeline' ? 'page' : undefined} scroll={false}>Timeline</Link>
         </div>
         <div className="project-context-actions">
           {project && <span className="project-member-summary"><span className="mini-people-icon" aria-hidden="true" />{project.members?.length ?? 0} {project.members?.length === 1 ? 'member' : 'members'}</span>}
@@ -483,7 +506,7 @@ export default function ProjectPage() {
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(false)}>Reload</button></div>}
       {detailError && !selectedTask && <div className="inline-message error" role="alert">{detailError}</div>}
 
-      <div className="section-heading section-spacer task-section-heading"><div><h2>{taskView === 'board' ? 'Task board' : 'Task list'}</h2><p>{taskView === 'board' ? 'Move work by changing the status on a task card.' : 'Manage task status, priority, assignees, and due dates.'}</p></div><span className="task-count">{filteredCount} shown</span></div>
+      <div className="section-heading section-spacer task-section-heading"><div><h2>{taskView === 'board' ? 'Task board' : taskView === 'timeline' ? 'Project timeline' : 'Task list'}</h2><p>{taskView === 'board' ? 'Move work by changing the status on a task card.' : taskView === 'timeline' ? 'See each task from its creation date through its due date.' : 'Manage task status, priority, assignees, and due dates.'}</p></div><span className="task-count">{filteredCount} shown</span></div>
       <div className="task-layout">
         <div>
           <form className="task-toolbar" onSubmit={(event) => { event.preventDefault(); setAppliedQuery(query); }}>
@@ -514,7 +537,34 @@ export default function ProjectPage() {
                 </tr>)}</tbody>
               </table>
             </div>
-          ) : loading ? null : tasks.length && taskView === 'board' ? (
+          ) : loading ? null : taskView === 'timeline' ? (
+            <section className="project-timeline" aria-label="Project task timeline">
+              <div className="timeline-toolbar">
+                <div><strong>{monthLabel(timelineMonth)}</strong><span>Tasks with due dates</span></div>
+                <div className="timeline-month-controls"><button className="icon-button" type="button" aria-label="Previous month" onClick={() => setTimelineMonth((month) => new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() - 1, 1)))}>‹</button><button className="button button-secondary" type="button" onClick={() => { const now = new Date(); setTimelineMonth(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))); }}>Today</button><button className="icon-button" type="button" aria-label="Next month" onClick={() => setTimelineMonth((month) => new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1)))}>›</button></div>
+              </div>
+              {timelineTasks.length ? <div className="timeline-scroll"><div className="timeline-grid" style={timelineGridStyle}>
+                <div className="timeline-grid-header" style={timelineGridStyle}><span className="timeline-task-heading">Task</span>{Array.from({ length: timelineDayCount }, (_, index) => {
+                  const date = new Date(timelineMonthStart + index * DAY_MS);
+                  const weekday = date.getUTCDay();
+                  const isToday = utcDay(new Date().toISOString()) === date.getTime();
+                  return <span className={`timeline-day-heading ${weekday === 0 || weekday === 6 ? 'is-weekend' : ''} ${isToday ? 'is-today' : ''}`} key={index}><small>{new Intl.DateTimeFormat('en-US', { weekday: 'narrow', timeZone: 'UTC' }).format(date)}</small><time dateTime={date.toISOString()}>{index + 1}</time></span>;
+                })}</div>
+                {timelineTasks.map((task) => {
+                  const startIndex = Math.max(0, Math.floor((utcDay(task.createdAt) - timelineMonthStart) / DAY_MS));
+                  const endIndex = Math.min(timelineDayCount - 1, Math.floor((utcDay(task.dueAt!) - timelineMonthStart) / DAY_MS));
+                  return <div className="timeline-grid-row" style={timelineGridStyle} key={task.id}>
+                    <div className="timeline-task-name"><button type="button" onClick={() => void openTask(task.id)}>{task.title}</button><span>{statusLabels[task.status]} · due {dateLabel(task.dueAt)}</span></div>
+                    <div className="timeline-row-track" style={{ gridColumn: `2 / span ${timelineDayCount}`, gridTemplateColumns: `repeat(${timelineDayCount}, 32px)` }}>
+                      {Array.from({ length: timelineDayCount }, (_, index) => <span className={`timeline-day-cell ${index % 2 ? '' : 'is-alternate'}`} key={index} />)}
+                      <button className={`timeline-bar status-${task.status}`} type="button" style={{ gridColumn: `${startIndex + 1} / ${Math.max(startIndex + 2, endIndex + 2)}`, gridRow: 1 }} title={`${task.title}: created ${dateLabel(task.createdAt)}, due ${dateLabel(task.dueAt)}`} aria-label={`${task.title}, created ${dateLabel(task.createdAt)}, due ${dateLabel(task.dueAt)}`} onClick={() => void openTask(task.id)} />
+                    </div>
+                  </div>;
+                })}
+              </div></div> : <div className="timeline-empty">No tasks with due dates in {monthLabel(timelineMonth)}.</div>}
+              {unscheduledTasks.length > 0 && <section className="timeline-unscheduled"><div><h3>Unscheduled</h3><span>{unscheduledTasks.length} {unscheduledTasks.length === 1 ? 'task' : 'tasks'} without a due date</span></div><div className="timeline-unscheduled-list">{unscheduledTasks.map((task) => <button type="button" key={task.id} onClick={() => void openTask(task.id)}><span>{task.title}</span><small>{statusLabels[task.status]}</small></button>)}</div></section>}
+            </section>
+          ) : tasks.length && taskView === 'board' ? (
             <div className="task-board" aria-label="Task board">
               {statuses.map((status) => {
                 const columnTasks = tasks.filter((task) => task.status === status);
