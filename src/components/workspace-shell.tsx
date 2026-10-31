@@ -15,7 +15,8 @@ import {
   PanelLeft,
   ChevronDown,
   LogOut,
-  FolderDot,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { api, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -34,12 +35,13 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
   const accountControlRef = useRef<HTMLDivElement>(null);
   const accountTriggerRef = useRef<HTMLButtonElement>(null);
 
   const activeProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
-  const pageLabel = pathname === '/' ? 'Overview'
+  const pageLabel = pathname === '/' ? 'Dashboard'
     : pathname === '/projects/archived' ? 'Archived projects'
     : pathname === '/tasks' ? 'Tasks'
     : pathname === '/control-center' ? 'Control Center'
@@ -54,12 +56,20 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     const savedTheme = window.localStorage.getItem('jitu-team-theme');
     const shouldUseDarkMode = savedTheme === 'dark';
     document.documentElement.classList.toggle('dark', shouldUseDarkMode);
+    setDarkMode(shouldUseDarkMode);
 
     const savedSidebar = window.localStorage.getItem('jitu-team-sidebar-collapsed');
     if (savedSidebar !== null) {
       setIsCollapsed(savedSidebar === 'true');
     }
   }, []);
+
+  function toggleQuickTheme() {
+    const nextDark = !darkMode;
+    document.documentElement.classList.toggle('dark', nextDark);
+    window.localStorage.setItem('jitu-team-theme', nextDark ? 'dark' : 'light');
+    setDarkMode(nextDark);
+  }
 
   // Global Ctrl+B shortcut to toggle sidebar
   useEffect(() => {
@@ -105,7 +115,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       setLoadError(error.message);
     });
     return () => { active = false; };
-  }, [isInvitationRoute, isLoginRoute]);
+  }, [isInvitationRoute, isLoginRoute, pathname]);
 
   useEffect(() => {
     if (!accountOpen) return;
@@ -145,7 +155,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="workspace">
+    <div className="workspace" data-variant="inset">
       <a className="skip-link" href="#main-content">Skip to main content</a>
       
       {/* SIDEBAR */}
@@ -153,7 +163,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-header">
           {!isCollapsed && (
             <Link className="brand-mark-link" href="/" aria-label="Jitu Team Home" title="JituPTN Team Platform">
-              <BrandLogo size={32} />
+              <BrandLogo size={28} />
             </Link>
           )}
           <button
@@ -167,16 +177,16 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <div className="sidebar-label">Workspace</div>
+        <div className="sidebar-label">Dashboards</div>
         <nav className="primary-nav" aria-label="Workspace">
           <Link
             className={`nav-link ${pathname === '/' ? 'is-active' : ''}`}
             href="/"
-            title="Overview"
+            title="Dashboard"
             aria-current={pathname === '/' ? 'page' : undefined}
           >
             <LayoutDashboard className="nav-icon" />
-            <span className="nav-link-text">Overview</span>
+            <span className="nav-link-text">Default</span>
           </Link>
 
           {member && (
@@ -188,6 +198,18 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             >
               <CheckSquare className="nav-icon" />
               <span className="nav-link-text">Tasks</span>
+            </Link>
+          )}
+
+          {member && (
+            <Link
+              className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`}
+              href="/departments"
+              title="Departments"
+              aria-current={pathname.startsWith('/departments') ? 'page' : undefined}
+            >
+              <Building2 className="nav-icon" />
+              <span className="nav-link-text">Departments</span>
             </Link>
           )}
 
@@ -211,7 +233,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               aria-current={pathname === '/activity' ? 'page' : undefined}
             >
               <Activity className="nav-icon" />
-              <span className="nav-link-text">Team activity</span>
+              <span className="nav-link-text">Activity</span>
             </Link>
           )}
 
@@ -226,34 +248,12 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               <span className="nav-link-text">Control Center</span>
             </Link>
           )}
-
-          {member && (
-            <Link
-              className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`}
-              href="/departments"
-              title="Departments"
-              aria-current={pathname.startsWith('/departments') ? 'page' : undefined}
-            >
-              <Building2 className="nav-icon" />
-              <span className="nav-link-text">Departments</span>
-            </Link>
-          )}
         </nav>
 
         <div className="sidebar-section-heading">
           <span className="nav-link-text">Projects</span>
           <span className="count-pill">{projects.length}</span>
         </div>
-
-        <Link
-          className={`nav-link archived-project-nav ${pathname === '/projects/archived' ? 'is-active' : ''}`}
-          href="/projects/archived"
-          title="Archived projects"
-          aria-current={pathname === '/projects/archived' ? 'page' : undefined}
-        >
-          <Archive className="nav-icon" />
-          <span className="nav-link-text">Archived projects</span>
-        </Link>
 
         <nav className="project-nav" aria-label="Projects">
           {projects.map((project) => (
@@ -270,18 +270,27 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
           {projects.length === 0 && !loadError && <p className="sidebar-empty">No active projects yet</p>}
+          <Link
+            className={`nav-link archived-project-nav ${pathname === '/projects/archived' ? 'is-active' : ''}`}
+            href="/projects/archived"
+            title="Archived projects"
+            aria-current={pathname === '/projects/archived' ? 'page' : undefined}
+          >
+            <Archive className="nav-icon" />
+            <span className="nav-link-text">Archived</span>
+          </Link>
         </nav>
 
         <div className="sidebar-footer" title={member ? `${member.name} (${member.role?.replaceAll('_', ' ')})` : undefined}>
           <div className="avatar avatar-small">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</div>
           <div className="profile-copy">
             <strong className="truncate">{member?.name ?? 'Loading account…'}</strong>
-            <span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team member'}</span>
+            <span className="truncate">{member?.email ?? 'Team member'}</span>
           </div>
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT AREA (SHADCN INSET CONTAINER) */}
       <main className={`main-area ${isCollapsed ? 'is-collapsed' : ''}`} id="main-content" tabIndex={-1}>
         <header className="topbar">
           <div className="topbar-left">
@@ -292,44 +301,56 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
 
-          <div className="account-control" ref={accountControlRef}>
+          <div className="topbar-right">
             <button
-              ref={accountTriggerRef}
-              className="account-trigger"
               type="button"
-              aria-label="Open account menu"
-              aria-expanded={accountOpen}
-              aria-controls="account-menu"
-              onClick={() => { setSignOutError(''); setAccountOpen((open) => !open); }}
+              className="topbar-icon-btn"
+              onClick={toggleQuickTheme}
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              <span className="avatar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</span>
-              <span className="account-trigger-copy">
-                <strong className="truncate">{member?.name ?? 'Loading account…'}</strong>
-                <small className="truncate">{member?.email ?? 'JituPTN Team Platform'}</small>
-              </span>
-              <ChevronDown className={`account-chevron ${accountOpen ? 'is-open' : ''} w-3.5 h-3.5`} aria-hidden="true" />
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
+            <div className="topbar-divider" aria-hidden="true" />
+            <div className="account-control" ref={accountControlRef}>
+              <button
+                ref={accountTriggerRef}
+                className="account-trigger"
+                type="button"
+                aria-label="Open account menu"
+                aria-expanded={accountOpen}
+                aria-controls="account-menu"
+                onClick={() => { setSignOutError(''); setAccountOpen((open) => !open); }}
+              >
+                <span className="avatar avatar-topbar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</span>
+                <span className="account-trigger-copy">
+                  <strong className="truncate">{member?.name ?? 'Loading…'}</strong>
+                  <small className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Member'}</small>
+                </span>
+                <ChevronDown className={`account-chevron ${accountOpen ? 'is-open' : ''} w-3.5 h-3.5`} aria-hidden="true" />
+              </button>
 
-            {accountOpen && (
-              <div className="account-menu" id="account-menu" aria-label="Account menu">
-                <div className="account-menu-identity">
-                  <strong className="truncate">{member?.name ?? 'JituPTN Team Platform account'}</strong>
-                  <span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team member'}</span>
+              {accountOpen && (
+                <div className="account-menu" id="account-menu" aria-label="Account menu">
+                  <div className="account-menu-identity">
+                    <strong className="truncate">{member?.name ?? 'Account'}</strong>
+                    <span className="truncate">{member?.email ?? 'JituPTN Team'}</span>
+                  </div>
+                  <ThemeToggle />
+                  {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
+                  <button
+                    className="account-logout danger-action"
+                    type="button"
+                    disabled={signingOut}
+                    onClick={() => void signOut()}
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
+                    {signingOut && <span className="account-logout-spinner" aria-hidden="true" />}
+                  </button>
                 </div>
-                <ThemeToggle />
-                {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
-                <button
-                  className="account-logout danger-action"
-                  type="button"
-                  disabled={signingOut}
-                  onClick={() => void signOut()}
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
-                  {signingOut && <span className="account-logout-spinner" aria-hidden="true" />}
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </header>
 
