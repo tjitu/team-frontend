@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { api, CurrentMember, Task, TaskListPage, TaskPriority, TaskStatus, TeamMember, isAdministrator, signInUrl } from '@/lib/api';
 
 const STATUSES: Array<{ value: TaskStatus; label: string }> = [
@@ -15,6 +15,16 @@ const PRIORITIES: Array<{ value: TaskPriority; label: string }> = [
   { value: 'HIGH', label: 'High' },
   { value: 'URGENT', label: 'Urgent' },
 ];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function utcDay(value: string) {
+  const date = new Date(value);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function monthLabel(value: Date) {
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(value);
+}
 
 function dateInput(value: string | null) {
   return value ? new Date(value).toISOString().slice(0, 10) : '';
@@ -102,6 +112,11 @@ export default function StandaloneTasksPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | ''>('');
+  const [taskView, setTaskView] = useState<'board' | 'timeline'>('board');
+  const [timelineMonth, setTimelineMonth] = useState(() => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  });
   const [modalTask, setModalTask] = useState<Task | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
@@ -160,6 +175,22 @@ export default function StandaloneTasksPage() {
       (!statusFilter || task.status === statusFilter) &&
       (!priorityFilter || task.priority === priorityFilter);
   }), [tasks, search, statusFilter, priorityFilter]);
+  const timelineMonthStart = timelineMonth.getTime();
+  const timelineDayCount = new Date(Date.UTC(timelineMonth.getUTCFullYear(), timelineMonth.getUTCMonth() + 1, 0)).getUTCDate();
+  const timelineMonthEnd = timelineMonthStart + (timelineDayCount - 1) * DAY_MS;
+  const timelineTasks = filteredTasks
+    .filter((task) => task.dueAt && utcDay(task.createdAt) <= timelineMonthEnd && utcDay(task.dueAt) >= timelineMonthStart)
+    .sort((a, b) => utcDay(a.createdAt) - utcDay(b.createdAt));
+  const unscheduledTasks = filteredTasks.filter((task) => !task.dueAt);
+  const timelineGridStyle = { gridTemplateColumns: `minmax(210px, 250px) repeat(${timelineDayCount}, 32px)` } as CSSProperties;
+
+  function openTask(task: Task) {
+    setFormError('');
+    setCommentError('');
+    setCreateOpen(false);
+    setSelectedAssigneeIds(task.assignees.map(({ teamMember }) => teamMember.id));
+    setModalTask(task);
+  }
 
   async function saveTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -254,16 +285,52 @@ export default function StandaloneTasksPage() {
         <label><span className="sr-only">Filter by priority</span><select className="filter-select" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value as TaskPriority | '')}><option value="">All priorities</option>{PRIORITIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>
         <span className="section-count">{filteredTasks.length} {filteredTasks.length === 1 ? 'task' : 'tasks'}</span>
       </div>
+      <div className="project-view-tabs standalone-view-tabs" role="group" aria-label="Task view">
+        <button className={`project-view-tab ${taskView === 'board' ? 'is-active' : ''}`} type="button" aria-pressed={taskView === 'board'} onClick={() => setTaskView('board')}>Board</button>
+        <button className={`project-view-tab ${taskView === 'timeline' ? 'is-active' : ''}`} type="button" aria-pressed={taskView === 'timeline'} onClick={() => setTaskView('timeline')}>Timeline</button>
+      </div>
 
       {loading ? <div className="loading-skeleton standalone-loading" aria-label="Loading tasks" /> : filteredTasks.length ? (
-        <div className="task-board standalone-task-board">
+        taskView === 'timeline' ? (
+          <section className="project-timeline standalone-timeline" aria-label="Standalone task timeline">
+            <div className="timeline-toolbar">
+              <div><strong>{monthLabel(timelineMonth)}</strong><span>Tasks with due dates</span></div>
+              <div className="timeline-month-controls">
+                <button className="icon-button" type="button" aria-label="Previous month" onClick={() => setTimelineMonth((month) => new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() - 1, 1)))}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m10 3-5 5 5 5" /></svg></button>
+                <button className="button button-secondary" type="button" onClick={() => { const now = new Date(); setTimelineMonth(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))); }}>Today</button>
+                <button className="icon-button" type="button" aria-label="Next month" onClick={() => setTimelineMonth((month) => new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1)))}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg></button>
+              </div>
+            </div>
+            {timelineTasks.length ? <div className="timeline-scroll"><div className="timeline-grid" style={timelineGridStyle}>
+              <div className="timeline-grid-header" style={timelineGridStyle}><span className="timeline-task-heading">Task</span>{Array.from({ length: timelineDayCount }, (_, index) => {
+                const date = new Date(timelineMonthStart + index * DAY_MS);
+                const weekday = date.getUTCDay();
+                const isToday = utcDay(new Date().toISOString()) === date.getTime();
+                return <span className={`timeline-day-heading ${weekday === 0 || weekday === 6 ? 'is-weekend' : ''} ${isToday ? 'is-today' : ''}`} key={index}><small>{new Intl.DateTimeFormat('en-US', { weekday: 'narrow', timeZone: 'UTC' }).format(date)}</small><time dateTime={date.toISOString()}>{index + 1}</time></span>;
+              })}</div>
+              {timelineTasks.map((task) => {
+                const startIndex = Math.max(0, Math.floor((utcDay(task.createdAt) - timelineMonthStart) / DAY_MS));
+                const endIndex = Math.min(timelineDayCount - 1, Math.floor((utcDay(task.dueAt!) - timelineMonthStart) / DAY_MS));
+                const people = task.assignees.length ? task.assignees.map(({ teamMember }) => teamMember.name).join(', ') : `Created by ${task.createdBy.name}`;
+                return <div className="timeline-grid-row" style={timelineGridStyle} key={task.id}>
+                  <div className="timeline-task-name"><button type="button" onClick={() => openTask(task)}>{task.title}</button><span>{STATUSES.find(({ value }) => value === task.status)?.label} · {people}</span></div>
+                  <div className="timeline-row-track" style={{ gridColumn: `2 / span ${timelineDayCount}`, gridTemplateColumns: `repeat(${timelineDayCount}, 32px)` }}>
+                    {Array.from({ length: timelineDayCount }, (_, index) => <span className={`timeline-day-cell ${index % 2 ? '' : 'is-alternate'}`} key={index} />)}
+                    <button className={`timeline-bar status-${task.status}`} type="button" style={{ gridColumn: `${startIndex + 1} / ${Math.max(startIndex + 2, endIndex + 2)}`, gridRow: 1 }} title={`${task.title}: created ${displayDate(task.createdAt)}, due ${displayDate(task.dueAt)}`} aria-label={`${task.title}, created ${displayDate(task.createdAt)}, due ${displayDate(task.dueAt)}`} onClick={() => openTask(task)} />
+                  </div>
+                </div>;
+              })}
+            </div></div> : <div className="timeline-empty">No tasks with due dates in {monthLabel(timelineMonth)}.</div>}
+            {unscheduledTasks.length > 0 && <section className="timeline-unscheduled"><div><h3>Unscheduled</h3><span>{unscheduledTasks.length} {unscheduledTasks.length === 1 ? 'task' : 'tasks'} without a due date</span></div><div className="timeline-unscheduled-list">{unscheduledTasks.map((task) => <button type="button" key={task.id} onClick={() => openTask(task)}><span>{task.title}</span><small>{STATUSES.find(({ value }) => value === task.status)?.label}</small></button>)}</div></section>}
+          </section>
+        ) : <div className="task-board standalone-task-board">
           {STATUSES.map(({ value, label }) => {
             const column = filteredTasks.filter((task) => task.status === value);
             return <section className="task-board-column" key={value}>
               <div className="task-board-column-heading"><h2>{label}</h2><span>{column.length}</span></div>
               <div className="task-board-column-content">
                 {column.map((task) => <article className="task-board-card standalone-task-card" key={task.id}>
-                  <button className="task-board-title" type="button" onClick={() => { setFormError(''); setCreateOpen(false); setSelectedAssigneeIds(task.assignees.map(({ teamMember }) => teamMember.id)); setModalTask(task); }}>{task.title}</button>
+                  <button className="task-board-title" type="button" onClick={() => openTask(task)}>{task.title}</button>
                   {task.description && <p className="standalone-task-description">{task.description}</p>}
                   <div className="task-board-card-meta"><span className={`priority-badge priority-${task.priority.toLowerCase()}`}>{PRIORITIES.find((item) => item.value === task.priority)?.label}</span><span className="task-board-comments">{task._count?.comments ?? 0} comments</span></div>
                   {task.dueAt && <time className="task-board-due" dateTime={task.dueAt}>Due {displayDate(task.dueAt)}</time>}
@@ -278,12 +345,12 @@ export default function StandaloneTasksPage() {
           })}
         </div>
       ) : (
-        <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true">□</div><h2>{tasks.length ? 'No tasks match these filters' : 'No standalone tasks yet'}</h2><p>{tasks.length ? 'Try changing your search or filters.' : 'Create a task for a quick fix or piece of work outside a project.'}</p>{tasks.length ? <button className="button button-secondary" onClick={() => { setSearch(''); setStatusFilter(''); setPriorityFilter(''); }}>Clear filters</button> : member && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Create your first task</button>}</div></section>
+        <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true">□</div><h2>{tasks.length ? 'No tasks match these filters' : 'No standalone tasks available to you'}</h2><p>{tasks.length ? 'Try changing your search or filters.' : 'Create a task for a quick fix or piece of work outside a project.'}</p>{tasks.length ? <button className="button button-secondary" onClick={() => { setSearch(''); setStatusFilter(''); setPriorityFilter(''); }}>Clear filters</button> : member && <button className="button button-primary" onClick={() => setCreateOpen(true)}>Create your first task</button>}</div></section>
       )}
 
       {modalOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) { setModalTask(null); setCreateOpen(false); } }}>
         <section className="modal standalone-task-modal" role="dialog" aria-modal="true" aria-labelledby="standalone-task-modal-title">
-          <div className="modal-header"><div><h2 id="standalone-task-modal-title">{modalTask ? 'Edit standalone task' : 'Create standalone task'}</h2><p>This task will be available to your active team.</p></div><button className="icon-button" type="button" aria-label="Close" disabled={saving} onClick={() => { setModalTask(null); setCreateOpen(false); }}>×</button></div>
+          <div className="modal-header"><div><h2 id="standalone-task-modal-title">{modalTask ? 'Edit standalone task' : 'Create standalone task'}</h2><p>Visible to its creator, assignees, and team admins.</p></div><button className="icon-button" type="button" aria-label="Close" disabled={saving} onClick={() => { setModalTask(null); setCreateOpen(false); }}>×</button></div>
           <form className="form-stack" onSubmit={(event) => void saveTask(event)}>
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Task title<input className="field-input" name="title" minLength={2} maxLength={180} required autoFocus disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.title ?? ''} placeholder="e.g. Fix mobile navigation spacing" /></label>

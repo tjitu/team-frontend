@@ -1614,6 +1614,7 @@ input[type="date"] { color-scheme: light; }
 /* Standalone workspace tasks */
 .standalone-tasks-page .page-heading { margin-bottom: 24px; }
 .standalone-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(145px, 180px) minmax(145px, 180px) auto; align-items: center; gap: 10px; margin-bottom: 18px; border-bottom: 1px solid var(--literal-border-96); padding-bottom: 16px; }
+.standalone-view-tabs { width: fit-content; margin: 0 0 14px; }
 .standalone-search, .standalone-search .search-input { width: 100%; }
 .standalone-toolbar .section-count { justify-self: end; white-space: nowrap; }
 .standalone-task-board { margin-top: 0; }
