@@ -242,7 +242,7 @@ export default function StandaloneTasksPage() {
   return (
     <div className="page-content standalone-tasks-page">
       <div className="page-heading">
-        <div><p className="page-eyebrow">Workspace</p><h1>Tasks</h1><p className="page-subtitle">Track quick fixes and team work that does not belong to a project.</p></div>
+        <div><h1>Tasks</h1><p className="page-subtitle">Track quick fixes and team work that does not belong to a project.</p></div>
         {member && <button className="button button-primary" type="button" onClick={() => { setFormError(''); setSelectedAssigneeIds([]); setModalTask(null); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>New task</button>}
       </div>
 
@@ -300,7 +300,7 @@ export default function StandaloneTasksPage() {
             </div>
           </form>
           {modalTask && <section className="standalone-comments" aria-labelledby="standalone-comments-title">
-            <h3 id="standalone-comments-title">Comments <span>{modalTask._count?.comments ?? modalTask.comments?.length ?? 0}</span></h3>
+            <h3 id="standalone-comments-title">Comments ({modalTask._count?.comments ?? modalTask.comments?.length ?? 0})</h3>
             {commentError && <p className="form-error" role="alert">{commentError}</p>}
             <form className="standalone-comment-form" onSubmit={(event) => void addComment(event)}>
               <label className="sr-only" htmlFor="standalone-comment-input">Write a comment</label>

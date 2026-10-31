@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 function safeNextPath(value: string | undefined) {
   if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\') || value.startsWith('/login')) return '/';
@@ -62,14 +63,13 @@ export function LoginForm({ nextPath, initialError }: { nextPath?: string; initi
           <Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} /><span>JituPTN Team Platform</span>
         </a>
         <div className="auth-aside-copy">
-          <p className="auth-eyebrow">JITU / TEAM WORKSPACE</p>
           <h2>A well-organized workspace for teams in motion.</h2>
           <p>Plan projects, organize work, and track team progress in one place.</p>
         </div>
       </aside>
       <section className="auth-card" aria-labelledby="login-title">
+        <div className="auth-card-toolbar"><ThemeToggle /></div>
         <div className="auth-heading">
-          <p className="auth-eyebrow">TEAM ACCESS</p>
           <h1 id="login-title">Sign in to your workspace</h1>
           <p>Sign in with an account that has access to JituPTN Team Platform.</p>
         </div>

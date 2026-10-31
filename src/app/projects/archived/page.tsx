@@ -43,7 +43,7 @@ export default function ArchivedProjectsPage() {
 
   return <div className="page-content">
     <div className="page-heading">
-      <div><p className="page-eyebrow">Workspace</p><h1>Archived projects</h1><p className="page-subtitle">Review archived projects and restore any you want to continue.</p></div>
+      <div><h1>Archived projects</h1><p className="page-subtitle">Review archived projects and restore any you want to continue.</p></div>
       <Link className="button button-secondary" href="/">Back to projects</Link>
     </div>
     {error && <div className="inline-message error" role="alert">{error}</div>}

@@ -85,7 +85,6 @@ export default function HomePage() {
     <div className="page-content">
       <div className="page-heading">
         <div>
-          <p className="page-eyebrow">Workspace</p>
           <h1>Project overview</h1>
           <p className="page-subtitle">{member?.name ? `Welcome, ${member.name.split(' ')[0]}. ` : ''}Track active projects and team progress.</p>
         </div>

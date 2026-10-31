@@ -456,10 +456,9 @@ export default function ProjectPage() {
     <div className="page-content">
       <div className="page-heading">
         <div>
-          <p className="page-eyebrow">Project</p>
           <h1>{project?.name ?? (loading ? 'Loading project…' : 'Project')}</h1>
           <p className="page-subtitle">{project?.description || 'Organize work and track project task progress.'}</p>
-          {project && <p className="project-meta-line">{project.department.name} · Owner: {project.createdBy.name} · Period: {dateLabel(project.startsAt)} – {dateLabel(project.endsAt)}</p>}
+          {project && <p className="project-meta-line">{project.department.name}, owner: {project.createdBy.name}, period: {dateLabel(project.startsAt)} to {dateLabel(project.endsAt)}</p>}
         </div>
         <div className="page-heading-actions">{canManage && <><button className="button button-secondary" onClick={() => { setProjectError(''); setEditProjectOpen(true); }}>Edit project</button><button className="button button-quiet danger-action" disabled={projectSaving} onClick={() => void archiveProject()}>Archive</button></>}{canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>New task</button>}</div>
       </div>
@@ -473,7 +472,7 @@ export default function ProjectPage() {
         <div className="project-context-actions">
           {project && <span className="project-member-summary"><span className="mini-people-icon" aria-hidden="true" />{project.members?.length ?? 0} {project.members?.length === 1 ? 'member' : 'members'}</span>}
           {canManage && <button className="button button-secondary compact-button" onClick={() => { setMembershipError(''); setMembershipNotice(''); setManageMembersOpen(true); }}>Manage members</button>}
-          <Link className="project-activity-link" href={`/projects/${encodeURIComponent(projectId)}/activity`}>Project activity <span aria-hidden="true">→</span></Link>
+          <Link className="project-activity-link" href={`/projects/${encodeURIComponent(projectId)}/activity`}>View activity</Link>
         </div>
       </div>
       {project && project.members && project.members.length > 0 && <div className="project-member-strip" aria-label="Project members">
@@ -582,7 +581,7 @@ export default function ProjectPage() {
 
       {editTaskOpen && selectedTask && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditTaskOpen(false); }}>
         <section className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-task-title">
-          <div className="modal-header"><div><h2 id="edit-task-title">Edit task</h2><p>Update this task's details.</p></div><button className="icon-button" aria-label="Close" onClick={() => setEditTaskOpen(false)}>×</button></div>
+          <div className="modal-header"><div><h2 id="edit-task-title">Edit task</h2><p>Update this task’s details.</p></div><button className="icon-button" aria-label="Close" onClick={() => setEditTaskOpen(false)}>×</button></div>
           <form className="form-stack" onSubmit={updateTask}>
             {taskFormError && <p className="form-error" role="alert">{taskFormError}</p>}
             <label className="field-label">Task name<input className="field-input" name="title" key={`task-title-${selectedTask.id}`} defaultValue={selectedTask.title} minLength={2} maxLength={180} required autoFocus /></label>

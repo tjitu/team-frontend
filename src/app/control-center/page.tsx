@@ -152,7 +152,7 @@ export default function ControlCenterPage() {
 
   return <div className="page-content control-center-page">
     <div className="page-heading">
-      <div><p className="page-eyebrow">Administration</p><h1>Control Center</h1><p className="page-subtitle">Manage Jitu services from one workspace.</p></div>
+      <div><h1>Control Center</h1><p className="page-subtitle">Manage Jitu services from one workspace.</p></div>
       <button className="button button-secondary" onClick={() => { setNotice(''); void loadSection(section, search); }} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</button>
     </div>
 
