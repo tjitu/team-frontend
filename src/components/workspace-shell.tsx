@@ -71,18 +71,18 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const suffix = 'JituPTN Team';
     if (isLoginRoute) {
-      document.title = `Sign In — ${suffix}`;
+      document.title = `Sign In - ${suffix}`;
       return;
     }
     if (isInvitationRoute) {
-      document.title = `Accept Invitation — ${suffix}`;
+      document.title = `Accept Invitation - ${suffix}`;
       return;
     }
     if (isProjectActivityRoute && activeProject) {
-      document.title = `Activity · ${activeProject.name} — ${suffix}`;
+      document.title = `Activity - ${activeProject.name} - ${suffix}`;
       return;
     }
-    document.title = `${pageLabel} — ${suffix}`;
+    document.title = `${pageLabel} - ${suffix}`;
   }, [pathname, pageLabel, activeProject, isLoginRoute, isInvitationRoute, isProjectActivityRoute]);
 
   // Fetch project metadata if visiting an archived/direct project route not in the active sidebar list
