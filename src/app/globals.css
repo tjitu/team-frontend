@@ -907,7 +907,17 @@ h1 {
 .form-footer-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .subtle-link { color: var(--literal-foreground-24); font-size: 12px; font-weight: 450; }
 .subtle-link:hover { text-decoration: underline; text-underline-offset: 3px; }
-.danger-action { color: var(--literal-foreground-13); }
+.danger-action {
+  border-color: color-mix(in oklch, var(--danger) 35%, var(--line));
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+.danger-action:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: color-mix(in oklch, var(--danger) 12%, var(--danger-tint));
+  color: var(--danger);
+}
+.danger-action:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
 .compact-button { min-height: 34px; padding: 0 10px; font-size: 11px; }
 .compact-select { min-height: 34px; padding-left: 9px; font-size: 11px; }
 .project-members { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1391,6 +1401,8 @@ h1 { margin-bottom: 7px; font-size: clamp(27px, 2.4vw, 33px); font-weight: 620; 
 .assignee-picker-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .assignee-picker-chip button { display: grid; width: 18px; height: 18px; flex: 0 0 auto; place-items: center; border: 0; border-radius: 50%; background: var(--literal-background-11); color: var(--literal-foreground-86); cursor: pointer; font-size: 14px; line-height: 1; }
 .assignee-picker-chip button:hover { background: var(--literal-background-87); color: var(--literal-foreground-151); }
+.assignee-picker-chip .assignee-remove-button { background: var(--danger-tint); color: var(--danger); }
+.assignee-picker-chip .assignee-remove-button:hover { background: color-mix(in oklch, var(--danger) 14%, var(--danger-tint)); color: var(--danger); }
 .assignee-picker-menu { position: absolute; z-index: 20; top: calc(100% - 24px); right: 0; left: 0; display: grid; gap: 6px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--literal-background-46); padding: 7px; box-shadow: none; transform: translateY(26px); }
 .assignee-picker-search { width: 100%; min-height: 36px; border: 1px solid var(--literal-border-78); border-radius: 7px; background: var(--literal-background-46); padding: 0 10px; color: var(--literal-foreground-88); font: inherit; font-size: 12px; outline: 0; }
 .assignee-picker-search:focus { border-color: var(--literal-foreground-66); box-shadow: 0 0 0 3px var(--literal-shadow-67); }
@@ -1818,6 +1830,11 @@ html.dark .field-hint { color: var(--muted); }
 html.dark .assignee-picker-chip button { color: var(--muted); }
 html.dark .assignee-picker-chip button:hover { background: var(--surface-hover); color: var(--ink); }
 html.dark .standalone-archive-button { color: var(--danger); }
+html.dark .danger-action { border-color: color-mix(in oklch, var(--danger) 42%, var(--line)); background: var(--danger-tint); color: var(--danger); }
+html.dark .button.danger-action:hover:not(:disabled),
+html.dark .account-logout.danger-action:hover:not(:disabled) { border-color: var(--danger); background: color-mix(in oklch, var(--danger) 18%, var(--danger-tint)); color: var(--danger); }
+html.dark .assignee-picker-chip .assignee-remove-button { background: var(--danger-tint); color: var(--danger); }
+html.dark .assignee-picker-chip .assignee-remove-button:hover { background: color-mix(in oklch, var(--danger) 20%, var(--danger-tint)); color: var(--danger); }
 html.dark .activity-entity { background: var(--surface); border-color: var(--line); }
 html.dark .inline-message.error { border-color: color-mix(in oklch, var(--danger) 38%, var(--line)); background: var(--danger-tint); color: var(--danger); }
 html.dark .inline-message.success,

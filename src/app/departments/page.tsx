@@ -182,7 +182,7 @@ export default function DepartmentsPage() {
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Department name<input className="field-input" name="name" key={editing?.id ?? 'new'} defaultValue={editing?.name ?? ''} minLength={2} maxLength={100} placeholder="e.g. Engineering" required autoFocus /></label>
             <label className="field-label">Description <span className="subtle-link">Optional</span><textarea className="field-textarea" name="description" key={`description-${editing?.id ?? 'new'}`} defaultValue={editing?.description ?? ''} maxLength={1000} placeholder="Department responsibilities or focus" /></label>
-            <div className="form-footer form-footer-between">{editing ? <button className="button button-quiet danger-action" type="button" disabled={saving} onClick={() => void toggleDepartmentStatus(editing)}>{editing.isActive ? 'Deactivate' : 'Activate'}</button> : <span />}
+            <div className="form-footer form-footer-between">{editing ? <button className={`button button-quiet ${editing.isActive ? 'danger-action' : ''}`} type="button" disabled={saving} onClick={() => void toggleDepartmentStatus(editing)}>{editing.isActive ? 'Deactivate' : 'Activate'}</button> : <span />}
               <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => { setCreateOpen(false); setEditing(null); }}>Cancel</button><button className="button button-primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button></div>
             </div>
           </form>

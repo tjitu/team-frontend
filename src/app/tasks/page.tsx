@@ -362,7 +362,7 @@ export default function StandaloneTasksPage() {
             </div>
             <label className="field-label">Assignees<AssigneePicker members={members} selectedIds={selectedAssigneeIds} onChange={setSelectedAssigneeIds} disabled={Boolean(modalTask && member && !isAdministrator(member.role) && modalTask.createdBy.id !== member.id)} /><small className="field-hint">{modalTask && member && !isAdministrator(member.role) && modalTask.createdBy.id !== member.id ? 'Only the creator can change assignees.' : 'Choose one or more people on your team.'}</small></label>
             <div className="form-footer form-footer-between">
-              {modalTask && member && (isAdministrator(member.role) || modalTask.createdBy.id === member.id) ? <button className="button button-quiet standalone-archive-button" type="button" disabled={saving} onClick={() => void archiveTask()}>Archive task</button> : <span />}
+              {modalTask && member && (isAdministrator(member.role) || modalTask.createdBy.id === member.id) ? <button className="button button-quiet standalone-archive-button danger-action" type="button" disabled={saving} onClick={() => void archiveTask()}>Archive task</button> : <span />}
               <div><button className="button button-secondary" type="button" disabled={saving} onClick={() => { setModalTask(null); setCreateOpen(false); }}>Cancel</button><button className="button button-primary" disabled={saving || Boolean(modalTask && member && !canEdit(modalTask, member))}>{saving ? 'Saving…' : modalTask ? 'Save changes' : 'Create task'}</button></div>
             </div>
           </form>

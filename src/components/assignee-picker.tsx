@@ -71,7 +71,7 @@ export function AssigneePicker({
       {selectedMembers.length > 0 && <div className="assignee-picker-selected" aria-label="Selected assignees">
         {selectedMembers.map(({ teamMember }) => <span className="assignee-picker-chip" key={teamMember.id}>
           <span>{teamMember.name}</span>
-          <button type="button" aria-label={`Remove ${teamMember.name}`} onClick={() => toggleMember(teamMember)}>×</button>
+          <button className="assignee-remove-button" type="button" aria-label={`Remove ${teamMember.name}`} onClick={() => toggleMember(teamMember)}>×</button>
         </span>)}
       </div>}
       {open && <div className="assignee-picker-menu">

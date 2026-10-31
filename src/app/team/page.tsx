@@ -168,7 +168,7 @@ export default function TeamPage() {
                   : <span className="department-list">Not assigned</span>}</td>
               <td className="due-date">{dateLabel(member.createdAt)}</td>
               <td><span className={`member-status ${member.isActive ? 'is-enabled' : 'is-disabled'}`}>{member.isActive ? 'Active' : 'Inactive'}</span></td>
-              <td className="team-action-cell">{canToggle && <button className="button button-quiet compact-button" disabled={busyMember === member.id} onClick={() => void toggleMemberStatus(member)}>{member.isActive ? 'Deactivate' : 'Activate'}</button>}</td>
+              <td className="team-action-cell">{canToggle && <button className={`button button-quiet compact-button ${member.isActive ? 'danger-action' : ''}`} disabled={busyMember === member.id} onClick={() => void toggleMemberStatus(member)}>{member.isActive ? 'Deactivate' : 'Activate'}</button>}</td>
             </tr>;
           })}</tbody>
         </table>

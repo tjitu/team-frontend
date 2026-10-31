@@ -186,7 +186,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               <div className="account-menu-identity"><strong className="truncate">{member?.name ?? 'JituPTN Team Platform account'}</strong><span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team member'}</span></div>
               <ThemeToggle />
               {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
-              <button className="account-logout" type="button" disabled={signingOut} onClick={() => void signOut()}>
+              <button className="account-logout danger-action" type="button" disabled={signingOut} onClick={() => void signOut()}>
                 <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M8 3H4.75A1.75 1.75 0 0 0 3 4.75v10.5A1.75 1.75 0 0 0 4.75 17H8m3-3 4-4-4-4m4 4H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
                 {signingOut && <span className="account-logout-spinner" aria-hidden="true" />}
