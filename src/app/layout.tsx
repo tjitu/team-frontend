@@ -6,9 +6,9 @@ export const metadata: Metadata = {
   title: 'Dashboard - JituPTN Team',
   description: 'A workspace for team projects and tasks.',
   icons: {
-    icon: '/blue-jitu-logo.png',
-    shortcut: '/blue-jitu-logo.png',
-    apple: '/blue-jitu-logo.png',
+    icon: '/black-jitu-logo.png',
+    shortcut: '/black-jitu-logo.png',
+    apple: '/black-jitu-logo.png',
   },
 };
 
