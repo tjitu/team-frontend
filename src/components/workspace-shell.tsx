@@ -39,6 +39,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
 
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [fallbackProject, setFallbackProject] = useState<Project | null>(null);
   const [loadError, setLoadError] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
   const [breadcrumbMenuOpen, setBreadcrumbMenuOpen] = useState(false);
@@ -51,9 +52,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const accountTriggerRef = useRef<HTMLButtonElement>(null);
   const breadcrumbMenuRef = useRef<HTMLLIElement>(null);
 
-  const activeProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
-  const isProjectActivityRoute = Boolean(activeProject && pathname.endsWith('/activity'));
-  const isProjectRoute = Boolean(activeProject) || pathname === '/projects/archived';
+  const matchedProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
+  const activeProject = matchedProject ?? (fallbackProject && pathname.startsWith(`/projects/${fallbackProject.id}`) ? fallbackProject : undefined);
+  const isProjectActivityRoute = Boolean(activeProject && pathname.endsWith('/activity')) || /^\/projects\/[^/]+\/activity$/.test(pathname);
+  const isProjectRoute = Boolean(activeProject) || pathname.startsWith('/projects/');
 
   const pageLabel = pathname === '/' ? 'Dashboard'
     : pathname === '/projects/archived' ? 'Archived projects'
@@ -63,7 +65,44 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       : pathname === '/activity' ? 'Team activity'
         : pathname.startsWith('/departments') ? 'Departments'
           : isProjectActivityRoute ? 'Project activity'
-            : activeProject?.name ?? 'Workspace';
+            : activeProject?.name ?? (pathname.startsWith('/projects/') ? 'Project' : 'Workspace');
+
+  // Dynamically update document.title based on the current page
+  useEffect(() => {
+    const suffix = 'JituPTN Team';
+    if (isLoginRoute) {
+      document.title = `Sign In — ${suffix}`;
+      return;
+    }
+    if (isInvitationRoute) {
+      document.title = `Accept Invitation — ${suffix}`;
+      return;
+    }
+    if (isProjectActivityRoute && activeProject) {
+      document.title = `Activity · ${activeProject.name} — ${suffix}`;
+      return;
+    }
+    document.title = `${pageLabel} — ${suffix}`;
+  }, [pathname, pageLabel, activeProject, isLoginRoute, isInvitationRoute, isProjectActivityRoute]);
+
+  // Fetch project metadata if visiting an archived/direct project route not in the active sidebar list
+  useEffect(() => {
+    if (isInvitationRoute || isLoginRoute) return;
+    const match = pathname.match(/^\/projects\/([^/]+)/);
+    const routeProjectId = match?.[1];
+    if (!routeProjectId || routeProjectId === 'archived' || matchedProject) {
+      return;
+    }
+    let active = true;
+    api.get<Project>(`/team/projects/${routeProjectId}`)
+      .then((proj) => {
+        if (active) setFallbackProject(proj);
+      })
+      .catch(() => {
+        if (active) setFallbackProject(null);
+      });
+    return () => { active = false; };
+  }, [pathname, matchedProject, isInvitationRoute, isLoginRoute]);
 
   // Load theme and sidebar preferences
   useEffect(() => {
