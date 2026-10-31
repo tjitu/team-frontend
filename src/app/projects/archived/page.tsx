@@ -32,7 +32,7 @@ export default function ArchivedProjectsPage() {
     setError('');
     try {
       await api.post<Project>(`/team/projects/${encodeURIComponent(project.id)}/restore`);
-      window.location.assign('/');
+      window.location.assign('/projects');
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Could not restore the project.';
       if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
@@ -44,7 +44,7 @@ export default function ArchivedProjectsPage() {
   return <div className="page-content">
     <div className="page-heading">
       <div><h1>Archived projects</h1><p className="page-subtitle">Review archived projects and restore any you want to continue.</p></div>
-      <Link className="button button-secondary" href="/">Back to projects</Link>
+      <Link className="button button-secondary" href="/projects">Back to projects</Link>
     </div>
     {error && <div className="inline-message error" role="alert">{error}</div>}
     {loading ? <div className="project-grid" aria-label="Loading archived projects">{[1, 2].map((item) => <div className="loading-skeleton" key={item} />)}</div> : projects.length ? <div className="project-grid">

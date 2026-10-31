@@ -3,7 +3,7 @@ import { WorkspaceShell } from '@/components/workspace-shell';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Dashboard - JituPTN Team',
+  title: 'Overview - JituPTN Team',
   description: 'A workspace for team projects and tasks.',
   icons: {
     icon: '/black-jitu-logo.png',

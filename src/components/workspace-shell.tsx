@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard,
+  FolderKanban,
   CheckSquare,
   Users,
   Activity,
@@ -55,9 +56,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const matchedProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
   const activeProject = matchedProject ?? (fallbackProject && pathname.startsWith(`/projects/${fallbackProject.id}`) ? fallbackProject : undefined);
   const isProjectActivityRoute = Boolean(activeProject && pathname.endsWith('/activity')) || /^\/projects\/[^/]+\/activity$/.test(pathname);
-  const isProjectRoute = Boolean(activeProject) || pathname.startsWith('/projects/');
+  const isNestedProjectRoute = Boolean(activeProject) || pathname === '/projects/archived' || (pathname.startsWith('/projects/') && pathname !== '/projects');
 
-  const pageLabel = pathname === '/' ? 'Dashboard'
+  const pageLabel = pathname === '/' ? 'Overview'
+    : pathname === '/projects' ? 'Projects'
     : pathname === '/projects/archived' ? 'Archived projects'
     : pathname === '/tasks' ? 'Tasks'
     : pathname === '/control-center' ? 'Control Center'
@@ -65,7 +67,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       : pathname === '/activity' ? 'Team activity'
         : pathname.startsWith('/departments') ? 'Departments'
           : isProjectActivityRoute ? 'Project activity'
-            : activeProject?.name ?? (pathname.startsWith('/projects/') ? 'Project' : 'Workspace');
+            : activeProject?.name ?? (pathname.startsWith('/projects/') ? 'Project' : 'Overview');
 
   // Dynamically update document.title based on the current page
   useEffect(() => {
@@ -251,11 +253,21 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           <Link
             className={`nav-link ${pathname === '/' ? 'is-active' : ''}`}
             href="/"
-            title="Dashboard"
+            title="Overview"
             aria-current={pathname === '/' ? 'page' : undefined}
           >
             <LayoutDashboard className="nav-icon" />
-            <span className="nav-link-text">Default</span>
+            <span className="nav-link-text">Overview</span>
+          </Link>
+
+          <Link
+            className={`nav-link ${pathname === '/projects' ? 'is-active' : ''}`}
+            href="/projects"
+            title="Projects"
+            aria-current={pathname === '/projects' ? 'page' : undefined}
+          >
+            <FolderKanban className="nav-icon" />
+            <span className="nav-link-text">Projects</span>
           </Link>
 
           {member && (
@@ -385,7 +397,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                       </button>
                       {breadcrumbMenuOpen && (
                         <div className="shadcn-breadcrumb-dropdown" role="menu" aria-label="Quick navigation">
-                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/">Projects</Link>
+                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/projects">Projects</Link>
                           <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/projects/archived">Archived projects</Link>
                         </div>
                       )}
@@ -397,11 +409,11 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                   </>
-                ) : isProjectRoute ? (
+                ) : isNestedProjectRoute ? (
                   <>
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
-                      <BreadcrumbLink render={<Link href="/" />}>Projects</BreadcrumbLink>
+                      <BreadcrumbLink render={<Link href="/projects" />}>Projects</BreadcrumbLink>
                     </BreadcrumbItem>
                   </>
                 ) : null}
