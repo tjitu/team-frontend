@@ -22,6 +22,15 @@ import { api, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { BrandLogo } from '@/components/brand-logo';
+import {
+  Breadcrumb,
+  BreadcrumbEllipsis,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,6 +41,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadError, setLoadError] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
+  const [breadcrumbMenuOpen, setBreadcrumbMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -39,8 +49,18 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
 
   const accountControlRef = useRef<HTMLDivElement>(null);
   const accountTriggerRef = useRef<HTMLButtonElement>(null);
+  const breadcrumbMenuRef = useRef<HTMLLIElement>(null);
 
   const activeProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
+  const isProjectActivityRoute = Boolean(activeProject && pathname.endsWith('/activity'));
+  const isProjectRoute = Boolean(activeProject) || pathname === '/projects/archived';
+
+  const sectionCategory = isProjectRoute
+    ? 'Projects'
+    : pathname === '/control-center'
+      ? 'Administration'
+      : 'Dashboards';
+
   const pageLabel = pathname === '/' ? 'Dashboard'
     : pathname === '/projects/archived' ? 'Archived projects'
     : pathname === '/tasks' ? 'Tasks'
@@ -48,7 +68,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     : pathname.startsWith('/team') ? 'Team members'
       : pathname === '/activity' ? 'Team activity'
         : pathname.startsWith('/departments') ? 'Departments'
-          : pathname.endsWith('/activity') ? 'Project activity'
+          : isProjectActivityRoute ? 'Project activity'
             : activeProject?.name ?? 'Workspace';
 
   // Load theme and sidebar preferences
@@ -96,6 +116,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    setBreadcrumbMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
     if (isInvitationRoute || isLoginRoute) return;
     let active = true;
     Promise.all([
@@ -118,14 +142,26 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   }, [isInvitationRoute, isLoginRoute, pathname]);
 
   useEffect(() => {
-    if (!accountOpen) return;
+    if (!accountOpen && !breadcrumbMenuOpen) return;
     function closeOnOutsideClick(event: PointerEvent) {
-      if (event.target instanceof Node && !accountControlRef.current?.contains(event.target)) setAccountOpen(false);
+      if (event.target instanceof Node) {
+        if (accountOpen && !accountControlRef.current?.contains(event.target)) {
+          setAccountOpen(false);
+        }
+        if (breadcrumbMenuOpen && !breadcrumbMenuRef.current?.contains(event.target)) {
+          setBreadcrumbMenuOpen(false);
+        }
+      }
     }
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setAccountOpen(false);
-        accountTriggerRef.current?.focus();
+        if (accountOpen) {
+          setAccountOpen(false);
+          accountTriggerRef.current?.focus();
+        }
+        if (breadcrumbMenuOpen) {
+          setBreadcrumbMenuOpen(false);
+        }
       }
     }
     document.addEventListener('pointerdown', closeOnOutsideClick);
@@ -134,7 +170,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       document.removeEventListener('pointerdown', closeOnOutsideClick);
       document.removeEventListener('keydown', closeOnEscape);
     };
-  }, [accountOpen]);
+  }, [accountOpen, breadcrumbMenuOpen]);
 
   if (isInvitationRoute || isLoginRoute) {
     return <main className={isLoginRoute ? 'auth-page' : 'invitation-shell'}>{children}</main>;
@@ -294,11 +330,50 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       <main className={`main-area ${isCollapsed ? 'is-collapsed' : ''}`} id="main-content" tabIndex={-1}>
         <header className="topbar">
           <div className="topbar-left">
-            <nav className="breadcrumb" aria-label="Breadcrumb">
-              <Link href="/" className="breadcrumb-root">Workspace</Link>
-              <span className="breadcrumb-separator">/</span>
-              <span aria-current="page">{pageLabel}</span>
-            </nav>
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink render={<Link href="/" />}>Workspace</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem className="shadcn-breadcrumb-dropdown-wrap" ref={breadcrumbMenuRef}>
+                  <button
+                    type="button"
+                    className="shadcn-breadcrumb-ellipsis-trigger"
+                    aria-expanded={breadcrumbMenuOpen}
+                    aria-haspopup="menu"
+                    onClick={() => setBreadcrumbMenuOpen((prev) => !prev)}
+                  >
+                    <BreadcrumbEllipsis />
+                    <span className="sr-only">Toggle navigation menu</span>
+                  </button>
+                  {breadcrumbMenuOpen && (
+                    <div className="shadcn-breadcrumb-dropdown" role="menu" aria-label="Quick navigation">
+                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/">Dashboard</Link>
+                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/tasks">Standalone Tasks</Link>
+                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/departments">Departments</Link>
+                      {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
+                        <>
+                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/team">Team Members</Link>
+                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/activity">Team Activity</Link>
+                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/control-center">Control Center</Link>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink render={<Link href={isProjectRoute && activeProject ? `/projects/${activeProject.id}` : '/'} />}>
+                    {isProjectActivityRoute && activeProject ? activeProject.name : sectionCategory}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{pageLabel}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
 
           <div className="topbar-right">
