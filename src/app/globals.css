@@ -38,6 +38,7 @@
   --radius: 8px;
   --radius-lg: 10px;
   --shadow-dialog: 0 20px 54px rgb(24 35 48 / 14%);
+  --overlay-scrim: rgb(0 0 0 / 38%);
   --font-body: Inter, "Segoe UI", Arial, sans-serif;
 
   --literal-foreground-1: transparent;
@@ -295,6 +296,7 @@
   --brand-action-hover: var(--theme-dark-brand-action-hover);
   --selection: var(--theme-dark-selection);
   --shadow-dialog: none;
+  --overlay-scrim: var(--theme-dark-overlay);
 
   --literal-foreground-1: var(--ink);
   --literal-background-2: var(--surface);
@@ -896,7 +898,7 @@ h1 {
 .inline-message.error { border-color: color-mix(in oklch, var(--danger) 32%, var(--line)); background: var(--danger-tint); color: var(--danger); }
 .inline-message.success { border-color: color-mix(in oklch, var(--success) 32%, var(--line)); background: var(--success-tint); color: var(--success); }
 .form-error { margin: 0; color: var(--danger); font-size: 12px; line-height: 1.55; }
-.modal-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; overflow-y: auto; background: var(--literal-background-27); padding: 24px; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; overflow-y: auto; background: var(--overlay-scrim); padding: 24px; backdrop-filter: blur(8px); }
 .modal { width: min(100%, 540px); border: 0; border-radius: var(--radius-lg); background: var(--paper); box-shadow: var(--shadow-dialog); }
 .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; border-bottom: 1px solid var(--line); padding: 23px 25px 19px; }
 .modal-header h2 { margin: 0 0 6px; font-size: 19px; font-weight: 650; letter-spacing: -.45px; }
@@ -1496,9 +1498,9 @@ input[type="date"] { color-scheme: light; }
   display: grid;
   place-items: center;
   overflow-y: auto;
-  background: var(--literal-background-93);
+  background: var(--overlay-scrim);
   padding: 32px;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(8px);
 }
 .task-detail-card {
   position: relative;
