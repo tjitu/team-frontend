@@ -32,12 +32,28 @@ function Avatar({
 
 function AvatarImage({
   className,
+  src,
+  alt = '',
+  onError,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+}: React.ComponentProps<'img'>) {
+  const [hasError, setHasError] = React.useState(false);
+
+  if (!src || hasError) {
+    return null;
+  }
+
   return (
-    <AvatarPrimitive.Image
+    <img
       data-slot="avatar-image"
+      src={src}
+      alt={alt}
       className={cn('shadcn-avatar-image', className)}
+      onError={(e) => {
+        setHasError(true);
+        onError?.(e);
+      }}
+      loading="lazy"
       {...props}
     />
   );

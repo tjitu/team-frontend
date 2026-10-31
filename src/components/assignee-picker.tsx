@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Project, TeamMember } from '@/lib/api';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { getCartoonAvatarUrl } from '@/lib/avatar';
 
 type ProjectMemberOption = NonNullable<Project['members']>[number];
 
@@ -99,6 +100,7 @@ export function AssigneePicker({
               onClick={() => toggleMember(teamMember)}
             >
               <Avatar size="sm" className="size-6 text-[10px]" aria-hidden="true">
+                <AvatarImage src={getCartoonAvatarUrl(teamMember.name, 'open-peeps')} alt={teamMember.name} />
                 <AvatarFallback>{teamMember.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('')}</AvatarFallback>
               </Avatar>
               <span className="assignee-picker-person"><strong>{teamMember.name}</strong><small>{teamMember.email}</small></span>

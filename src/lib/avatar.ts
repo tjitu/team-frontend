@@ -15,3 +15,4 @@ export function getCartoonAvatarUrl(
   const bg = PASTEL_PALETTE.join(',');
   return `https://api.dicebear.com/9.x/${style}/svg?seed=${cleanSeed}&backgroundColor=${bg}`;
 }
+

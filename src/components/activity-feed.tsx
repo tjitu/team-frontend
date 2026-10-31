@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityPage as ActivityPageData, ActivityRecord, api, signInUrl } from '@/lib/api';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { getCartoonAvatarUrl } from '@/lib/avatar';
 
 type ActivityScope = 'team' | 'project';
 
@@ -179,6 +180,7 @@ export function ActivityFeed({ scope, projectId }: { scope: ActivityScope; proje
       {loading ? <div className="activity-loading"><div className="loading-skeleton" /><div className="loading-skeleton" /></div> : items.length ? <div className="activity-list">
         {items.map((item) => <article className="activity-item" key={item.id}>
           <Avatar size="default" className="activity-avatar size-9">
+            <AvatarImage src={getCartoonAvatarUrl(item.actor.name, 'open-peeps')} alt={item.actor.name} />
             <AvatarFallback>{initials(item.actor.name)}</AvatarFallback>
           </Avatar>
           <div className="activity-copy"><div className="activity-main"><strong>{item.actor.name}</strong><span>{summaryFor(item)}</span></div><div className="activity-meta"><time dateTime={item.createdAt}>{dateTime(item.createdAt)}</time><span className="activity-entity">{entityLabels[item.entityType] ?? item.entityType}</span>{scope === 'team' && item.project && <Link className="activity-project-link" href={`/projects/${encodeURIComponent(item.project.id)}`}>{item.project.name}</Link>}</div></div>

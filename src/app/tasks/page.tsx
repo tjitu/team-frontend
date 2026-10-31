@@ -4,7 +4,8 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { TaskTimeline } from '@/components/task-timeline';
 import { TaskAttachmentEditor, TaskAttachmentLinks } from '@/components/task-attachments';
 import { api, CurrentMember, Task, TaskListPage, TaskPriority, TaskStatus, TeamMember, isAdministrator, signInUrl } from '@/lib/api';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { getCartoonAvatarUrl } from '@/lib/avatar';
 
 const STATUSES: Array<{ value: TaskStatus; label: string }> = [
   { value: 'TODO', label: 'To do' },
@@ -83,6 +84,7 @@ function AssigneePicker({
           {visibleMembers.map((candidate) => <label className="assignee-picker-option" key={candidate.id}>
             <input type="checkbox" checked={selectedIds.includes(candidate.id)} onChange={() => toggle(candidate.id)} />
             <Avatar size="sm" className="size-6 text-[10px]" aria-hidden="true">
+              <AvatarImage src={getCartoonAvatarUrl(candidate.name, 'open-peeps')} alt={candidate.name} />
               <AvatarFallback>{candidate.name.trim().charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <span className="assignee-picker-identity"><strong>{candidate.name}</strong><small>{candidate.email}</small></span>
