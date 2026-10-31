@@ -1,38 +1,43 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import {
+  LayoutDashboard,
+  CheckSquare,
+  Users,
+  Activity,
+  Building2,
+  SlidersHorizontal,
+  Archive,
+  PanelLeftClose,
+  PanelLeft,
+  ChevronDown,
+  LogOut,
+  FolderDot,
+} from 'lucide-react';
 import { api, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/theme-toggle';
-
-function NavIcon({ name }: { name: 'overview' | 'tasks' | 'team' | 'activity' | 'departments' | 'archive' | 'analytics' }) {
-  const paths = {
-    overview: <><path d="m3 10 9-7 9 7" /><path d="M5 9v12h14V9M9 21v-7h6v7" /></>,
-    tasks: <><rect x="4" y="4" width="16" height="16" rx="2" /><path d="m8 12 2.3 2.3L16 8.8M8 7h1m-1 10h8" /></>,
-    team: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.5V20" /></>,
-    activity: <><path d="M3 12h4l3-8 4 16 3-8h4" /></>,
-    departments: <><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M9 7h2m2 0h2M9 11h2m2 0h2M9 15h2m2 0h2M10 21v-3h4v3" /></>,
-    archive: <><path d="M3 4h18v4H3zM5 8v12h14V8m-9 4h4" /></>,
-    analytics: <><path d="M4 19V5m0 14h17" /><path d="m7 15 4-4 3 2 5-6" /><path d="M16 7h3v3" /></>,
-  };
-  return <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
-}
+import { BrandLogo } from '@/components/brand-logo';
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isInvitationRoute = pathname.startsWith('/invitations/accept');
   const isLoginRoute = pathname === '/login';
+
   const [member, setMember] = useState<CurrentMember | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadError, setLoadError] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   const accountControlRef = useRef<HTMLDivElement>(null);
   const accountTriggerRef = useRef<HTMLButtonElement>(null);
+
   const activeProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
   const pageLabel = pathname === '/' ? 'Overview'
     : pathname === '/projects/archived' ? 'Archived projects'
@@ -40,15 +45,41 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     : pathname === '/control-center' ? 'Control Center'
     : pathname.startsWith('/team') ? 'Team members'
       : pathname === '/activity' ? 'Team activity'
-        : pathname.startsWith('/departments') ? 'Department'
+        : pathname.startsWith('/departments') ? 'Departments'
           : pathname.endsWith('/activity') ? 'Project activity'
             : activeProject?.name ?? 'Workspace';
 
+  // Load theme and sidebar preferences
   useEffect(() => {
     const savedTheme = window.localStorage.getItem('jitu-team-theme');
     const shouldUseDarkMode = savedTheme === 'dark';
     document.documentElement.classList.toggle('dark', shouldUseDarkMode);
+
+    const savedSidebar = window.localStorage.getItem('jitu-team-sidebar-collapsed');
+    if (savedSidebar !== null) {
+      setIsCollapsed(savedSidebar === 'true');
+    }
   }, []);
+
+  // Global Ctrl+B shortcut to toggle sidebar
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+        event.preventDefault();
+        toggleSidebar();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem('jitu-team-sidebar-collapsed', String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (isInvitationRoute || isLoginRoute) return;
@@ -91,7 +122,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     };
   }, [accountOpen]);
 
-  if (isInvitationRoute || isLoginRoute) return <main className={isLoginRoute ? 'auth-page' : 'invitation-shell'}>{children}</main>;
+  if (isInvitationRoute || isLoginRoute) {
+    return <main className={isLoginRoute ? 'auth-page' : 'invitation-shell'}>{children}</main>;
+  }
 
   async function signOut() {
     if (signingOut) return;
@@ -110,40 +143,115 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="workspace">
       <a className="skip-link" href="#main-content">Skip to main content</a>
-      <aside className="sidebar" aria-label="Main navigation">
-        <Link className="brand" href="/" aria-label="JituPTN Team Platform home">
-          <Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} />
-          <span>JituPTN Team Platform</span>
-        </Link>
+      
+      {/* SIDEBAR */}
+      <aside className={`sidebar ${isCollapsed ? 'is-collapsed' : ''}`} aria-label="Main navigation">
+        <div className="sidebar-header">
+          <Link className="brand-mark-link" href="/" aria-label="Jitu Team Home" title="JituPTN Team Platform">
+            <BrandLogo size={32} />
+          </Link>
+          {!isCollapsed && (
+            <button
+              type="button"
+              className="sidebar-collapse-btn"
+              onClick={() => toggleSidebar()}
+              title="Close sidebar (Ctrl+B)"
+              aria-label="Close sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
         <div className="sidebar-label">Workspace</div>
         <nav className="primary-nav" aria-label="Workspace">
-          <Link className={`nav-link ${pathname === '/' ? 'is-active' : ''}`} href="/" aria-current={pathname === '/' ? 'page' : undefined}>
-            <NavIcon name="overview" />Overview
+          <Link
+            className={`nav-link ${pathname === '/' ? 'is-active' : ''}`}
+            href="/"
+            title="Overview"
+            aria-current={pathname === '/' ? 'page' : undefined}
+          >
+            <LayoutDashboard className="nav-icon" />
+            <span className="nav-link-text">Overview</span>
           </Link>
-          {member && <Link className={`nav-link ${pathname === '/tasks' ? 'is-active' : ''}`} href="/tasks" aria-current={pathname === '/tasks' ? 'page' : undefined}>
-            <NavIcon name="tasks" />Tasks
-          </Link>}
-          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/team') ? 'is-active' : ''}`} href="/team" aria-current={pathname.startsWith('/team') ? 'page' : undefined}>
-            <NavIcon name="team" />Team members
-          </Link>}
-          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname === '/activity' ? 'is-active' : ''}`} href="/activity" aria-current={pathname === '/activity' ? 'page' : undefined}>
-            <NavIcon name="activity" />Team activity
-          </Link>}
-          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/control-center') ? 'is-active' : ''}`} href="/control-center" aria-current={pathname.startsWith('/control-center') ? 'page' : undefined}>
-            <NavIcon name="analytics" />Control Center
-          </Link>}
-          {member && <Link className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`} href="/departments" aria-current={pathname.startsWith('/departments') ? 'page' : undefined}>
-            <NavIcon name="departments" />Departments
-          </Link>}
+
+          {member && (
+            <Link
+              className={`nav-link ${pathname === '/tasks' ? 'is-active' : ''}`}
+              href="/tasks"
+              title="Tasks"
+              aria-current={pathname === '/tasks' ? 'page' : undefined}
+            >
+              <CheckSquare className="nav-icon" />
+              <span className="nav-link-text">Tasks</span>
+            </Link>
+          )}
+
+          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
+            <Link
+              className={`nav-link ${pathname.startsWith('/team') ? 'is-active' : ''}`}
+              href="/team"
+              title="Team members"
+              aria-current={pathname.startsWith('/team') ? 'page' : undefined}
+            >
+              <Users className="nav-icon" />
+              <span className="nav-link-text">Team members</span>
+            </Link>
+          )}
+
+          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
+            <Link
+              className={`nav-link ${pathname === '/activity' ? 'is-active' : ''}`}
+              href="/activity"
+              title="Team activity"
+              aria-current={pathname === '/activity' ? 'page' : undefined}
+            >
+              <Activity className="nav-icon" />
+              <span className="nav-link-text">Team activity</span>
+            </Link>
+          )}
+
+          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
+            <Link
+              className={`nav-link ${pathname.startsWith('/control-center') ? 'is-active' : ''}`}
+              href="/control-center"
+              title="Control Center"
+              aria-current={pathname.startsWith('/control-center') ? 'page' : undefined}
+            >
+              <SlidersHorizontal className="nav-icon" />
+              <span className="nav-link-text">Control Center</span>
+            </Link>
+          )}
+
+          {member && (
+            <Link
+              className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`}
+              href="/departments"
+              title="Departments"
+              aria-current={pathname.startsWith('/departments') ? 'page' : undefined}
+            >
+              <Building2 className="nav-icon" />
+              <span className="nav-link-text">Departments</span>
+            </Link>
+          )}
         </nav>
+
         <div className="sidebar-section-heading">
-          <span>Project</span>
+          <span className="nav-link-text">Projects</span>
           <span className="count-pill">{projects.length}</span>
         </div>
-        <Link className={`nav-link archived-project-nav ${pathname === '/projects/archived' ? 'is-active' : ''}`} href="/projects/archived" aria-current={pathname === '/projects/archived' ? 'page' : undefined}>
-          <NavIcon name="archive" />Archived projects
+
+        <Link
+          className={`nav-link archived-project-nav ${pathname === '/projects/archived' ? 'is-active' : ''}`}
+          href="/projects/archived"
+          title="Archived projects"
+          aria-current={pathname === '/projects/archived' ? 'page' : undefined}
+        >
+          <Archive className="nav-icon" />
+          <span className="nav-link-text">Archived projects</span>
         </Link>
-        <nav className="project-nav" aria-label="Project">
+
+        <nav className="project-nav" aria-label="Projects">
           {projects.map((project) => (
             <Link
               className={`project-nav-link ${pathname.startsWith(`/projects/${project.id}`) ? 'is-active' : ''}`}
@@ -151,23 +259,45 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               key={project.id}
               title={project.name}
             >
-              <span className="project-mark" aria-hidden="true">{project.name.slice(0, 1).toUpperCase()}</span>
+              <span className="project-mark" aria-hidden="true">
+                {project.name.slice(0, 1).toUpperCase()}
+              </span>
               <span className="truncate">{project.name}</span>
             </Link>
           ))}
           {projects.length === 0 && !loadError && <p className="sidebar-empty">No active projects yet</p>}
         </nav>
-        <div className="sidebar-footer">
+
+        <div className="sidebar-footer" title={member ? `${member.name} (${member.role?.replaceAll('_', ' ')})` : undefined}>
           <div className="avatar avatar-small">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</div>
           <div className="profile-copy">
             <strong className="truncate">{member?.name ?? 'Loading account…'}</strong>
-            <span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team members'}</span>
+            <span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team member'}</span>
           </div>
         </div>
       </aside>
-      <main className="main-area" id="main-content" tabIndex={-1}>
+
+      {/* MAIN CONTENT AREA */}
+      <main className={`main-area ${isCollapsed ? 'is-collapsed' : ''}`} id="main-content" tabIndex={-1}>
         <header className="topbar">
-          <div className="breadcrumb"><Link href="/">JituPTN Team Platform</Link><span className="breadcrumb-separator">/</span><span aria-current="page">{pageLabel}</span></div>
+          <div className="topbar-left">
+            <button
+              type="button"
+              className="sidebar-trigger-btn"
+              onClick={toggleSidebar}
+              title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {isCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
+            <div className="topbar-separator" aria-hidden="true" />
+            <nav className="breadcrumb" aria-label="Breadcrumb">
+              <Link href="/" className="breadcrumb-root">Workspace</Link>
+              <span className="breadcrumb-separator">/</span>
+              <span aria-current="page">{pageLabel}</span>
+            </nav>
+          </div>
+
           <div className="account-control" ref={accountControlRef}>
             <button
               ref={accountTriggerRef}
@@ -179,21 +309,36 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               onClick={() => { setSignOutError(''); setAccountOpen((open) => !open); }}
             >
               <span className="avatar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</span>
-              <span className="account-trigger-copy"><strong className="truncate">{member?.name ?? 'Loading account…'}</strong><small className="truncate">{member?.email ?? 'JituPTN Team Platform'}</small></span>
-              <svg className={`account-chevron ${accountOpen ? 'is-open' : ''}`} viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 6 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <span className="account-trigger-copy">
+                <strong className="truncate">{member?.name ?? 'Loading account…'}</strong>
+                <small className="truncate">{member?.email ?? 'JituPTN Team Platform'}</small>
+              </span>
+              <ChevronDown className={`account-chevron ${accountOpen ? 'is-open' : ''} w-3.5 h-3.5`} aria-hidden="true" />
             </button>
-            {accountOpen && <div className="account-menu" id="account-menu" aria-label="Account menu">
-              <div className="account-menu-identity"><strong className="truncate">{member?.name ?? 'JituPTN Team Platform account'}</strong><span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team member'}</span></div>
-              <ThemeToggle />
-              {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
-              <button className="account-logout danger-action" type="button" disabled={signingOut} onClick={() => void signOut()}>
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M8 3H4.75A1.75 1.75 0 0 0 3 4.75v10.5A1.75 1.75 0 0 0 4.75 17H8m3-3 4-4-4-4m4 4H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
-                {signingOut && <span className="account-logout-spinner" aria-hidden="true" />}
-              </button>
-            </div>}
+
+            {accountOpen && (
+              <div className="account-menu" id="account-menu" aria-label="Account menu">
+                <div className="account-menu-identity">
+                  <strong className="truncate">{member?.name ?? 'JituPTN Team Platform account'}</strong>
+                  <span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team member'}</span>
+                </div>
+                <ThemeToggle />
+                {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
+                <button
+                  className="account-logout danger-action"
+                  type="button"
+                  disabled={signingOut}
+                  onClick={() => void signOut()}
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
+                  {signingOut && <span className="account-logout-spinner" aria-hidden="true" />}
+                </button>
+              </div>
+            )}
           </div>
         </header>
+
         {children}
       </main>
     </div>

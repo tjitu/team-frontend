@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { BrandLogo } from '@/components/brand-logo';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -62,7 +62,9 @@ export function InvitationAcceptance({ token, completed }: { token: string | nul
 
   return (
     <section className="invitation-panel" aria-labelledby="invitation-title" aria-live="polite">
-      <Link className="brand invitation-brand" href="/"><Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} /><span>JituPTN Team Platform</span></Link>
+      <Link className="brand invitation-brand" href="/">
+        <BrandLogo size={32} showText />
+      </Link>
       <div className="invitation-content">
         <h1 id="invitation-title">{state === 'success' ? 'Welcome' : state === 'signed-out' ? 'Sign in to continue' : state === 'checking' ? 'Checking invitation' : 'Invitation unavailable'}</h1>
         {state === 'checking' && <><p className="invitation-copy">Verifying your invitation. This may take a moment.</p><div className="invitation-progress" aria-label="Processing invitation" /></>}
