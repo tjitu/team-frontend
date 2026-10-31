@@ -93,7 +93,7 @@ function BreadcrumbSeparator({
       className={cn('shadcn-breadcrumb-separator', className)}
       {...props}
     >
-      {children ?? <span className="shadcn-breadcrumb-separator-slash select-none" aria-hidden="true">/</span>}
+      {children ?? <ChevronRight className="w-3.5 h-3.5 opacity-40 shrink-0 select-none" aria-hidden="true" />}
     </li>
   );
 }

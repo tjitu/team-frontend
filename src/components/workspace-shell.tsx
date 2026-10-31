@@ -399,40 +399,6 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                   <BreadcrumbLink render={<Link href="/" />}>Workspace</BreadcrumbLink>
                 </BreadcrumbItem>
 
-                <BreadcrumbSeparator />
-
-                {/* Quick Navigation Dropdown in Breadcrumb */}
-                <BreadcrumbItem className="shadcn-breadcrumb-dropdown-wrap" ref={breadcrumbMenuRef}>
-                  <button
-                    type="button"
-                    className="shadcn-breadcrumb-ellipsis-trigger"
-                    aria-expanded={breadcrumbMenuOpen}
-                    aria-haspopup="menu"
-                    onClick={() => setBreadcrumbMenuOpen((prev) => !prev)}
-                    title="Quick navigation menu"
-                  >
-                    <BreadcrumbEllipsis />
-                    <span className="sr-only">Toggle navigation menu</span>
-                  </button>
-                  {breadcrumbMenuOpen && (
-                    <div className="shadcn-breadcrumb-dropdown" role="menu" aria-label="Quick navigation">
-                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/">Overview</Link>
-                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/projects">Projects</Link>
-                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/projects/archived">Archived projects</Link>
-                      {member && <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/tasks">Tasks</Link>}
-                      {member && <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/departments">Departments</Link>}
-                      {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
-                        <>
-                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/team">Team members</Link>
-                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/activity">Activity</Link>
-                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/control-center">Control Center</Link>
-                        </>
-                      )}
-                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/settings">Settings</Link>
-                    </div>
-                  )}
-                </BreadcrumbItem>
-
                 {isProjectActivityRoute && activeProject ? (
                   <>
                     <BreadcrumbSeparator />
@@ -445,6 +411,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                         {activeProject.name}
                       </BreadcrumbLink>
                     </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>Activity</BreadcrumbPage>
+                    </BreadcrumbItem>
                   </>
                 ) : activeProject ? (
                   <>
@@ -452,20 +422,30 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                     <BreadcrumbItem>
                       <BreadcrumbLink render={<Link href="/projects" />}>Projects</BreadcrumbLink>
                     </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>{activeProject.name}</BreadcrumbPage>
+                    </BreadcrumbItem>
                   </>
-                ) : isNestedProjectRoute && pathname === '/projects/archived' ? (
+                ) : pathname === '/projects/archived' ? (
                   <>
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
                       <BreadcrumbLink render={<Link href="/projects" />}>Projects</BreadcrumbLink>
                     </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>Archived</BreadcrumbPage>
+                    </BreadcrumbItem>
                   </>
-                ) : null}
-
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{pageLabel}</BreadcrumbPage>
-                </BreadcrumbItem>
+                ) : (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>{pageLabel}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
               </BreadcrumbList>
             </Breadcrumb>
           </div>
