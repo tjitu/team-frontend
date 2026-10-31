@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityPage as ActivityPageData, ActivityRecord, api, signInUrl } from '@/lib/api';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 type ActivityScope = 'team' | 'project';
 
@@ -177,7 +178,9 @@ export function ActivityFeed({ scope, projectId }: { scope: ActivityScope; proje
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => setReloadKey((value) => value + 1)}>Reload</button></div>}
       {loading ? <div className="activity-loading"><div className="loading-skeleton" /><div className="loading-skeleton" /></div> : items.length ? <div className="activity-list">
         {items.map((item) => <article className="activity-item" key={item.id}>
-          <div className="activity-avatar avatar" aria-hidden="true">{initials(item.actor.name)}</div>
+          <Avatar size="default" className="activity-avatar size-9">
+            <AvatarFallback>{initials(item.actor.name)}</AvatarFallback>
+          </Avatar>
           <div className="activity-copy"><div className="activity-main"><strong>{item.actor.name}</strong><span>{summaryFor(item)}</span></div><div className="activity-meta"><time dateTime={item.createdAt}>{dateTime(item.createdAt)}</time><span className="activity-entity">{entityLabels[item.entityType] ?? item.entityType}</span>{scope === 'team' && item.project && <Link className="activity-project-link" href={`/projects/${encodeURIComponent(item.project.id)}`}>{item.project.name}</Link>}</div></div>
         </article>)}
       </div> : <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true" /><h3>No activity yet</h3><p>{eventType || entityType || actorId ? 'Try changing the activity filters.' : 'New activity will appear here as your team works.'}</p></div></section>}

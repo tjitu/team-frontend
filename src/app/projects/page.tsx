@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { FolderKanban, Building2, Users, CalendarRange, ArrowUpRight, Plus } from 'lucide-react';
 import { api, CurrentMember, Department, Project, signInUrl } from '@/lib/api';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(value));
@@ -256,7 +257,9 @@ export default function ProjectsPage() {
               <h3 title={project.name}>{project.name}</h3>
               <p className="project-description">{project.description || 'No description for this project yet.'}</p>
               <div className="project-card-owner-row">
-                <span className="avatar avatar-xs" aria-hidden="true">{initials(project.createdBy.name)}</span>
+                <Avatar size="sm" className="size-6 text-[10px]">
+                  <AvatarFallback>{initials(project.createdBy.name)}</AvatarFallback>
+                </Avatar>
                 <span className="project-card-metadata">Lead: {project.createdBy.name}</span>
               </div>
               <div className="project-card-footer">

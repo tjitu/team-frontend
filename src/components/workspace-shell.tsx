@@ -11,6 +11,7 @@ import {
   Activity,
   Building2,
   SlidersHorizontal,
+  Settings,
   Archive,
   PanelLeftClose,
   PanelLeft,
@@ -32,6 +33,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { Avatar, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -63,6 +65,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     : pathname === '/projects/archived' ? 'Archived projects'
     : pathname === '/tasks' ? 'Tasks'
     : pathname === '/control-center' ? 'Control Center'
+    : pathname === '/settings' ? 'Settings'
     : pathname.startsWith('/team') ? 'Team members'
       : pathname === '/activity' ? 'Team activity'
         : pathname.startsWith('/departments') ? 'Departments'
@@ -329,6 +332,16 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
               <span className="nav-link-text">Control Center</span>
             </Link>
           )}
+
+          <Link
+            className={`nav-link ${pathname === '/settings' ? 'is-active' : ''}`}
+            href="/settings"
+            title="Settings"
+            aria-current={pathname === '/settings' ? 'page' : undefined}
+          >
+            <Settings className="nav-icon" />
+            <span className="nav-link-text">Settings</span>
+          </Link>
         </nav>
 
         <div className="sidebar-section-heading">
@@ -363,7 +376,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="sidebar-footer" title={member ? `${member.name} (${member.role?.replaceAll('_', ' ')})` : undefined}>
-          <div className="avatar avatar-small">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</div>
+          <Avatar size="sm" className="size-8">
+            <AvatarFallback>{member?.name?.slice(0, 2).toUpperCase() ?? '—'}</AvatarFallback>
+            <AvatarBadge className="bg-emerald-500" />
+          </Avatar>
           <div className="profile-copy">
             <strong className="truncate">{member?.name ?? 'Loading account…'}</strong>
             <span className="truncate">{member?.email ?? 'Team member'}</span>
@@ -381,26 +397,45 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                   <BreadcrumbLink render={<Link href="/" />}>Workspace</BreadcrumbLink>
                 </BreadcrumbItem>
 
+                <BreadcrumbSeparator />
+
+                {/* Quick Navigation Dropdown in Breadcrumb */}
+                <BreadcrumbItem className="shadcn-breadcrumb-dropdown-wrap" ref={breadcrumbMenuRef}>
+                  <button
+                    type="button"
+                    className="shadcn-breadcrumb-ellipsis-trigger"
+                    aria-expanded={breadcrumbMenuOpen}
+                    aria-haspopup="menu"
+                    onClick={() => setBreadcrumbMenuOpen((prev) => !prev)}
+                    title="Quick navigation menu"
+                  >
+                    <BreadcrumbEllipsis />
+                    <span className="sr-only">Toggle navigation menu</span>
+                  </button>
+                  {breadcrumbMenuOpen && (
+                    <div className="shadcn-breadcrumb-dropdown" role="menu" aria-label="Quick navigation">
+                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/">Overview</Link>
+                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/projects">Projects</Link>
+                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/projects/archived">Archived projects</Link>
+                      {member && <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/tasks">Tasks</Link>}
+                      {member && <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/departments">Departments</Link>}
+                      {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
+                        <>
+                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/team">Team members</Link>
+                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/activity">Activity</Link>
+                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/control-center">Control Center</Link>
+                        </>
+                      )}
+                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/settings">Settings</Link>
+                    </div>
+                  )}
+                </BreadcrumbItem>
+
                 {isProjectActivityRoute && activeProject ? (
                   <>
                     <BreadcrumbSeparator />
-                    <BreadcrumbItem className="shadcn-breadcrumb-dropdown-wrap" ref={breadcrumbMenuRef}>
-                      <button
-                        type="button"
-                        className="shadcn-breadcrumb-ellipsis-trigger"
-                        aria-expanded={breadcrumbMenuOpen}
-                        aria-haspopup="menu"
-                        onClick={() => setBreadcrumbMenuOpen((prev) => !prev)}
-                      >
-                        <BreadcrumbEllipsis />
-                        <span className="sr-only">Toggle navigation menu</span>
-                      </button>
-                      {breadcrumbMenuOpen && (
-                        <div className="shadcn-breadcrumb-dropdown" role="menu" aria-label="Quick navigation">
-                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/projects">Projects</Link>
-                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/projects/archived">Archived projects</Link>
-                        </div>
-                      )}
+                    <BreadcrumbItem>
+                      <BreadcrumbLink render={<Link href="/projects" />}>Projects</BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
@@ -409,7 +444,14 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                   </>
-                ) : isNestedProjectRoute ? (
+                ) : activeProject ? (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink render={<Link href="/projects" />}>Projects</BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </>
+                ) : isNestedProjectRoute && pathname === '/projects/archived' ? (
                   <>
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
@@ -447,7 +489,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                 aria-controls="account-menu"
                 onClick={() => { setSignOutError(''); setAccountOpen((open) => !open); }}
               >
-                <span className="avatar avatar-topbar">{member?.name?.slice(0, 1).toUpperCase() ?? '—'}</span>
+                <Avatar size="sm" className="size-8">
+                  <AvatarFallback>{member?.name?.slice(0, 2).toUpperCase() ?? '—'}</AvatarFallback>
+                  <AvatarBadge className="bg-emerald-500" />
+                </Avatar>
                 <span className="account-trigger-copy">
                   <strong className="truncate">{member?.name ?? 'Loading…'}</strong>
                   <small className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Member'}</small>

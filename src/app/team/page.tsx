@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { api, CurrentMember, isAdministrator, ManagedMember, signInUrl, TeamRole } from '@/lib/api';
+import { Avatar, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
 
 const roleLabels: Record<TeamRole, string> = {
   SYSTEM_OWNER: 'System Owner',
@@ -159,7 +160,7 @@ export default function TeamPage() {
             const canChangeRole = currentMember?.role === 'SYSTEM_OWNER' && member.role !== 'SYSTEM_OWNER';
             const canToggle = member.role !== 'SYSTEM_OWNER' && (member.role !== 'SYSTEM_ADMIN' || currentMember?.role === 'SYSTEM_OWNER') && (member.id !== currentMember?.id || member.isActive);
             return <tr key={member.id}>
-              <td><div className="team-person"><span className="avatar">{initials(member.name)}</span><span><strong>{member.name}</strong><small>{member.email}</small></span></div></td>
+              <td><div className="team-person"><Avatar size="sm" className="size-8"><AvatarFallback>{initials(member.name)}</AvatarFallback>{member.isActive && <AvatarBadge className="bg-emerald-500" />}</Avatar><span><strong>{member.name}</strong><small>{member.email}</small></span></div></td>
               <td>{canChangeRole ? <label><span className="sr-only">Role {member.name}</span><select className="filter-select compact-select" value={member.role} disabled={busyMember === member.id} onChange={(event) => void updateMemberRole(member, event.target.value as TeamRole)}><option value="MEMBER">Member</option><option value="SYSTEM_ADMIN">System Admin</option></select></label> : <span className="role-label">{roleLabels[member.role]}</span>}</td>
               <td>{member.departments?.length
                 ? <span className="department-list">{member.departments.map(({ department }) => department.name).join(', ')}</span>

@@ -3429,3 +3429,182 @@ html.dark .source-pill.is-vercel {
   background: var(--muted-bg);
   border-top: 1px solid var(--border);
 }
+
+/* ========================================================
+   SETTINGS PAGE & INTEGRATIONS STYLES
+   ======================================================== */
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 900px;
+}
+
+.settings-card {
+  padding: 24px;
+}
+
+.settings-card-body {
+  margin-top: 18px;
+}
+
+.settings-status-box {
+  background: var(--muted-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.settings-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.settings-status-label {
+  color: var(--muted-fg);
+  font-weight: 500;
+}
+
+.settings-code-val {
+  font-family: monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--card-subtle);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--foreground);
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .form-row-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.form-help {
+  font-size: 11px;
+  color: var(--muted-fg);
+  line-height: 1.4;
+}
+
+.settings-preference-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.live-status-dot {
+  animation: liveStatusPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes liveStatusPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.15);
+  }
+}
+
+/* ========================================================
+   VISITOR & REVENUE INTERACTIVE CHART STYLES
+   ======================================================== */
+.chart-summary-strip {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 16px;
+  background: var(--muted-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.chart-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chart-summary-label {
+  font-size: 11px;
+  color: var(--muted-fg);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+
+.chart-summary-val {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--foreground);
+}
+
+.chart-tooltip-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin-top: 8px;
+  background: var(--card-subtle);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.chart-dual-axis-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+}
+
+.legend-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-badge-visitor {
+  color: var(--foreground);
+}
+
+.legend-badge-revenue {
+  color: #10b981;
+}

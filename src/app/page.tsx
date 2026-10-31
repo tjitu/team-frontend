@@ -24,8 +24,10 @@ import {
   AlertCircle,
   ExternalLink,
   Layers,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { api, CurrentMember, signInUrl } from '@/lib/api';
+import { Avatar, AvatarFallback, AvatarBadge, AvatarGroup } from '@/components/ui/avatar';
 
 type VisitorPerPageItem = {
   id: string;
@@ -46,6 +48,7 @@ type VisitorTrendPoint = {
   uniqueVisitors: number;
   activeUsers: number;
   pageViews: number;
+  revenue?: number;
 };
 
 type DimensionMetricItem = {
@@ -184,14 +187,8 @@ export default function OverviewPage() {
   const [chartMetric, setChartMetric] = useState<'revenue' | 'coins' | 'users'>('revenue');
   const [analyticsTab, setAnalyticsTab] = useState<'pages' | 'countries' | 'sources' | 'devices' | 'events'>('pages');
 
-  // Vercel credentials connection modal state
-  const [showVercelModal, setShowVercelModal] = useState(false);
-  const [vercelToken, setVercelToken] = useState('');
-  const [vercelProjectId, setVercelProjectId] = useState('');
-  const [vercelTeamId, setVercelTeamId] = useState('');
-  const [savingVercel, setSavingVercel] = useState(false);
-  const [vercelModalError, setVercelModalError] = useState('');
-  const [vercelModalSuccess, setVercelModalSuccess] = useState('');
+  const [visitorRevenueMode, setVisitorRevenueMode] = useState<'both' | 'visitors' | 'revenue'>('both');
+  const [hoveredTrendIdx, setHoveredTrendIdx] = useState<number | null>(null);
 
   async function load() {
     setLoading(true);
@@ -203,10 +200,6 @@ export default function OverviewPage() {
       ]);
       setData(overviewData);
       setMember(currentMember);
-      if (overviewData.vercelConfig) {
-        setVercelProjectId(overviewData.vercelConfig.projectId || '');
-        if (overviewData.vercelConfig.teamId) setVercelTeamId(overviewData.vercelConfig.teamId);
-      }
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Could not load overview metrics.';
       if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
@@ -220,42 +213,69 @@ export default function OverviewPage() {
     void load();
   }, []);
 
-  async function handleSaveVercelCredentials(e: React.FormEvent) {
-    e.preventDefault();
-    if (!vercelToken.trim() || !vercelProjectId.trim()) {
-      setVercelModalError('Please enter both Vercel Token and Project ID.');
-      return;
+  const visitorRevenueGeometry = useMemo(() => {
+    const pts = data?.visitorTrend ?? [];
+    if (pts.length === 0) {
+      return {
+        visitorLine: '',
+        visitorArea: '',
+        revenueLine: '',
+        revenueArea: '',
+        maxVisitor: 1,
+        maxRevenue: 1,
+        coordsVisitor: [],
+        coordsRevenue: [],
+        total14DayVisitors: 0,
+        total14DayRevenue: 0,
+        peakActiveUsers: 0,
+      };
     }
-    setSavingVercel(true);
-    setVercelModalError('');
-    setVercelModalSuccess('');
+    const width = 560;
+    const height = 180;
+    const padX = 20;
+    const padY = 24;
+    const maxV = Math.max(1, ...pts.map((p) => p.visitors));
+    const maxR = Math.max(1, ...pts.map((p) => p.revenue ?? 0));
+    const usableW = width - padX * 2;
+    const usableH = height - padY * 2;
 
-    try {
-      const res = await api.post<{ success: boolean; message: string; visitors?: number }>(
-        '/team/control-center/vercel-config',
-        {
-          token: vercelToken.trim(),
-          projectId: vercelProjectId.trim(),
-          teamId: vercelTeamId.trim() || undefined,
-        }
-      );
+    const coordsVisitor = pts.map((p, idx) => {
+      const x = padX + (pts.length > 1 ? (idx / (pts.length - 1)) * usableW : usableW / 2);
+      const y = padY + usableH - (p.visitors / maxV) * usableH;
+      return { x, y, pt: p };
+    });
 
-      if (res.success) {
-        setVercelModalSuccess(`${res.message} (${res.visitors ?? 0} visitors verified). Reloading analytics…`);
-        setTimeout(() => {
-          setShowVercelModal(false);
-          setVercelToken('');
-          void load();
-        }, 1500);
-      } else {
-        setVercelModalError(res.message);
-      }
-    } catch (err) {
-      setVercelModalError(err instanceof Error ? err.message : 'Failed to connect to Vercel API.');
-    } finally {
-      setSavingVercel(false);
-    }
-  }
+    const coordsRevenue = pts.map((p, idx) => {
+      const x = padX + (pts.length > 1 ? (idx / (pts.length - 1)) * usableW : usableW / 2);
+      const rev = p.revenue ?? 0;
+      const y = padY + usableH - (rev / maxR) * usableH;
+      return { x, y, pt: p };
+    });
+
+    const visitorLine = coordsVisitor.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+    const visitorArea = `${visitorLine} L${coordsVisitor[coordsVisitor.length - 1].x.toFixed(1)},${height - padY} L${coordsVisitor[0].x.toFixed(1)},${height - padY} Z`;
+
+    const revenueLine = coordsRevenue.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+    const revenueArea = `${revenueLine} L${coordsRevenue[coordsRevenue.length - 1].x.toFixed(1)},${height - padY} L${coordsRevenue[0].x.toFixed(1)},${height - padY} Z`;
+
+    const total14DayVisitors = pts.reduce((sum, p) => sum + p.visitors, 0);
+    const total14DayRevenue = pts.reduce((sum, p) => sum + (p.revenue ?? 0), 0);
+    const peakActiveUsers = Math.max(0, ...pts.map((p) => p.activeUsers));
+
+    return {
+      visitorLine,
+      visitorArea,
+      revenueLine,
+      revenueArea,
+      maxVisitor: maxV,
+      maxRevenue: maxR,
+      coordsVisitor,
+      coordsRevenue,
+      total14DayVisitors,
+      total14DayRevenue,
+      peakActiveUsers,
+    };
+  }, [data]);
 
   const maxMonthlyValue = useMemo(() => {
     if (!data?.monthlySeries.length) return 1;
@@ -336,18 +356,17 @@ export default function OverviewPage() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <h1>Overview</h1>
-            <button
-              type="button"
+            <Link
+              href="/settings"
               className={`source-pill ${data?.visitorsSource === 'vercel' ? 'is-vercel' : 'is-clickable'}`}
-              onClick={() => setShowVercelModal(true)}
               title={
                 data?.visitorsSource === 'vercel'
-                  ? 'Connected to Vercel Web Analytics REST API. Click to view configuration.'
-                  : 'Live platform database telemetry. Click to connect Vercel Web Analytics API.'
+                  ? 'Connected to Vercel Web Analytics REST API. Click to manage configuration in Settings.'
+                  : 'Platform telemetry active. Click to configure Vercel Web Analytics in Settings.'
               }
             >
-              {data?.visitorsSource === 'vercel' ? '● Live Vercel Analytics' : '⚙ Connect Vercel API'}
-            </button>
+              {data?.visitorsSource === 'vercel' ? '● Live Vercel Analytics' : '⚙ Connect Vercel in Settings'}
+            </Link>
           </div>
           <p className="page-subtitle">
             {member?.name ? `Welcome back, ${member.name.split(' ')[0]}. ` : ''}
@@ -415,15 +434,45 @@ export default function OverviewPage() {
 
         <article className="dashboard-kpi-card">
           <div className="dashboard-kpi-header">
-            <span>Active Users</span>
-            <UserCheck className="w-4 h-4" aria-hidden="true" />
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+              <span
+                className="live-status-dot"
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: '#10b981',
+                  boxShadow: '0 0 10px rgba(16, 185, 129, 0.7)',
+                  display: 'inline-block',
+                }}
+                aria-hidden="true"
+              />
+              Active Users
+            </span>
+            <UserCheck className="w-4 h-4 text-emerald-500" aria-hidden="true" />
           </div>
-          <strong>
-            {loading || !data ? '—' : compactNumber.format(data.users.activeUsers)}
-          </strong>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
+            <strong>
+              {loading || !data ? '—' : compactNumber.format(data.users.activeUsers)}
+            </strong>
+            <AvatarGroup className="h-6">
+              <Avatar size="sm" className="size-6 text-[10px]">
+                <AvatarFallback>U1</AvatarFallback>
+                <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
+              </Avatar>
+              <Avatar size="sm" className="size-6 text-[10px]">
+                <AvatarFallback>U2</AvatarFallback>
+                <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
+              </Avatar>
+              <Avatar size="sm" className="size-6 text-[10px]">
+                <AvatarFallback>U3</AvatarFallback>
+                <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
+              </Avatar>
+            </AvatarGroup>
+          </div>
           <small>
             {data
-              ? `${Math.round((data.users.activeUsers / Math.max(1, data.users.totalUsers)) * 100)}% activation · ${data.users.activeStreakUsers} on daily streak`
+              ? `● Live on Platform · ${Math.round((data.users.activeUsers / Math.max(1, data.users.totalUsers)) * 100)}% active · ${data.users.activeStreakUsers} streak`
               : 'Loading active users…'}
           </small>
         </article>
@@ -476,98 +525,212 @@ export default function OverviewPage() {
 
       {/* PRIMARY INTERACTIVE CHARTS ROW */}
       <section className="overview-charts-grid" aria-label="Platform analytics graphs">
-        {/* CHART 1: MONTHLY REVENUE, COINS SOLD & USER GROWTH */}
+        {/* CHART 1: VISITORS & REVENUE TREND GRAPH (14 DAYS) */}
         <article className="overview-card">
           <div className="overview-card-header">
             <div>
-              <h2>
-                {chartMetric === 'revenue'
-                  ? 'Monthly Revenue Trend'
-                  : chartMetric === 'coins'
-                    ? 'Monthly Coins Sold'
-                    : 'Monthly User Registrations'}
-              </h2>
-              <p>
-                {chartMetric === 'revenue'
-                  ? 'Confirmed QRIS & package payments over the last 6 months'
-                  : chartMetric === 'coins'
-                    ? 'Total Jitu coins distributed via confirmed purchases per month'
-                    : 'New student accounts registered per month'}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2>Visitors & Revenue Trend</h2>
+                <span className="source-pill" style={{ fontSize: '11px' }}>
+                  14-Day Performance
+                </span>
+              </div>
+              <p>Correlated daily website traffic and confirmed payments revenue</p>
             </div>
-            <div className="project-view-tabs" role="tablist" aria-label="Chart metric switcher">
+            <div className="project-view-tabs" role="tablist" aria-label="Trend metric switcher">
               <button
                 type="button"
                 role="tab"
-                aria-selected={chartMetric === 'revenue'}
-                className={`project-view-tab ${chartMetric === 'revenue' ? 'is-active' : ''}`}
-                onClick={() => setChartMetric('revenue')}
+                aria-selected={visitorRevenueMode === 'both'}
+                className={`project-view-tab ${visitorRevenueMode === 'both' ? 'is-active' : ''}`}
+                onClick={() => setVisitorRevenueMode('both')}
+              >
+                Combined
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={visitorRevenueMode === 'visitors'}
+                className={`project-view-tab ${visitorRevenueMode === 'visitors' ? 'is-active' : ''}`}
+                onClick={() => setVisitorRevenueMode('visitors')}
+              >
+                Visitors
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={visitorRevenueMode === 'revenue'}
+                className={`project-view-tab ${visitorRevenueMode === 'revenue' ? 'is-active' : ''}`}
+                onClick={() => setVisitorRevenueMode('revenue')}
               >
                 Revenue
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={chartMetric === 'coins'}
-                className={`project-view-tab ${chartMetric === 'coins' ? 'is-active' : ''}`}
-                onClick={() => setChartMetric('coins')}
-              >
-                Coins Sold
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={chartMetric === 'users'}
-                className={`project-view-tab ${chartMetric === 'users' ? 'is-active' : ''}`}
-                onClick={() => setChartMetric('users')}
-              >
-                Users
-              </button>
             </div>
           </div>
 
-          <div className="overview-bar-chart" role="img" aria-label="Monthly performance bar graph">
-            {(data?.monthlySeries ?? []).map((pt) => {
-              const rawVal =
-                chartMetric === 'revenue'
-                  ? pt.revenue
-                  : chartMetric === 'coins'
-                    ? pt.coinsSold
-                    : pt.usersJoined;
-              const pct = Math.max(6, Math.round((rawVal / maxMonthlyValue) * 100));
-              const formattedVal =
-                chartMetric === 'revenue'
-                  ? idrFormatter.format(rawVal)
-                  : chartMetric === 'coins'
-                    ? `${rawVal} coins`
-                    : `${rawVal} users`;
+          {/* Quick Metrics Strip */}
+          <div className="chart-summary-strip">
+            <div className="chart-summary-item">
+              <span className="chart-summary-label">14-Day Visitors</span>
+              <span className="chart-summary-val">{compactNumber.format(visitorRevenueGeometry.total14DayVisitors)}</span>
+            </div>
+            <div className="chart-summary-item">
+              <span className="chart-summary-label">14-Day Revenue</span>
+              <span className="chart-summary-val" style={{ color: '#10b981' }}>{idrFormatter.format(visitorRevenueGeometry.total14DayRevenue)}</span>
+            </div>
+            <div className="chart-summary-item">
+              <span className="chart-summary-label">Peak Active Logins</span>
+              <span className="chart-summary-val">{compactNumber.format(visitorRevenueGeometry.peakActiveUsers)}</span>
+            </div>
+            <div className="chart-dual-axis-legend ml-auto">
+              {(visitorRevenueMode === 'both' || visitorRevenueMode === 'visitors') && (
+                <span className="legend-badge legend-badge-visitor">
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', border: '2px solid var(--foreground)', display: 'inline-block' }} />
+                  Visitors
+                </span>
+              )}
+              {(visitorRevenueMode === 'both' || visitorRevenueMode === 'revenue') && (
+                <span className="legend-badge legend-badge-revenue">
+                  <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} />
+                  Revenue (IDR)
+                </span>
+              )}
+            </div>
+          </div>
 
-              return (
-                <div className="overview-bar-col" key={pt.month} title={`${pt.label}: ${formattedVal}`}>
-                  <span className="overview-bar-value">{formattedVal}</span>
-                  <div className="overview-bar-track">
-                    <div className="overview-bar-fill" style={{ height: `${pct}%` }} />
-                  </div>
-                  <span className="overview-bar-label">{pt.label}</span>
-                </div>
-              );
-            })}
+          <div className="overview-line-chart-wrap">
+            <svg
+              className="overview-line-svg"
+              viewBox="0 0 560 180"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="14-day visitors and revenue trend graph"
+            >
+              <defs>
+                <linearGradient id="vrVisitorGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--foreground)" stopOpacity="0.16" />
+                  <stop offset="100%" stopColor="var(--foreground)" stopOpacity="0.0" />
+                </linearGradient>
+                <linearGradient id="vrRevenueGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+
+              <line x1="20" y1="36" x2="540" y2="36" className="chart-grid-line" />
+              <line x1="20" y1="90" x2="540" y2="90" className="chart-grid-line" />
+              <line x1="20" y1="144" x2="540" y2="144" className="chart-grid-line" />
+
+              {/* Visitors Path */}
+              {(visitorRevenueMode === 'both' || visitorRevenueMode === 'visitors') && (
+                <>
+                  {visitorRevenueGeometry.visitorArea && (
+                    <path d={visitorRevenueGeometry.visitorArea} fill="url(#vrVisitorGrad)" />
+                  )}
+                  {visitorRevenueGeometry.visitorLine && (
+                    <path
+                      d={visitorRevenueGeometry.visitorLine}
+                      fill="none"
+                      stroke="var(--foreground)"
+                      strokeWidth="2.25"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Revenue Path */}
+              {(visitorRevenueMode === 'both' || visitorRevenueMode === 'revenue') && (
+                <>
+                  {visitorRevenueGeometry.revenueArea && (
+                    <path d={visitorRevenueGeometry.revenueArea} fill="url(#vrRevenueGrad)" />
+                  )}
+                  {visitorRevenueGeometry.revenueLine && (
+                    <path
+                      d={visitorRevenueGeometry.revenueLine}
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Interactive Circles */}
+              {(visitorRevenueMode === 'both' || visitorRevenueMode === 'visitors') &&
+                visitorRevenueGeometry.coordsVisitor.map((c, idx) => (
+                  <circle
+                    key={`v-${idx}`}
+                    cx={c.x}
+                    cy={c.y}
+                    r={hoveredTrendIdx === idx ? 5 : 3}
+                    fill="var(--background)"
+                    stroke="var(--foreground)"
+                    strokeWidth={hoveredTrendIdx === idx ? 3 : 2}
+                    style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+                    onMouseEnter={() => setHoveredTrendIdx(idx)}
+                    onMouseLeave={() => setHoveredTrendIdx(null)}
+                  />
+                ))}
+
+              {(visitorRevenueMode === 'both' || visitorRevenueMode === 'revenue') &&
+                visitorRevenueGeometry.coordsRevenue.map((c, idx) => (
+                  <circle
+                    key={`r-${idx}`}
+                    cx={c.x}
+                    cy={c.y}
+                    r={hoveredTrendIdx === idx ? 5 : 3.5}
+                    fill="#10b981"
+                    stroke="var(--background)"
+                    strokeWidth={2}
+                    style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
+                    onMouseEnter={() => setHoveredTrendIdx(idx)}
+                    onMouseLeave={() => setHoveredTrendIdx(null)}
+                  />
+                ))}
+            </svg>
+
+            {hoveredTrendIdx !== null && data?.visitorTrend?.[hoveredTrendIdx] && (
+              <div className="chart-tooltip-panel">
+                <strong>{data.visitorTrend[hoveredTrendIdx].label} ({data.visitorTrend[hoveredTrendIdx].date})</strong>
+                <span>Visitors: <strong>{compactNumber.format(data.visitorTrend[hoveredTrendIdx].visitors)}</strong></span>
+                <span style={{ color: '#10b981' }}>Revenue: <strong>{idrFormatter.format(data.visitorTrend[hoveredTrendIdx].revenue ?? 0)}</strong></span>
+                <span>Active Users: <strong>{compactNumber.format(data.visitorTrend[hoveredTrendIdx].activeUsers)}</strong></span>
+              </div>
+            )}
+
+            <div className="overview-line-labels">
+              {(data?.visitorTrend ?? [])
+                .filter((_, idx, arr) => idx % 2 === 0 || idx === arr.length - 1)
+                .map((pt) => (
+                  <span key={pt.date}>
+                    {pt.label}
+                  </span>
+                ))}
+            </div>
           </div>
         </article>
 
-        {/* CHART 2: DAILY VISITORS & ACTIVE USERS TREND (14 DAYS) */}
+        {/* CHART 2: DAILY ACTIVE USERS & ENGAGEMENT */}
         <article className="overview-card">
           <div className="overview-card-header">
             <div>
-              <h2>Visitors & Active Users Graph</h2>
-              <p>Daily platform visitors vs. active logged-in students (last 14 days)</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2>Active Users & Engagement</h2>
+                <span className="live-status-dot" style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} />
+              </div>
+              <p>Daily active authenticated students vs. page engagement (last 14 days)</p>
             </div>
             <div className="overview-chart-legend">
               <span className="legend-item">
-                <i className="legend-dot legend-dot-primary" /> Visitors
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', marginRight: '4px' }} />
+                Active Users
               </span>
               <span className="legend-item">
-                <i className="legend-dot legend-dot-secondary" /> Active Users
+                <i className="legend-dot legend-dot-primary" /> Pageviews
               </span>
             </div>
           </div>
@@ -578,12 +741,12 @@ export default function OverviewPage() {
               viewBox="0 0 560 180"
               preserveAspectRatio="none"
               role="img"
-              aria-label="14-day visitor and active user trend line graph"
+              aria-label="14-day active user engagement line graph"
             >
               <defs>
-                <linearGradient id="visitorAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--foreground)" stopOpacity="0.18" />
-                  <stop offset="100%" stopColor="var(--foreground)" stopOpacity="0.0" />
+                <linearGradient id="activeAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.18" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
               <line x1="16" y1="36" x2="544" y2="36" className="chart-grid-line" />
@@ -591,14 +754,15 @@ export default function OverviewPage() {
               <line x1="16" y1="144" x2="544" y2="144" className="chart-grid-line" />
 
               {visitorSvgGeometry.visitorArea && (
-                <path d={visitorSvgGeometry.visitorArea} fill="url(#visitorAreaGrad)" />
+                <path d={visitorSvgGeometry.visitorArea} fill="url(#activeAreaGrad)" />
               )}
               {visitorSvgGeometry.visitorLine && (
                 <path
                   d={visitorSvgGeometry.visitorLine}
                   fill="none"
                   stroke="var(--foreground)"
-                  strokeWidth="2.25"
+                  strokeWidth="1.75"
+                  strokeDasharray="3 3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -607,21 +771,20 @@ export default function OverviewPage() {
                 <path
                   d={visitorSvgGeometry.activeLine}
                   fill="none"
-                  stroke="var(--muted-fg)"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
+                  stroke="#10b981"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
               )}
-              {visitorSvgGeometry.coordsVisitor?.map((c, idx) => (
+              {visitorSvgGeometry.coordsActive?.map((c, idx) => (
                 <circle
                   key={idx}
                   cx={c.x}
                   cy={c.y}
-                  r="3"
-                  fill="var(--background)"
-                  stroke="var(--foreground)"
+                  r="3.5"
+                  fill="#10b981"
+                  stroke="var(--background)"
                   strokeWidth="2"
                 />
               ))}
@@ -632,7 +795,7 @@ export default function OverviewPage() {
                 .filter((_, idx, arr) => idx % 2 === 0 || idx === arr.length - 1)
                 .map((pt) => (
                   <span key={pt.date}>
-                    {pt.label} ({compactNumber.format(pt.visitors)})
+                    {pt.label} ({compactNumber.format(pt.activeUsers)} active)
                   </span>
                 ))}
             </div>
@@ -978,139 +1141,6 @@ export default function OverviewPage() {
           </div>
         </article>
       </section>
-
-      {/* VERCEL WEB ANALYTICS CREDENTIALS DIALOG */}
-      {showVercelModal && (
-        <div className="modal-backdrop" onClick={() => setShowVercelModal(false)}>
-          <div className="modal-card" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Key className="w-4 h-4" />
-                <h2 style={{ fontSize: '16px', fontWeight: 600 }}>Vercel Web Analytics API Configuration</h2>
-              </div>
-              <button
-                type="button"
-                className="button button-quiet"
-                onClick={() => setShowVercelModal(false)}
-                aria-label="Close dialog"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveVercelCredentials}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <p style={{ fontSize: '12.5px', color: 'var(--muted-fg)', lineHeight: 1.5 }}>
-                  Connect your team dashboard directly to the official Vercel Web Analytics REST API to query real-time pageviews, unique visitors, referrers, and country geography.
-                </p>
-
-                {data?.vercelConfig?.configured && (
-                  <div className="inline-message" style={{ background: 'var(--muted-bg)', border: '1px solid var(--border)' }}>
-                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <div>
-                      <strong>Currently connected:</strong>
-                      <p style={{ fontSize: '11.5px', margin: 0 }}>
-                        Project: <code>{data.vercelConfig.projectId}</code> · Team: <code>{data.vercelConfig.teamId}</code>
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {vercelModalError && (
-                  <div className="inline-message error">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    <span>{vercelModalError}</span>
-                  </div>
-                )}
-
-                {vercelModalSuccess && (
-                  <div className="inline-message" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)', color: '#22c55e' }}>
-                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                    <span>{vercelModalSuccess}</span>
-                  </div>
-                )}
-
-                <div className="form-field">
-                  <label htmlFor="vercelTokenInput">
-                    Vercel Access Token (<code>$VERCEL_TOKEN</code>)
-                  </label>
-                  <input
-                    id="vercelTokenInput"
-                    type="password"
-                    className="input"
-                    placeholder={data?.vercelConfig?.tokenMasked ? `Current: ${data.vercelConfig.tokenMasked}` : 'vercel_...'}
-                    value={vercelToken}
-                    onChange={(e) => setVercelToken(e.target.value)}
-                    required
-                  />
-                  <small style={{ color: 'var(--muted-fg)', fontSize: '11px' }}>
-                    Create at <strong>Vercel Dashboard &gt; Account Settings &gt; Tokens</strong>.
-                  </small>
-                </div>
-
-                <div className="form-field">
-                  <label htmlFor="vercelProjectIdInput">
-                    Vercel Project ID (<code>$VERCEL_PROJECT_ID</code>)
-                  </label>
-                  <input
-                    id="vercelProjectIdInput"
-                    type="text"
-                    className="input"
-                    placeholder="prj_..."
-                    value={vercelProjectId}
-                    onChange={(e) => setVercelProjectId(e.target.value)}
-                    required
-                  />
-                  <small style={{ color: 'var(--muted-fg)', fontSize: '11px' }}>
-                    Found at <strong>Vercel Project &gt; Settings &gt; General &gt; Project ID</strong>.
-                  </small>
-                </div>
-
-                <div className="form-field">
-                  <label htmlFor="vercelTeamIdInput">
-                    Vercel Team ID / Slug (<code>$VERCEL_TEAM_ID</code>)
-                  </label>
-                  <input
-                    id="vercelTeamIdInput"
-                    type="text"
-                    className="input"
-                    placeholder="team_..."
-                    value={vercelTeamId}
-                    onChange={(e) => setVercelTeamId(e.target.value)}
-                  />
-                  <small style={{ color: 'var(--muted-fg)', fontSize: '11px' }}>
-                    Leave blank if your project is in a Personal Account (Hobby). Only fill this if your project is owned by a Vercel Team.
-                  </small>
-                </div>
-              </div>
-
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => setShowVercelModal(false)}
-                  disabled={savingVercel}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="button button-primary"
-                  disabled={savingVercel}
-                >
-                  {savingVercel ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Authenticating…
-                    </>
-                  ) : (
-                    'Test & Save Connection'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

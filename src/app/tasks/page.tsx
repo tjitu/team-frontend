@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { TaskTimeline } from '@/components/task-timeline';
 import { TaskAttachmentEditor, TaskAttachmentLinks } from '@/components/task-attachments';
 import { api, CurrentMember, Task, TaskListPage, TaskPriority, TaskStatus, TeamMember, isAdministrator, signInUrl } from '@/lib/api';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const STATUSES: Array<{ value: TaskStatus; label: string }> = [
   { value: 'TODO', label: 'To do' },
@@ -81,7 +82,9 @@ function AssigneePicker({
         <div className="assignee-picker-options">
           {visibleMembers.map((candidate) => <label className="assignee-picker-option" key={candidate.id}>
             <input type="checkbox" checked={selectedIds.includes(candidate.id)} onChange={() => toggle(candidate.id)} />
-            <span className="assignee-picker-avatar" aria-hidden="true">{candidate.name.trim().charAt(0).toUpperCase()}</span>
+            <Avatar size="sm" className="size-6 text-[10px]" aria-hidden="true">
+              <AvatarFallback>{candidate.name.trim().charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
             <span className="assignee-picker-identity"><strong>{candidate.name}</strong><small>{candidate.email}</small></span>
           </label>)}
           {!visibleMembers.length && <p className="assignee-picker-empty">No team members found.</p>}
