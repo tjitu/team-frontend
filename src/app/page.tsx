@@ -13,6 +13,17 @@ import {
   RefreshCw,
   ArrowUpRight,
   TrendingUp,
+  Globe,
+  Smartphone,
+  Laptop,
+  Compass,
+  Radio,
+  X,
+  Key,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+  Layers,
 } from 'lucide-react';
 import { api, CurrentMember, signInUrl } from '@/lib/api';
 
@@ -35,6 +46,30 @@ type VisitorTrendPoint = {
   uniqueVisitors: number;
   activeUsers: number;
   pageViews: number;
+};
+
+type DimensionMetricItem = {
+  key: string;
+  label: string;
+  visitors: number;
+  pageViews: number;
+  sharePct: number;
+  flag?: string;
+};
+
+type CustomEventItem = {
+  eventName: string;
+  label: string;
+  count: number;
+  visitors: number;
+};
+
+type VercelConfigStatus = {
+  configured: boolean;
+  hasToken: boolean;
+  tokenMasked: string | null;
+  projectId: string;
+  teamId: string;
 };
 
 type CoinPackageMetric = {
@@ -82,6 +117,13 @@ type OverviewResponse = {
   };
   visitorPerPage: VisitorPerPageItem[];
   visitorTrend: VisitorTrendPoint[];
+  topCountries?: DimensionMetricItem[];
+  topDevices?: DimensionMetricItem[];
+  topReferrers?: DimensionMetricItem[];
+  topBrowsers?: DimensionMetricItem[];
+  topOperatingSystems?: DimensionMetricItem[];
+  customEvents?: CustomEventItem[];
+  vercelConfig?: VercelConfigStatus;
   users: {
     totalUsers: number;
     activeUsers: number;
@@ -140,6 +182,16 @@ export default function OverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [chartMetric, setChartMetric] = useState<'revenue' | 'coins' | 'users'>('revenue');
+  const [analyticsTab, setAnalyticsTab] = useState<'pages' | 'countries' | 'sources' | 'devices' | 'events'>('pages');
+
+  // Vercel credentials connection modal state
+  const [showVercelModal, setShowVercelModal] = useState(false);
+  const [vercelToken, setVercelToken] = useState('');
+  const [vercelProjectId, setVercelProjectId] = useState('');
+  const [vercelTeamId, setVercelTeamId] = useState('team_AwXSFqNTh675u2W43i6HDQzY');
+  const [savingVercel, setSavingVercel] = useState(false);
+  const [vercelModalError, setVercelModalError] = useState('');
+  const [vercelModalSuccess, setVercelModalSuccess] = useState('');
 
   async function load() {
     setLoading(true);
@@ -151,6 +203,10 @@ export default function OverviewPage() {
       ]);
       setData(overviewData);
       setMember(currentMember);
+      if (overviewData.vercelConfig) {
+        setVercelProjectId(overviewData.vercelConfig.projectId || '');
+        if (overviewData.vercelConfig.teamId) setVercelTeamId(overviewData.vercelConfig.teamId);
+      }
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : 'Could not load overview metrics.';
       if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
@@ -163,6 +219,43 @@ export default function OverviewPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  async function handleSaveVercelCredentials(e: React.FormEvent) {
+    e.preventDefault();
+    if (!vercelToken.trim() || !vercelProjectId.trim()) {
+      setVercelModalError('Please enter both Vercel Token and Project ID.');
+      return;
+    }
+    setSavingVercel(true);
+    setVercelModalError('');
+    setVercelModalSuccess('');
+
+    try {
+      const res = await api.post<{ success: boolean; message: string; visitors?: number }>(
+        '/team/control-center/vercel-config',
+        {
+          token: vercelToken.trim(),
+          projectId: vercelProjectId.trim(),
+          teamId: vercelTeamId.trim() || undefined,
+        }
+      );
+
+      if (res.success) {
+        setVercelModalSuccess(`${res.message} (${res.visitors ?? 0} visitors verified). Reloading analytics…`);
+        setTimeout(() => {
+          setShowVercelModal(false);
+          setVercelToken('');
+          void load();
+        }, 1500);
+      } else {
+        setVercelModalError(res.message);
+      }
+    } catch (err) {
+      setVercelModalError(err instanceof Error ? err.message : 'Failed to connect to Vercel API.');
+    } finally {
+      setSavingVercel(false);
+    }
+  }
 
   const maxMonthlyValue = useMemo(() => {
     if (!data?.monthlySeries.length) return 1;
@@ -209,6 +302,21 @@ export default function OverviewPage() {
     return Math.max(1, ...data.visitorPerPage.map((p) => p.visitors));
   }, [data]);
 
+  const maxCountryVisitors = useMemo(() => {
+    if (!data?.topCountries?.length) return 1;
+    return Math.max(1, ...data.topCountries.map((c) => c.visitors));
+  }, [data]);
+
+  const maxReferrerVisitors = useMemo(() => {
+    if (!data?.topReferrers?.length) return 1;
+    return Math.max(1, ...data.topReferrers.map((r) => r.visitors));
+  }, [data]);
+
+  const maxDeviceVisitors = useMemo(() => {
+    if (!data?.topDevices?.length) return 1;
+    return Math.max(1, ...data.topDevices.map((d) => d.visitors));
+  }, [data]);
+
   const maxPackageCoins = useMemo(() => {
     if (!data?.coinPackages.length) return 1;
     return Math.max(1, ...data.coinPackages.map((p) => p.coinsSold));
@@ -228,19 +336,22 @@ export default function OverviewPage() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <h1>Overview</h1>
-            {data?.visitorsSource === 'vercel' ? (
-              <span className="source-pill is-vercel" title="Connected to Vercel Web Analytics REST API">
-                ● Live Vercel Analytics
-              </span>
-            ) : (
-              <span className="source-pill" title="Live platform database telemetry. Add VERCEL_TOKEN in team-backend/.env to stream from Vercel.">
-                Platform Telemetry
-              </span>
-            )}
+            <button
+              type="button"
+              className={`source-pill ${data?.visitorsSource === 'vercel' ? 'is-vercel' : 'is-clickable'}`}
+              onClick={() => setShowVercelModal(true)}
+              title={
+                data?.visitorsSource === 'vercel'
+                  ? 'Connected to Vercel Web Analytics REST API. Click to view configuration.'
+                  : 'Live platform database telemetry. Click to connect Vercel Web Analytics API.'
+              }
+            >
+              {data?.visitorsSource === 'vercel' ? '● Live Vercel Analytics' : '⚙ Connect Vercel API'}
+            </button>
           </div>
           <p className="page-subtitle">
             {member?.name ? `Welcome back, ${member.name.split(' ')[0]}. ` : ''}
-            Real-time JituPTN platform traffic, user activity, coin economics, revenue, and upcoming tryouts.
+            Real-time JituPTN platform traffic, audience intelligence, user activity, coin economics, and upcoming tryouts.
           </p>
         </div>
         <div className="page-heading-actions">
@@ -268,7 +379,7 @@ export default function OverviewPage() {
         </div>
       )}
 
-      {/* TOP KPI STAT CARDS (All requested core metrics) */}
+      {/* TOP KPI STAT CARDS */}
       <section className="overview-kpi-grid" aria-label="Platform key metrics">
         <article className="dashboard-kpi-card">
           <div className="dashboard-kpi-header">
@@ -475,7 +586,6 @@ export default function OverviewPage() {
                   <stop offset="100%" stopColor="var(--foreground)" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
-              {/* Horizontal reference gridlines */}
               <line x1="16" y1="36" x2="544" y2="36" className="chart-grid-line" />
               <line x1="16" y1="90" x2="544" y2="90" className="chart-grid-line" />
               <line x1="16" y1="144" x2="544" y2="144" className="chart-grid-line" />
@@ -530,20 +640,71 @@ export default function OverviewPage() {
         </article>
       </section>
 
-      {/* SECONDARY BREAKDOWN: VISITOR PER PAGE & COIN PACKAGES / PRICE PER COIN */}
-      <section className="overview-breakdown-grid" aria-label="Visitor per page and coin package breakdown">
-        {/* VISITOR PER PAGE */}
-        <article className="overview-card">
-          <div className="overview-card-header">
-            <div>
-              <h2>Visitor per Page</h2>
-              <p>Traffic distribution, pageviews, and average session duration by route</p>
+      {/* WEB ANALYTICS & AUDIENCE INTELLIGENCE SECTION */}
+      <section className="overview-card overview-analytics-intelligence" aria-label="Web Analytics Audience Intelligence">
+        <div className="overview-card-header">
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2>Web Analytics & Audience Intelligence</h2>
+              <span className="source-pill" style={{ fontSize: '11px' }}>
+                Vercel REST API Dimension Queries
+              </span>
             </div>
-            <span className="section-count">
-              {data?.visitorPerPage.length ?? 0} routes tracked
-            </span>
+            <p>
+              Granular breakdown of website visitors by routes, geographic location, acquisition referrers, device platforms, and custom event tracking.
+            </p>
           </div>
+          <div className="project-view-tabs" role="tablist" aria-label="Analytics dimension tabs">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={analyticsTab === 'pages'}
+              className={`project-view-tab ${analyticsTab === 'pages' ? 'is-active' : ''}`}
+              onClick={() => setAnalyticsTab('pages')}
+            >
+              Pages
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={analyticsTab === 'countries'}
+              className={`project-view-tab ${analyticsTab === 'countries' ? 'is-active' : ''}`}
+              onClick={() => setAnalyticsTab('countries')}
+            >
+              Countries
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={analyticsTab === 'sources'}
+              className={`project-view-tab ${analyticsTab === 'sources' ? 'is-active' : ''}`}
+              onClick={() => setAnalyticsTab('sources')}
+            >
+              Sources
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={analyticsTab === 'devices'}
+              className={`project-view-tab ${analyticsTab === 'devices' ? 'is-active' : ''}`}
+              onClick={() => setAnalyticsTab('devices')}
+            >
+              Devices & OS
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={analyticsTab === 'events'}
+              className={`project-view-tab ${analyticsTab === 'events' ? 'is-active' : ''}`}
+              onClick={() => setAnalyticsTab('events')}
+            >
+              Events
+            </button>
+          </div>
+        </div>
 
+        {/* TAB 1: VISITOR PER PAGE */}
+        {analyticsTab === 'pages' && (
           <div className="visitor-page-list">
             {(data?.visitorPerPage ?? []).map((item) => {
               const barPct = Math.max(5, Math.round((item.visitors / maxPageVisitors) * 100));
@@ -567,9 +728,172 @@ export default function OverviewPage() {
                 </div>
               );
             })}
+            {(data?.visitorPerPage.length ?? 0) === 0 && (
+              <p className="sidebar-empty" style={{ padding: '24px' }}>No page route telemetry recorded yet.</p>
+            )}
           </div>
-        </article>
+        )}
 
+        {/* TAB 2: COUNTRIES & GEOLOCATION (by=country) */}
+        {analyticsTab === 'countries' && (
+          <div className="visitor-page-list">
+            {(data?.topCountries ?? []).map((c) => {
+              const barPct = Math.max(5, Math.round((c.visitors / maxCountryVisitors) * 100));
+              return (
+                <div className="visitor-page-row" key={c.key}>
+                  <div className="visitor-page-top">
+                    <div className="visitor-page-title">
+                      <span style={{ fontSize: '18px', marginRight: '4px' }}>{c.flag || '🌐'}</span>
+                      <strong>{c.label}</strong>
+                      <span className="coin-unit-pill">{c.key}</span>
+                    </div>
+                    <div className="visitor-page-metrics">
+                      <strong>{compactNumber.format(c.visitors)} visitors</strong>
+                      <small>{compactNumber.format(c.pageViews)} views · {c.sharePct}% traffic share</small>
+                    </div>
+                  </div>
+                  <div className="overview-progress-track">
+                    <div className="overview-progress-fill" style={{ width: `${barPct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* TAB 3: SOURCES & REFERRERS (by=referrerHostname) */}
+        {analyticsTab === 'sources' && (
+          <div className="visitor-page-list">
+            {(data?.topReferrers ?? []).map((r) => {
+              const barPct = Math.max(5, Math.round((r.visitors / maxReferrerVisitors) * 100));
+              return (
+                <div className="visitor-page-row" key={r.key}>
+                  <div className="visitor-page-top">
+                    <div className="visitor-page-title">
+                      <Compass className="w-4 h-4 text-muted-fg" aria-hidden="true" />
+                      <strong>{r.label}</strong>
+                      <code style={{ fontSize: '11px' }}>{r.key}</code>
+                    </div>
+                    <div className="visitor-page-metrics">
+                      <strong>{compactNumber.format(r.visitors)} visitors</strong>
+                      <small>{compactNumber.format(r.pageViews)} views · {r.sharePct}% share</small>
+                    </div>
+                  </div>
+                  <div className="overview-progress-track">
+                    <div className="overview-progress-fill" style={{ width: `${barPct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* TAB 4: DEVICES, OPERATING SYSTEMS & BROWSERS */}
+        {analyticsTab === 'devices' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', padding: '16px' }}>
+            {/* Device Types */}
+            <div>
+              <h3 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Smartphone className="w-3.5 h-3.5 text-muted-fg" /> Device Category
+              </h3>
+              <div className="visitor-page-list" style={{ padding: 0 }}>
+                {(data?.topDevices ?? []).map((d) => (
+                  <div className="visitor-page-row" key={d.key}>
+                    <div className="visitor-page-top">
+                      <div className="visitor-page-title">
+                        <span>{d.label}</span>
+                      </div>
+                      <div className="visitor-page-metrics">
+                        <strong>{compactNumber.format(d.visitors)} ({d.sharePct}%)</strong>
+                      </div>
+                    </div>
+                    <div className="overview-progress-track">
+                      <div className="overview-progress-fill" style={{ width: `${d.sharePct}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Operating Systems */}
+            <div>
+              <h3 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Laptop className="w-3.5 h-3.5 text-muted-fg" /> Operating Systems
+              </h3>
+              <div className="visitor-page-list" style={{ padding: 0 }}>
+                {(data?.topOperatingSystems ?? []).map((o) => (
+                  <div className="visitor-page-row" key={o.key}>
+                    <div className="visitor-page-top">
+                      <div className="visitor-page-title">
+                        <span>{o.label}</span>
+                      </div>
+                      <div className="visitor-page-metrics">
+                        <strong>{compactNumber.format(o.visitors)} ({o.sharePct}%)</strong>
+                      </div>
+                    </div>
+                    <div className="overview-progress-track">
+                      <div className="overview-progress-fill" style={{ width: `${o.sharePct}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Browsers */}
+            <div>
+              <h3 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Globe className="w-3.5 h-3.5 text-muted-fg" /> Browsers
+              </h3>
+              <div className="visitor-page-list" style={{ padding: 0 }}>
+                {(data?.topBrowsers ?? []).map((b) => (
+                  <div className="visitor-page-row" key={b.key}>
+                    <div className="visitor-page-top">
+                      <div className="visitor-page-title">
+                        <span>{b.label}</span>
+                      </div>
+                      <div className="visitor-page-metrics">
+                        <strong>{compactNumber.format(b.visitors)} ({b.sharePct}%)</strong>
+                      </div>
+                    </div>
+                    <div className="overview-progress-track">
+                      <div className="overview-progress-fill" style={{ width: `${b.sharePct}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: CUSTOM EVENTS (events/aggregate) */}
+        {analyticsTab === 'events' && (
+          <div className="visitor-page-list">
+            {(data?.customEvents ?? []).map((e) => (
+              <div className="visitor-page-row" key={e.eventName}>
+                <div className="visitor-page-top">
+                  <div className="visitor-page-title">
+                    <Radio className="w-4 h-4 text-muted-fg" aria-hidden="true" />
+                    <strong>{e.label}</strong>
+                    <code>{e.eventName}</code>
+                  </div>
+                  <div className="visitor-page-metrics">
+                    <strong>{compactNumber.format(e.count)} triggers</strong>
+                    <small>{compactNumber.format(e.visitors)} distinct users</small>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {(data?.customEvents?.length ?? 0) === 0 && (
+              <p className="sidebar-empty" style={{ padding: '24px' }}>
+                No custom Web Analytics events recorded yet. Trigger events via <code>track(&apos;event_name&apos;)</code> in your frontend.
+              </p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* COIN PACKAGES & UPCOMING TRYOUTS ROW */}
+      <section className="overview-breakdown-grid" aria-label="Coin packages and upcoming tryouts schedule">
         {/* COINS SOLD & PRICE PER COIN TIERS */}
         <article className="overview-card">
           <div className="overview-card-header">
@@ -609,79 +933,184 @@ export default function OverviewPage() {
             })}
           </div>
         </article>
-      </section>
 
-      {/* UPCOMING TRYOUTS SECTION */}
-      <section className="overview-card overview-tryouts-section" aria-label="Upcoming tryouts schedule">
-        <div className="overview-card-header">
-          <div>
-            <h2>Upcoming Tryouts</h2>
-            <p>
-              Scheduled UTBK-SNBT and Seleksi Mandiri tryout batches, release dates, and solution coin pricing.
-              {nextUpcomingTryout ? ` Next: ${nextUpcomingTryout.title} (${relativeDaysLabel(nextUpcomingTryout.scheduledStart)}).` : ''}
-            </p>
+        {/* UPCOMING TRYOUTS */}
+        <article className="overview-card">
+          <div className="overview-card-header">
+            <div>
+              <h2>Upcoming Tryouts</h2>
+              <p>
+                Scheduled UTBK batches.
+                {nextUpcomingTryout ? ` Next: ${nextUpcomingTryout.title} (${relativeDaysLabel(nextUpcomingTryout.scheduledStart)}).` : ''}
+              </p>
+            </div>
+            {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
+              <Link className="button button-secondary" href="/control-center">
+                Manage <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+              </Link>
+            )}
           </div>
-          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
-            <Link className="button button-secondary" href="/control-center">
-              Manage tryouts <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-            </Link>
-          )}
-        </div>
 
-        <div className="control-table-wrap">
-          <table className="control-table">
-            <thead>
-              <tr>
-                <th>Tryout Title</th>
-                <th>Batch</th>
-                <th>Status</th>
-                <th>Schedule Window</th>
-                <th>Countdown</th>
-                <th>Solution Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data?.upcomingTryouts ?? []).map((tryout) => (
-                <tr key={tryout.id}>
-                  <td>
+          <div className="visitor-page-list">
+            {(data?.upcomingTryouts ?? []).slice(0, 4).map((tryout) => (
+              <div className="visitor-page-row" key={tryout.id}>
+                <div className="visitor-page-top">
+                  <div className="visitor-page-title">
                     <strong>{tryout.title}</strong>
-                    <small>{tryout.description || `Batch code #${tryout.code}`}</small>
-                  </td>
-                  <td>
                     <span className="priority-badge">{tryout.batch}</span>
-                  </td>
-                  <td>
-                    <span className="control-status">
-                      {tryout.status === 'NOT_STARTED'
-                        ? 'Upcoming'
-                        : tryout.status === 'IN_PROGRESS'
-                          ? 'Active Now'
-                          : tryout.status.replaceAll('_', ' ')}
-                    </span>
-                  </td>
-                  <td>{formatDateRange(tryout.scheduledStart, tryout.scheduledEnd)}</td>
-                  <td>
-                    <span className="tryout-countdown-badge">
-                      <CalendarClock className="w-3.5 h-3.5" aria-hidden="true" />
-                      {relativeDaysLabel(tryout.scheduledStart)}
-                    </span>
-                  </td>
-                  <td>
+                  </div>
+                  <div className="visitor-page-metrics">
                     <strong>{tryout.solutionPrice} Coins</strong>
-                  </td>
-                </tr>
-              ))}
-              {!loading && (data?.upcomingTryouts.length ?? 0) === 0 && (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '24px' }}>
-                    No upcoming tryouts scheduled yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    <small>
+                      <CalendarClock className="w-3 h-3 inline-block mr-1" />
+                      {relativeDaysLabel(tryout.scheduledStart)}
+                    </small>
+                  </div>
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--muted-fg)', marginTop: '2px' }}>
+                  {formatDateRange(tryout.scheduledStart, tryout.scheduledEnd)}
+                </div>
+              </div>
+            ))}
+            {(data?.upcomingTryouts.length ?? 0) === 0 && (
+              <p className="sidebar-empty" style={{ padding: '24px' }}>No upcoming tryouts scheduled yet.</p>
+            )}
+          </div>
+        </article>
       </section>
+
+      {/* VERCEL WEB ANALYTICS CREDENTIALS DIALOG */}
+      {showVercelModal && (
+        <div className="modal-backdrop" onClick={() => setShowVercelModal(false)}>
+          <div className="modal-card" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Key className="w-4 h-4" />
+                <h2 style={{ fontSize: '16px', fontWeight: 600 }}>Vercel Web Analytics API Configuration</h2>
+              </div>
+              <button
+                type="button"
+                className="button button-quiet"
+                onClick={() => setShowVercelModal(false)}
+                aria-label="Close dialog"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveVercelCredentials}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <p style={{ fontSize: '12.5px', color: 'var(--muted-fg)', lineHeight: 1.5 }}>
+                  Connect your team dashboard directly to the official Vercel Web Analytics REST API to query real-time pageviews, unique visitors, referrers, and country geography.
+                </p>
+
+                {data?.vercelConfig?.configured && (
+                  <div className="inline-message" style={{ background: 'var(--muted-bg)', border: '1px solid var(--border)' }}>
+                    <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <div>
+                      <strong>Currently connected:</strong>
+                      <p style={{ fontSize: '11.5px', margin: 0 }}>
+                        Project: <code>{data.vercelConfig.projectId}</code> · Team: <code>{data.vercelConfig.teamId}</code>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {vercelModalError && (
+                  <div className="inline-message error">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{vercelModalError}</span>
+                  </div>
+                )}
+
+                {vercelModalSuccess && (
+                  <div className="inline-message" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)', color: '#22c55e' }}>
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    <span>{vercelModalSuccess}</span>
+                  </div>
+                )}
+
+                <div className="form-field">
+                  <label htmlFor="vercelTokenInput">
+                    Vercel Access Token (<code>$VERCEL_TOKEN</code>)
+                  </label>
+                  <input
+                    id="vercelTokenInput"
+                    type="password"
+                    className="input"
+                    placeholder={data?.vercelConfig?.tokenMasked ? `Current: ${data.vercelConfig.tokenMasked}` : 'vercel_...'}
+                    value={vercelToken}
+                    onChange={(e) => setVercelToken(e.target.value)}
+                    required
+                  />
+                  <small style={{ color: 'var(--muted-fg)', fontSize: '11px' }}>
+                    Create at <strong>Vercel Dashboard &gt; Account Settings &gt; Tokens</strong>.
+                  </small>
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="vercelProjectIdInput">
+                    Vercel Project ID (<code>$VERCEL_PROJECT_ID</code>)
+                  </label>
+                  <input
+                    id="vercelProjectIdInput"
+                    type="text"
+                    className="input"
+                    placeholder="prj_..."
+                    value={vercelProjectId}
+                    onChange={(e) => setVercelProjectId(e.target.value)}
+                    required
+                  />
+                  <small style={{ color: 'var(--muted-fg)', fontSize: '11px' }}>
+                    Found at <strong>Vercel Project &gt; Settings &gt; General &gt; Project ID</strong>.
+                  </small>
+                </div>
+
+                <div className="form-field">
+                  <label htmlFor="vercelTeamIdInput">
+                    Vercel Team ID / Slug (<code>$VERCEL_TEAM_ID</code>)
+                  </label>
+                  <input
+                    id="vercelTeamIdInput"
+                    type="text"
+                    className="input"
+                    placeholder="team_..."
+                    value={vercelTeamId}
+                    onChange={(e) => setVercelTeamId(e.target.value)}
+                  />
+                  <small style={{ color: 'var(--muted-fg)', fontSize: '11px' }}>
+                    Defaults to your workspace team ID (<code>team_AwXSFqNTh675u2W43i6HDQzY</code>).
+                  </small>
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setShowVercelModal(false)}
+                  disabled={savingVercel}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="button button-primary"
+                  disabled={savingVercel}
+                >
+                  {savingVercel ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Authenticating…
+                    </>
+                  ) : (
+                    'Test & Save Connection'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

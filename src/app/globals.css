@@ -3374,3 +3374,58 @@ html.dark .source-pill.is-vercel {
   font-size: 11px;
   font-weight: 550;
 }
+
+
+.source-pill.is-clickable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.source-pill.is-clickable:hover {
+  background: var(--surface);
+  color: var(--foreground);
+  border-color: var(--foreground);
+}
+
+.overview-analytics-intelligence {
+  margin-top: 14px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--foreground);
+}
+
+.modal-card {
+  width: min(100%, 540px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 14px 20px;
+  background: var(--muted-bg);
+  border-top: 1px solid var(--border);
+}
