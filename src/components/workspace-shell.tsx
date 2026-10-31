@@ -55,12 +55,6 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const isProjectActivityRoute = Boolean(activeProject && pathname.endsWith('/activity'));
   const isProjectRoute = Boolean(activeProject) || pathname === '/projects/archived';
 
-  const sectionCategory = isProjectRoute
-    ? 'Projects'
-    : pathname === '/control-center'
-      ? 'Administration'
-      : 'Dashboards';
-
   const pageLabel = pathname === '/' ? 'Dashboard'
     : pathname === '/projects/archived' ? 'Archived projects'
     : pathname === '/tasks' ? 'Tasks'
@@ -335,39 +329,44 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                 <BreadcrumbItem>
                   <BreadcrumbLink render={<Link href="/" />}>Workspace</BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem className="shadcn-breadcrumb-dropdown-wrap" ref={breadcrumbMenuRef}>
-                  <button
-                    type="button"
-                    className="shadcn-breadcrumb-ellipsis-trigger"
-                    aria-expanded={breadcrumbMenuOpen}
-                    aria-haspopup="menu"
-                    onClick={() => setBreadcrumbMenuOpen((prev) => !prev)}
-                  >
-                    <BreadcrumbEllipsis />
-                    <span className="sr-only">Toggle navigation menu</span>
-                  </button>
-                  {breadcrumbMenuOpen && (
-                    <div className="shadcn-breadcrumb-dropdown" role="menu" aria-label="Quick navigation">
-                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/">Dashboard</Link>
-                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/tasks">Standalone Tasks</Link>
-                      <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/departments">Departments</Link>
-                      {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
-                        <>
-                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/team">Team Members</Link>
-                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/activity">Team Activity</Link>
-                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/control-center">Control Center</Link>
-                        </>
+
+                {isProjectActivityRoute && activeProject ? (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem className="shadcn-breadcrumb-dropdown-wrap" ref={breadcrumbMenuRef}>
+                      <button
+                        type="button"
+                        className="shadcn-breadcrumb-ellipsis-trigger"
+                        aria-expanded={breadcrumbMenuOpen}
+                        aria-haspopup="menu"
+                        onClick={() => setBreadcrumbMenuOpen((prev) => !prev)}
+                      >
+                        <BreadcrumbEllipsis />
+                        <span className="sr-only">Toggle navigation menu</span>
+                      </button>
+                      {breadcrumbMenuOpen && (
+                        <div className="shadcn-breadcrumb-dropdown" role="menu" aria-label="Quick navigation">
+                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/">Projects</Link>
+                          <Link className="shadcn-breadcrumb-dropdown-item" role="menuitem" href="/projects/archived">Archived projects</Link>
+                        </div>
                       )}
-                    </div>
-                  )}
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink render={<Link href={isProjectRoute && activeProject ? `/projects/${activeProject.id}` : '/'} />}>
-                    {isProjectActivityRoute && activeProject ? activeProject.name : sectionCategory}
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink render={<Link href={`/projects/${activeProject.id}`} />}>
+                        {activeProject.name}
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </>
+                ) : isProjectRoute ? (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink render={<Link href="/" />}>Projects</BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </>
+                ) : null}
+
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>{pageLabel}</BreadcrumbPage>
