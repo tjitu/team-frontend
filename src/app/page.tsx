@@ -430,18 +430,9 @@ export default function OverviewPage() {
               {loading || !data ? '—' : compactNumber.format(data.users.totalUsers)}
             </strong>
             <AvatarGroup className="h-6">
-              <Avatar size="xs" className="size-6" title="Siswa Rian (SMA 1 Jakarta)">
-                <AvatarImage src={getCartoonAvatarUrl('Rian Pratama', 'open-peeps')} alt="Rian Pratama" />
-                <AvatarFallback>RP</AvatarFallback>
-              </Avatar>
-              <Avatar size="xs" className="size-6" title="Siswa Siti (SMA 8 Jakarta)">
-                <AvatarImage src={getCartoonAvatarUrl('Siti Nurhaliza', 'open-peeps')} alt="Siti Nurhaliza" />
-                <AvatarFallback>SN</AvatarFallback>
-              </Avatar>
-              <Avatar size="xs" className="size-6" title="Siswa Ahmad (SMA 70 Jakarta)">
-                <AvatarImage src={getCartoonAvatarUrl('Ahmad Dhani', 'open-peeps')} alt="Ahmad Dhani" />
-                <AvatarFallback>AD</AvatarFallback>
-              </Avatar>
+              <Avatar size="xs" className="size-6" seed="Rian Pratama" styleType="open-peeps" title="Siswa Rian (SMA 1 Jakarta)" />
+              <Avatar size="xs" className="size-6" seed="Siti Nurhaliza" styleType="open-peeps" title="Siswa Siti (SMA 8 Jakarta)" />
+              <Avatar size="xs" className="size-6" seed="Ahmad Dhani" styleType="open-peeps" title="Siswa Ahmad (SMA 70 Jakarta)" />
               <AvatarGroupCount className="size-6 text-[9px]">
                 +{Math.max(1, (data?.users.newUsersThisMonth ?? 12))}
               </AvatarGroupCount>
@@ -476,19 +467,13 @@ export default function OverviewPage() {
               {loading || !data ? '—' : compactNumber.format(data.users.activeUsers)}
             </strong>
             <AvatarGroup className="h-6">
-              <Avatar size="xs" className="size-6" title="Dimas (Live Exam SNBT)">
-                <AvatarImage src={getCartoonAvatarUrl('Dimas Anggara', 'adventurer')} alt="Dimas Anggara" />
-                <AvatarFallback>DA</AvatarFallback>
+              <Avatar size="xs" className="size-6" seed="Dimas Anggara" styleType="adventurer" title="Dimas (Live Exam SNBT)">
                 <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
               </Avatar>
-              <Avatar size="xs" className="size-6" title="Nadia (Live Exam SNBT)">
-                <AvatarImage src={getCartoonAvatarUrl('Nadia Vega', 'adventurer')} alt="Nadia Vega" />
-                <AvatarFallback>NV</AvatarFallback>
+              <Avatar size="xs" className="size-6" seed="Nadia Vega" styleType="adventurer" title="Nadia (Live Exam SNBT)">
                 <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
               </Avatar>
-              <Avatar size="xs" className="size-6" title="Budi (Live Exam SNBT)">
-                <AvatarImage src={getCartoonAvatarUrl('Budi Santoso', 'adventurer')} alt="Budi Santoso" />
-                <AvatarFallback>BS</AvatarFallback>
+              <Avatar size="xs" className="size-6" seed="Budi Santoso" styleType="adventurer" title="Budi (Live Exam SNBT)">
                 <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
               </Avatar>
               <AvatarGroupCount className="size-6 text-[9px]">

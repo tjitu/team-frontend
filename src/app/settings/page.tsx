@@ -465,11 +465,7 @@ export default function SettingsPage() {
 
           <div className="settings-card-body">
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '8px 0' }}>
-              <Avatar size="lg" className="size-14">
-                <AvatarImage src={getCartoonAvatarUrl(member?.name || member?.email || 'admin', 'open-peeps')} alt={member?.name} />
-                <AvatarFallback className="text-lg">
-                  {member?.name ? member.name.slice(0, 2).toUpperCase() : 'ME'}
-                </AvatarFallback>
+              <Avatar size="lg" className="size-14" seed={member?.name || member?.email || 'admin'} styleType="open-peeps">
                 <AvatarBadge className="bg-emerald-500 size-3 ring-2" />
               </Avatar>
               <div>

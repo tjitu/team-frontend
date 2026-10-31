@@ -1,24 +1,36 @@
 'use client';
 
 import * as React from 'react';
-import { Avatar as AvatarPrimitive } from '@base-ui/react';
 import { cn } from '@/lib/utils';
+import { getCartoonAvatarUrl, CartoonStyle } from '@/lib/avatar';
 
-export interface AvatarProps extends React.ComponentProps<typeof AvatarPrimitive.Root> {
+export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: 'default' | 'sm' | 'lg' | 'xs';
+  seed?: string | null;
+  src?: string | null;
+  alt?: string;
+  styleType?: CartoonStyle;
+  children?: React.ReactNode;
 }
 
 function Avatar({
   className,
   size = 'default',
+  seed,
+  src,
+  alt = 'Cartoon Avatar',
+  styleType = 'open-peeps',
+  children,
   ...props
 }: AvatarProps) {
+  const cartoonUrl = src || (seed ? getCartoonAvatarUrl(seed, styleType) : null);
+
   return (
-    <AvatarPrimitive.Root
+    <div
       data-slot="avatar"
       data-size={size}
       className={cn(
-        'shadcn-avatar',
+        'shadcn-avatar avatar',
         size === 'default' && 'size-10',
         size === 'sm' && 'size-8',
         size === 'xs' && 'size-6',
@@ -26,48 +38,66 @@ function Avatar({
         className
       )}
       {...props}
-    />
+    >
+      {cartoonUrl && (
+        <img
+          data-slot="avatar-image"
+          src={cartoonUrl}
+          alt={alt}
+          className="shadcn-avatar-image"
+          loading="lazy"
+        />
+      )}
+      {children}
+    </div>
   );
 }
 
 function AvatarImage({
   className,
   src,
-  alt = '',
-  onError,
+  alt = 'Cartoon Avatar',
   ...props
 }: React.ComponentProps<'img'>) {
-  const [hasError, setHasError] = React.useState(false);
-
-  if (!src || hasError) {
-    return null;
-  }
-
+  if (!src) return null;
   return (
     <img
       data-slot="avatar-image"
       src={src}
       alt={alt}
       className={cn('shadcn-avatar-image', className)}
-      onError={(e) => {
-        setHasError(true);
-        onError?.(e);
-      }}
       loading="lazy"
       {...props}
     />
   );
 }
 
+/**
+ * AvatarFallback:
+ * By user requirement, NO initials text is ever rendered.
+ * If fallback is called, it renders a deterministic cartoon person avatar based on the seed.
+ */
 function AvatarFallback({
+  children,
+  seed,
   className,
-  ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
+  styleType = 'open-peeps',
+}: {
+  children?: React.ReactNode;
+  seed?: string | null;
+  className?: string;
+  styleType?: CartoonStyle;
+}) {
+  const candidateSeed = seed || (typeof children === 'string' && children.trim() ? children.trim() : 'member');
+  const cartoonSrc = getCartoonAvatarUrl(candidateSeed, styleType);
+
   return (
-    <AvatarPrimitive.Fallback
-      data-slot="avatar-fallback"
-      className={cn('shadcn-avatar-fallback', className)}
-      {...props}
+    <img
+      data-slot="avatar-image"
+      src={cartoonSrc}
+      alt="Cartoon Avatar"
+      className={cn('shadcn-avatar-image', className)}
+      loading="lazy"
     />
   );
 }

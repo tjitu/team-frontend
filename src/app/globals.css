@@ -597,19 +597,6 @@ h1, h2, h3 { text-wrap: balance; }
 .profile-copy { display: grid; min-width: 0; gap: 4px; }
 .profile-copy strong { overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .profile-copy span { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
-.avatar {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid var(--line-strong);
-  border-radius: 50%;
-  background: var(--literal-background-6);
-  color: var(--literal-foreground-7);
-  font-size: 11px;
-  font-weight: 700;
-}
 .avatar-small { width: 32px; height: 32px; }
 
 .main-area { min-height: 100vh; margin-left: 252px; }

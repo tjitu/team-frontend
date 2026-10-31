@@ -377,9 +377,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="sidebar-footer" title={member ? `${member.name} (${member.role?.replaceAll('_', ' ')})` : undefined}>
-          <Avatar size="sm" className="size-8">
-            <AvatarImage src={getCartoonAvatarUrl(member?.name || member?.email || 'admin', 'open-peeps')} alt={member?.name} />
-            <AvatarFallback>{member?.name?.slice(0, 2).toUpperCase() ?? '—'}</AvatarFallback>
+          <Avatar size="sm" className="size-8" seed={member?.name || member?.email || 'admin'} styleType="open-peeps">
             <AvatarBadge className="bg-emerald-500" />
           </Avatar>
           <div className="profile-copy">
@@ -491,9 +489,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                 aria-controls="account-menu"
                 onClick={() => { setSignOutError(''); setAccountOpen((open) => !open); }}
               >
-                <Avatar size="sm" className="size-8">
-                  <AvatarImage src={getCartoonAvatarUrl(member?.name || member?.email || 'admin', 'open-peeps')} alt={member?.name} />
-                  <AvatarFallback>{member?.name?.slice(0, 2).toUpperCase() ?? '—'}</AvatarFallback>
+                <Avatar size="sm" className="size-8" seed={member?.name || member?.email || 'admin'} styleType="open-peeps">
                   <AvatarBadge className="bg-emerald-500" />
                 </Avatar>
                 <span className="account-trigger-copy">

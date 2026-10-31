@@ -489,7 +489,7 @@ export default function ProjectPage() {
         </div>
       </div>
       {project && project.members && project.members.length > 0 && <div className="project-member-strip" aria-label="Project members">
-        {project.members.slice(0, 5).map(({ id, role, teamMember }) => <span className="member-chip" key={id} title={`${teamMember.email} · ${roleLabels[role]}`}><Avatar size="sm" className="size-5 text-[9px]"><AvatarImage src={getCartoonAvatarUrl(teamMember.name, 'open-peeps')} alt={teamMember.name} /><AvatarFallback>{initials(teamMember.name)}</AvatarFallback></Avatar>{teamMember.name}<span className="sr-only">, {roleLabels[role]}</span></span>)}
+        {project.members.slice(0, 5).map(({ id, role, teamMember }) => <span className="member-chip" key={id} title={`${teamMember.email} · ${roleLabels[role]}`}><Avatar size="sm" className="size-5 text-[9px]" seed={teamMember.name} styleType="open-peeps" />{teamMember.name}<span className="sr-only">, {roleLabels[role]}</span></span>)}
         {project.members.length > 5 && <span className="member-overflow">+{project.members.length - 5} more</span>}
       </div>}
 
@@ -522,7 +522,7 @@ export default function ProjectPage() {
                   <td><button className="task-title-button" onClick={() => void openTask(task.id)}>{task.title}</button><div className="task-subtitle">{task._count?.comments ?? 0} comments · {task.attachments?.length ?? 0} links · updated {dateLabel(task.updatedAt)}</div></td>
                   <td><span className={`status-badge status-${task.status}`}>{statusLabels[task.status]}</span></td>
                   <td><span className={`priority-badge priority-${task.priority}`}>{priorityLabels[task.priority]}</span></td>
-                  <td><div className="assignee-stack" aria-label={task.assignees.map(({ teamMember }) => teamMember.name).join(', ') || 'Unassigned'}>{task.assignees.length ? task.assignees.slice(0, 3).map(({ teamMember }) => <Avatar size="sm" className="size-6 text-[10px]" key={teamMember.id} title={teamMember.name}><AvatarImage src={getCartoonAvatarUrl(teamMember.name, 'open-peeps')} alt={teamMember.name} /><AvatarFallback>{initials(teamMember.name)}</AvatarFallback></Avatar>) : <span className="assignee-empty">None</span>}{task.assignees.length > 3 && <Avatar size="sm" className="size-6 text-[10px]"><AvatarFallback>+{task.assignees.length - 3}</AvatarFallback></Avatar>}</div></td>
+                  <td><div className="assignee-stack" aria-label={task.assignees.map(({ teamMember }) => teamMember.name).join(', ') || 'Unassigned'}>{task.assignees.length ? task.assignees.slice(0, 3).map(({ teamMember }) => <Avatar size="sm" className="size-6 text-[10px]" key={teamMember.id} seed={teamMember.name} styleType="open-peeps" title={teamMember.name} />) : <span className="assignee-empty">None</span>}{task.assignees.length > 3 && <AvatarGroupCount className="size-6 text-[10px]">+{task.assignees.length - 3}</AvatarGroupCount>}</div></td>
                   <td className="due-date">{dateLabel(task.dueAt)}</td>
                 </tr>)}</tbody>
               </table>
@@ -541,7 +541,7 @@ export default function ProjectPage() {
                       <div className="task-board-card-meta"><span className={`priority-badge priority-${task.priority}`}>{priorityLabels[task.priority]}</span><span className="task-board-comments">{task._count?.comments ?? 0} comments · {task.attachments?.length ?? 0} links</span></div>
                       {task.dueAt && <time className="task-board-due" dateTime={task.dueAt}>Due {dateLabel(task.dueAt)}</time>}
                       <footer className="task-board-card-footer">
-                        <div className="assignee-stack" aria-label={task.assignees.map(({ teamMember }) => teamMember.name).join(', ') || 'Unassigned'}>{task.assignees.length ? task.assignees.slice(0, 2).map(({ teamMember }) => <Avatar size="sm" className="size-6 text-[10px]" key={teamMember.id} title={teamMember.name}><AvatarFallback>{initials(teamMember.name)}</AvatarFallback></Avatar>) : <span className="assignee-empty">Unassigned</span>}{task.assignees.length > 2 && <Avatar size="sm" className="size-6 text-[10px]"><AvatarFallback>+{task.assignees.length - 2}</AvatarFallback></Avatar>}</div>
+                        <div className="assignee-stack" aria-label={task.assignees.map(({ teamMember }) => teamMember.name).join(', ') || 'Unassigned'}>{task.assignees.length ? task.assignees.slice(0, 2).map(({ teamMember }) => <Avatar size="sm" className="size-6 text-[10px]" key={teamMember.id} seed={teamMember.name} styleType="open-peeps" title={teamMember.name} />) : <span className="assignee-empty">Unassigned</span>}{task.assignees.length > 2 && <AvatarGroupCount className="size-6 text-[10px]">+{task.assignees.length - 2}</AvatarGroupCount>}</div>
                         <TaskStatusPicker task={task} disabled={!canWrite || saving} onChange={(status) => void changeTaskStatus(task, status)} />
                       </footer>
                     </article>)}
@@ -575,7 +575,7 @@ export default function ProjectPage() {
               {(canWrite || canManage) && <div className="detail-actions">{canWrite && <button className="button button-secondary compact-button" onClick={() => { setTaskFormError(''); setEditTaskOpen(true); }}>Edit task</button>}{canManage && <button className="button button-quiet compact-button danger-action" disabled={saving} onClick={() => void archiveTask()}>Archive</button>}</div>}
               <div className="detail-field"><span>Status</span><TaskStatusPicker task={selectedTask} disabled={!canWrite || saving} onChange={updateStatus} fullWidth /></div>
               <div className="detail-meta"><div className="detail-field"><span>Priority</span><strong>{priorityLabels[selectedTask.priority]}</strong></div><div className="detail-field"><span>Due date</span><strong>{dateLabel(selectedTask.dueAt)}</strong></div></div>
-              <div className="detail-field"><span>Assignee</span><div className="project-members">{selectedTask.assignees.length ? selectedTask.assignees.map(({ teamMember }) => <span className="member-chip" key={teamMember.id}><Avatar size="sm" className="size-5 text-[9px]"><AvatarFallback>{initials(teamMember.name)}</AvatarFallback></Avatar>{teamMember.name}</span>) : <p>No assignees yet.</p>}</div></div>
+              <div className="detail-field"><span>Assignee</span><div className="project-members">{selectedTask.assignees.length ? selectedTask.assignees.map(({ teamMember }) => <span className="member-chip" key={teamMember.id}><Avatar size="sm" className="size-5 text-[9px]" seed={teamMember.name} styleType="open-peeps" />{teamMember.name}</span>) : <p>No assignees yet.</p>}</div></div>
             </aside>
           </div>
         </section>
@@ -642,7 +642,7 @@ export default function ProjectPage() {
                 const isLastProjectManager = role === 'PROJECT_MANAGER' && activeProjectManagerCount <= 1;
                 const roleControlDisabled = membershipBusy === teamMember.id || isLastProjectManager;
                 return <div className="project-member-row" key={id}>
-                  <Avatar size="sm" className="size-8"><AvatarImage src={getCartoonAvatarUrl(teamMember.name, 'open-peeps')} alt={teamMember.name} /><AvatarFallback>{initials(teamMember.name)}</AvatarFallback></Avatar>
+                  <Avatar size="sm" className="size-8" seed={teamMember.name} styleType="open-peeps" />
                   <div className="project-member-identity"><strong>{teamMember.name}</strong><small>{teamMember.email}</small></div>
                   {teamMember.id === member?.id
                     ? <span className="project-role-current" title="You cannot change your own project role."><strong>{roleLabels[role]}</strong><small>Your account</small></span>

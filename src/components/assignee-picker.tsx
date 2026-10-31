@@ -99,10 +99,7 @@ export function AssigneePicker({
               key={teamMember.id}
               onClick={() => toggleMember(teamMember)}
             >
-              <Avatar size="sm" className="size-6 text-[10px]" aria-hidden="true">
-                <AvatarImage src={getCartoonAvatarUrl(teamMember.name, 'open-peeps')} alt={teamMember.name} />
-                <AvatarFallback>{teamMember.name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('')}</AvatarFallback>
-              </Avatar>
+              <Avatar size="sm" className="size-6 text-[10px]" seed={teamMember.name} styleType="open-peeps" aria-hidden="true" />
               <span className="assignee-picker-person"><strong>{teamMember.name}</strong><small>{teamMember.email}</small></span>
               <span className="assignee-picker-check" aria-hidden="true">{selected ? '✓' : ''}</span>
             </button>;

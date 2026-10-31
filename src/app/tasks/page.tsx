@@ -83,10 +83,7 @@ function AssigneePicker({
         <div className="assignee-picker-options">
           {visibleMembers.map((candidate) => <label className="assignee-picker-option" key={candidate.id}>
             <input type="checkbox" checked={selectedIds.includes(candidate.id)} onChange={() => toggle(candidate.id)} />
-            <Avatar size="sm" className="size-6 text-[10px]" aria-hidden="true">
-              <AvatarImage src={getCartoonAvatarUrl(candidate.name, 'open-peeps')} alt={candidate.name} />
-              <AvatarFallback>{candidate.name.trim().charAt(0).toUpperCase()}</AvatarFallback>
-            </Avatar>
+            <Avatar size="sm" className="size-6 text-[10px]" seed={candidate.name} styleType="open-peeps" aria-hidden="true" />
             <span className="assignee-picker-identity"><strong>{candidate.name}</strong><small>{candidate.email}</small></span>
           </label>)}
           {!visibleMembers.length && <p className="assignee-picker-empty">No team members found.</p>}

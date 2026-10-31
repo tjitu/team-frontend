@@ -258,10 +258,7 @@ export default function ProjectsPage() {
               <h3 title={project.name}>{project.name}</h3>
               <p className="project-description">{project.description || 'No description for this project yet.'}</p>
               <div className="project-card-owner-row">
-                <Avatar size="sm" className="size-6 text-[10px]">
-                  <AvatarImage src={getCartoonAvatarUrl(project.createdBy.name, 'open-peeps')} alt={project.createdBy.name} />
-                  <AvatarFallback>{initials(project.createdBy.name)}</AvatarFallback>
-                </Avatar>
+                <Avatar size="sm" className="size-6 text-[10px]" seed={project.createdBy.name} styleType="open-peeps" />
                 <span className="project-card-metadata">Lead: {project.createdBy.name}</span>
               </div>
               <div className="project-card-footer">
