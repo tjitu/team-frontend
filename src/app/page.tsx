@@ -73,6 +73,7 @@ type UpcomingTryoutItem = {
 };
 
 type OverviewResponse = {
+  visitorsSource?: 'vercel' | 'database';
   visitors: {
     totalVisitors: number;
     uniqueVisitors: number;
@@ -225,7 +226,18 @@ export default function OverviewPage() {
     <div className="page-content overview-page">
       <div className="page-heading">
         <div>
-          <h1>Overview</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h1>Overview</h1>
+            {data?.visitorsSource === 'vercel' ? (
+              <span className="source-pill is-vercel" title="Connected to Vercel Web Analytics REST API">
+                ● Live Vercel Analytics
+              </span>
+            ) : (
+              <span className="source-pill" title="Live platform database telemetry. Add VERCEL_TOKEN in team-backend/.env to stream from Vercel.">
+                Platform Telemetry
+              </span>
+            )}
+          </div>
           <p className="page-subtitle">
             {member?.name ? `Welcome back, ${member.name.split(' ')[0]}. ` : ''}
             Real-time JituPTN platform traffic, user activity, coin economics, revenue, and upcoming tryouts.

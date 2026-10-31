@@ -2374,6 +2374,14 @@ body {
   stroke-width: 1.85;
 }
 
+.shadcn-breadcrumb-separator-slash {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted-fg);
+  opacity: 0.75;
+  user-select: none;
+}
+
 .shadcn-breadcrumb-ellipsis {
   display: inline-flex;
   width: 24px;
@@ -3027,6 +3035,32 @@ html.dark .auth-aside {
 
 .overview-page .page-heading {
   margin-bottom: 4px;
+}
+
+.source-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--muted-bg);
+  color: var(--muted-fg);
+  font-size: 11px;
+  font-weight: 550;
+  vertical-align: middle;
+}
+
+.source-pill.is-vercel {
+  border-color: #000;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+html.dark .source-pill.is-vercel {
+  border-color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .overview-kpi-grid {

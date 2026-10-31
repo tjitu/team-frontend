@@ -93,7 +93,7 @@ function BreadcrumbSeparator({
       className={cn('shadcn-breadcrumb-separator', className)}
       {...props}
     >
-      {children ?? <ChevronRight className="shadcn-breadcrumb-separator-icon" />}
+      {children ?? <span className="shadcn-breadcrumb-separator-slash select-none" aria-hidden="true">/</span>}
     </li>
   );
 }
@@ -125,3 +125,4 @@ export {
   BreadcrumbSeparator,
   BreadcrumbEllipsis,
 };
+
