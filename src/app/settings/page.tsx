@@ -104,7 +104,7 @@ export default function SettingsPage() {
         visitors?: number;
         workingScope?: string;
       }>('/team/control-center/vercel-config', {
-        token: tokenInput.trim(),
+        token: tokenInput.trim() || undefined,
         projectId: projectIdInput.trim(),
         teamId: teamIdInput.trim() || undefined,
       });
@@ -132,11 +132,7 @@ export default function SettingsPage() {
     setDisconnecting(true);
     setTestResult(null);
     try {
-      await api.post('/team/control-center/vercel-config', {
-        token: ' ',
-        projectId: ' ',
-        teamId: '',
-      }).catch(() => null);
+      await api.post('/team/control-center/vercel-disconnect', {});
 
       setVercelStatus({
         configured: false,
@@ -275,16 +271,24 @@ export default function SettingsPage() {
             {isOwnerOrAdmin ? (
               <form onSubmit={handleTestAndSave} className="settings-form">
                 <div className="form-group">
-                  <label htmlFor="vercel-token-input">
-                    Vercel Access Token
-                    <span className="text-red-500 ml-1">*</span>
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label htmlFor="vercel-token-input">
+                      Vercel Access Token
+                      {!vercelStatus?.hasToken && <span className="text-red-500 ml-1">*</span>}
+                    </label>
+                    {vercelStatus?.hasToken && (
+                      <span className="text-emerald-500 font-medium" style={{ fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="live-status-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }} />
+                        Saved Permanently
+                      </span>
+                    )}
+                  </div>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <input
                       id="vercel-token-input"
                       type={showToken ? 'text' : 'password'}
                       className="input-text"
-                      placeholder={vercelStatus?.hasToken ? 'Enter new token to overwrite, or leave blank to keep current' : 'e.g. prj_token_... or vca_...'}
+                      placeholder={vercelStatus?.hasToken ? '•••••••••••••••• (Stored permanently. Leave blank to keep)' : 'e.g. vcp_... or vca_...'}
                       value={tokenInput}
                       onChange={(e) => setTokenInput(e.target.value)}
                       style={{ paddingRight: '40px', fontFamily: 'monospace' }}
@@ -302,17 +306,23 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <small className="form-help">
-                    Generate an access token in your Vercel Dashboard at{' '}
-                    <a
-                      href="https://vercel.com/account/tokens"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 underline text-muted-foreground hover:text-foreground"
-                    >
-                      Account Settings &gt; Tokens
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                    . Ensure it has read permissions for Web Analytics.
+                    {vercelStatus?.hasToken
+                      ? 'Your Vercel token is saved permanently in backend configuration. You only need to type here if you wish to overwrite it with a new token.'
+                      : (
+                        <>
+                          Generate an access token in your Vercel Dashboard at{' '}
+                          <a
+                            href="https://vercel.com/account/tokens"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 underline text-muted-foreground hover:text-foreground"
+                          >
+                            Account Settings &gt; Tokens
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                          . Ensure it has read permissions for Web Analytics.
+                        </>
+                      )}
                   </small>
                 </div>
 
@@ -356,9 +366,9 @@ export default function SettingsPage() {
 
                 <div className="callout callout-info mb-4" style={{ padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-subtle)', fontSize: '13px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                    <Shield className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <Shield className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <p style={{ margin: 0, color: 'var(--muted-fg)' }}>
-                      <strong>Auto-Discovery Enabled:</strong> The backend automatically tests Personal Account scope and accessible team scopes to prevent <code>403 Forbidden</code> errors. Credentials are saved locally to your environment.
+                      <strong>Persistent Storage Active:</strong> Your Vercel Web Analytics credentials are automatically saved to persistent server storage (<code>vercel-analytics-config.json</code> and <code>.env</code>). You never need to re-enter them across sessions or page refreshes.
                     </p>
                   </div>
                 </div>
@@ -374,6 +384,8 @@ export default function SettingsPage() {
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         Testing Connection…
                       </>
+                    ) : vercelStatus?.configured ? (
+                      'Save & Re-verify Connection'
                     ) : (
                       'Test & Save Credentials'
                     )}
@@ -485,3 +497,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
