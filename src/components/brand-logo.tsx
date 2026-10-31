@@ -17,7 +17,7 @@ export function BrandLogo({ size = 32, className = '', showText = false }: Brand
         height={size}
         priority
         className="brand-logo object-contain flex-shrink-0"
-        style={{ width: size, height: 'auto' }}
+        style={{ width: size, height: size }}
       />
       {showText && (
         <span className="font-display font-extrabold text-[20px] tracking-tight leading-none">
