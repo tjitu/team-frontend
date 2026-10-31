@@ -2475,24 +2475,95 @@ body {
   border-color: var(--border);
 }
 
-.avatar {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--muted-bg);
-  color: var(--foreground);
-  font-size: 11px;
+.avatar,
+.shadcn-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  user-select: none;
+  background: var(--muted-bg, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  color: var(--foreground, #ffffff);
   font-weight: 600;
+  vertical-align: middle;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* Base Avatar Sizes */
+.shadcn-avatar[data-size="default"],
+.shadcn-avatar.size-default,
+.shadcn-avatar.size-10 {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 14px;
+}
+
+.shadcn-avatar[data-size="sm"],
+.shadcn-avatar.size-sm,
+.shadcn-avatar.size-8,
+.avatar {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  font-size: 11px;
+}
+
+.shadcn-avatar[data-size="xs"],
+.shadcn-avatar.size-xs,
+.shadcn-avatar.size-6 {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  font-size: 10px;
+}
+
+.shadcn-avatar.size-5 {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  font-size: 9px;
+}
+
+.shadcn-avatar.size-9 {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 13px;
+}
+
+.shadcn-avatar[data-size="lg"],
+.shadcn-avatar.size-lg,
+.shadcn-avatar.size-12 {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 16px;
+}
+
+.shadcn-avatar.size-14 {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  font-size: 18px;
 }
 
 .avatar-topbar {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
 }
 
 .avatar-xs {
@@ -2500,6 +2571,113 @@ body {
   height: 22px;
   font-size: 9px;
 }
+
+/* Fallback Element */
+.shadcn-avatar-fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--muted-bg, rgba(255, 255, 255, 0.1));
+  color: var(--foreground, #ffffff);
+  font-weight: 600;
+  text-transform: uppercase;
+  user-select: none;
+  font-family: inherit;
+  line-height: 1;
+}
+
+/* Image Element */
+.shadcn-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 9999px;
+  display: block;
+}
+
+/* Status Indicator Badge */
+.shadcn-avatar-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background-color: #10b981;
+  border: 2px solid var(--background, #09090b);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+  z-index: 10;
+  pointer-events: none;
+  display: inline-block;
+  box-sizing: content-box;
+}
+
+.shadcn-avatar-badge.size-2 {
+  width: 7px;
+  height: 7px;
+  border-width: 1.5px;
+}
+
+.shadcn-avatar-badge[class*="size-2.5"],
+.shadcn-avatar-badge.size-2-5,
+.shadcn-avatar-badge.size-2-5 {
+  width: 9px;
+  height: 9px;
+  border-width: 2px;
+}
+
+.shadcn-avatar-badge.size-3 {
+  width: 11px;
+  height: 11px;
+  border-width: 2px;
+}
+
+/* Avatar Group */
+.shadcn-avatar-group {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.shadcn-avatar-group .shadcn-avatar:not(:first-child),
+.shadcn-avatar-group .avatar:not(:first-child) {
+  margin-left: -8px;
+  box-shadow: 0 0 0 2px var(--background, #09090b);
+}
+
+.shadcn-avatar-group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: var(--muted-bg, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted-fg, #a1a1aa);
+  margin-left: -8px;
+  box-shadow: 0 0 0 2px var(--background, #09090b);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* Text & utility classes used across avatars */
+.bg-emerald-500 {
+  background-color: #10b981 !important;
+}
+.text-\[9px\] { font-size: 9px !important; }
+.text-\[10px\] { font-size: 10px !important; }
+.text-xs { font-size: 11px !important; }
+.text-sm { font-size: 13px !important; }
+.text-base { font-size: 14px !important; }
+.text-lg { font-size: 18px !important; }
+.ring-1 { box-shadow: 0 0 0 1px var(--background, #09090b) !important; }
+.ring-2 { box-shadow: 0 0 0 2px var(--background, #09090b) !important; }
 
 .account-menu {
   border: 1px solid var(--border);

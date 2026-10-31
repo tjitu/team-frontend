@@ -27,7 +27,7 @@ import {
   Settings as SettingsIcon,
 } from 'lucide-react';
 import { api, CurrentMember, signInUrl } from '@/lib/api';
-import { Avatar, AvatarFallback, AvatarBadge, AvatarGroup } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarBadge, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 
 type VisitorPerPageItem = {
   id: string;
@@ -424,9 +424,25 @@ export default function OverviewPage() {
             <span>Registered Users</span>
             <Users className="w-4 h-4" aria-hidden="true" />
           </div>
-          <strong>
-            {loading || !data ? '—' : compactNumber.format(data.users.totalUsers)}
-          </strong>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
+            <strong>
+              {loading || !data ? '—' : compactNumber.format(data.users.totalUsers)}
+            </strong>
+            <AvatarGroup className="h-6">
+              <Avatar size="xs" className="size-6 text-[10px]" title="Registered User">
+                <AvatarFallback>RU</AvatarFallback>
+              </Avatar>
+              <Avatar size="xs" className="size-6 text-[10px]" title="Student Member">
+                <AvatarFallback>SM</AvatarFallback>
+              </Avatar>
+              <Avatar size="xs" className="size-6 text-[10px]" title="Batch 2026">
+                <AvatarFallback>B2</AvatarFallback>
+              </Avatar>
+              <AvatarGroupCount className="size-6 text-[9px]">
+                +{Math.max(1, (data?.users.newUsersThisMonth ?? 12))}
+              </AvatarGroupCount>
+            </AvatarGroup>
+          </div>
           <small>
             {data ? `+${data.users.newUsersThisMonth} joined this month · ${data.users.verifiedUsers} verified` : 'Loading users…'}
           </small>
@@ -456,18 +472,21 @@ export default function OverviewPage() {
               {loading || !data ? '—' : compactNumber.format(data.users.activeUsers)}
             </strong>
             <AvatarGroup className="h-6">
-              <Avatar size="sm" className="size-6 text-[10px]">
-                <AvatarFallback>U1</AvatarFallback>
+              <Avatar size="xs" className="size-6 text-[10px]" title="Active User HG">
+                <AvatarFallback>HG</AvatarFallback>
                 <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
               </Avatar>
-              <Avatar size="sm" className="size-6 text-[10px]">
-                <AvatarFallback>U2</AvatarFallback>
+              <Avatar size="xs" className="size-6 text-[10px]" title="Active User SN">
+                <AvatarFallback>SN</AvatarFallback>
                 <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
               </Avatar>
-              <Avatar size="sm" className="size-6 text-[10px]">
-                <AvatarFallback>U3</AvatarFallback>
+              <Avatar size="xs" className="size-6 text-[10px]" title="Active User AD">
+                <AvatarFallback>AD</AvatarFallback>
                 <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
               </Avatar>
+              <AvatarGroupCount className="size-6 text-[9px]">
+                +{Math.max(1, (data?.users.activeUsers ?? 3) - 3)}
+              </AvatarGroupCount>
             </AvatarGroup>
           </div>
           <small>
