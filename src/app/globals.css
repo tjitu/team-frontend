@@ -1412,7 +1412,7 @@ h1 { margin-bottom: 7px; font-size: clamp(27px, 2.4vw, 33px); font-weight: 620; 
 .task-layout.has-selection { grid-template-columns: minmax(0, 1fr) 320px; }
 .task-layout > div { min-width: 0; }
 .task-toolbar {
-  grid-template-columns: minmax(180px, 1.35fr) repeat(4, minmax(120px, 1fr)) auto repeat(2, minmax(145px, 1.1fr));
+  grid-template-columns: minmax(180px, 1.35fr) repeat(4, minmax(120px, 1fr)) repeat(2, max-content) repeat(2, minmax(145px, 1.1fr));
   align-items: end;
   gap: 10px;
   margin-bottom: 16px;
