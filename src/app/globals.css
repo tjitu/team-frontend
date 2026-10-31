@@ -24,6 +24,28 @@
   --font-body: Inter, "Segoe UI", Arial, sans-serif;
 }
 
+html.dark {
+  color-scheme: dark;
+  --ink: #edf2fa;
+  --ink-soft: #d3dbea;
+  --muted: #a4b0c3;
+  --faint: #8492a8;
+  --line: #2a374b;
+  --line-strong: #3a4a62;
+  --paper: #151f2e;
+  --canvas: #0c1420;
+  --surface: #192536;
+  --surface-hover: #202f43;
+  --black: #edf2fa;
+  --white: #f7f9fc;
+  --brand: #6b9cff;
+  --brand-hover: #82aaff;
+  --brand-tint: #1b2e4c;
+  --danger: #ff8c8c;
+  --success: #89d4ae;
+  --shadow-dialog: 0 24px 70px rgb(0 0 0 / 48%);
+}
+
 * { box-sizing: border-box; }
 html, body { min-height: 100%; overflow-x: clip; }
 html { scroll-behavior: smooth; }
@@ -217,6 +239,25 @@ h1, h2, h3 { text-wrap: balance; }
   box-shadow: 0 14px 38px rgb(0 0 0 / 12%);
 }
 .account-menu-identity { display: grid; gap: 5px; overflow: hidden; border-bottom: 1px solid var(--line); padding: 11px 10px 13px; }
+.account-theme {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0 10px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 550;
+  text-align: left;
+}
+.account-theme:hover { border-color: var(--line); background: var(--surface-hover); color: var(--brand); }
+.account-theme svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .account-menu-identity strong { font-size: 12px; font-weight: 650; }
 .account-menu-identity span { color: var(--muted); font-size: 10px; text-transform: capitalize; }
 .account-menu-error { margin: 8px 8px 4px; color: #333; font-size: 11px; line-height: 1.5; }
@@ -242,6 +283,50 @@ h1, h2, h3 { text-wrap: balance; }
 .account-logout svg { width: 17px; height: 17px; flex: 0 0 auto; }
 .account-logout-spinner { width: 13px; height: 13px; margin-left: auto; border: 1.5px solid #ccc; border-top-color: #222; border-radius: 50%; animation: account-spin .75s linear infinite; }
 @keyframes account-spin { to { transform: rotate(360deg); } }
+
+/* Keep explicit light surfaces in existing feature screens aligned with the theme. */
+.dark .topbar { background: rgb(12 20 32 / 96%); }
+.dark .avatar { background: #202f43; color: var(--ink); }
+.dark .avatar-small { background: #202f43; }
+.dark .button-secondary:hover,
+.dark .button-quiet:hover,
+.dark .account-logout:hover { background: var(--surface-hover); }
+.dark .skeleton,
+.dark [class*="skeleton"] { background: linear-gradient(100deg, #192536 20%, #26364c 40%, #192536 60%); }
+.dark input,
+.dark textarea,
+.dark select { color-scheme: dark; }
+.dark .task-table tbody tr:hover,
+.dark .assignee-picker-option:hover { background: var(--surface-hover); }
+.dark .modal,
+.dark .account-menu,
+.dark .assignee-picker-menu,
+.dark .control-table-wrap,
+.dark .control-empty { background: var(--paper); border-color: var(--line); color: var(--ink); }
+.dark .control-table th,
+.dark .control-edit-form,
+.dark .assignee-picker-search input,
+.dark .assignee-picker-trigger:disabled,
+.dark .standalone-status-select select,
+.dark .assignee-picker-trigger,
+.dark .control-inline-select { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.dark .control-table td,
+.dark .task-table td,
+.dark .detail-field p,
+.dark .comment-item p,
+.dark .activity-main,
+.dark .project-member-row,
+.dark .standalone-comment p { color: var(--ink-soft); border-color: var(--line); }
+.dark .priority-badge,
+.dark .team-workspace-scope,
+.dark .control-status,
+.dark .assignee-picker-avatar,
+.dark .assignee-picker-count { background: var(--surface); border-color: var(--line); color: var(--ink-soft); }
+.dark .department-card.is-inactive,
+.dark .inline-message.error,
+.dark .inline-message.success,
+.dark .control-empty { background: var(--surface); color: var(--ink-soft); }
+.dark ::selection { background: #34507b; color: #fff; }
 .global-notice {
   width: min(100% - 64px, 1360px);
   margin: 22px auto 0;
@@ -1157,6 +1242,82 @@ input[type="date"] { color-scheme: light; }
 .standalone-comment strong { color: #344054; font-size: 11px; }
 .standalone-comment time { color: #8792a2; font-size: 10px; }
 .standalone-comment p { margin: 5px 0 0; color: #4b5565; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
+
+/* Theme-aware overrides for screens with legacy literal colors. */
+html.dark .auth-page,
+html.dark .invitation-shell { background: var(--canvas); }
+html.dark .auth-aside { background: #172841; color: var(--ink); }
+html.dark .task-board-column,
+html.dark .task-detail-properties,
+html.dark .control-edit-form { background: var(--surface); border-color: var(--line); }
+html.dark .task-board-card,
+html.dark .task-status-menu,
+html.dark .revenue-metric,
+html.dark .revenue-panel,
+html.dark .control-table-wrap,
+html.dark .control-empty,
+html.dark .empty-state,
+html.dark .task-count,
+html.dark .section-count,
+html.dark .task-status-trigger,
+html.dark .assignee-picker-trigger,
+html.dark .standalone-status-select select,
+html.dark .control-inline-select { background: var(--paper); border-color: var(--line); color: var(--ink); }
+html.dark .task-table th,
+html.dark .control-table th { background: var(--surface); color: var(--muted); }
+html.dark .task-table td,
+html.dark .control-table td,
+html.dark .task-detail-properties,
+html.dark .project-member-row,
+html.dark .standalone-comments,
+html.dark .standalone-comment { border-color: var(--line); }
+html.dark .task-table td,
+html.dark .task-table td strong,
+html.dark .control-table td,
+html.dark .control-table td > strong,
+html.dark .task-detail-properties,
+html.dark .task-detail-properties strong,
+html.dark .task-board-card,
+html.dark .task-board-card strong,
+html.dark .assignee-picker-identity strong,
+html.dark .standalone-comments h3,
+html.dark .standalone-comment strong { color: var(--ink-soft); }
+html.dark .task-board-card-meta .priority-badge,
+html.dark .priority-badge,
+html.dark .archived-project-badge,
+html.dark .team-workspace-scope,
+html.dark .control-status,
+html.dark .assignee-picker-chip,
+html.dark .assignee-picker-avatar,
+html.dark .assignee-picker-count,
+html.dark .assignee-picker-option.is-selected .assignee-picker-check { background: var(--surface); border-color: var(--line); color: var(--ink-soft); }
+html.dark .task-status-option.status-TODO { background: #253246; color: #d3dbea; }
+html.dark .task-status-option.status-BLOCKED { background: #47371d; color: #f2d18c; }
+html.dark .assignee-picker-menu,
+html.dark .assignee-picker-search,
+html.dark .assignee-picker-search input { background: var(--paper); border-color: var(--line); color: var(--ink); }
+html.dark .assignee-picker-option:hover,
+html.dark .assignee-picker-option.is-selected,
+html.dark .task-status-trigger:hover,
+html.dark .task-status-trigger[aria-expanded="true"] { background: var(--surface-hover); }
+html.dark .activity-item,
+html.dark .activity-entity { border-color: var(--line); }
+html.dark .inline-message.error,
+html.dark .inline-message.success,
+html.dark .control-success { background: var(--surface); color: var(--ink-soft); }
+html.dark .inline-message,
+html.dark .control-panel-heading p,
+html.dark .control-form-grid .field-label,
+html.dark .control-check,
+html.dark .assignee-picker-identity small,
+html.dark .assignee-picker-empty,
+html.dark .assignee-picker-footer,
+html.dark .standalone-comment p,
+html.dark .standalone-comment time { color: var(--muted); }
+html.dark .avatar,
+html.dark .avatar-small,
+html.dark .assignee-picker-avatar { background: var(--surface); color: var(--ink-soft); }
+
 @media (max-width: 760px) {
   .standalone-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .standalone-search { grid-column: 1 / -1; }

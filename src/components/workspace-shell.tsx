@@ -28,6 +28,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadError, setLoadError] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState('');
   const accountControlRef = useRef<HTMLDivElement>(null);
@@ -42,6 +43,13 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         : pathname.startsWith('/departments') ? 'Department'
           : pathname.endsWith('/activity') ? 'Project activity'
             : activeProject?.name ?? 'Workspace';
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem('jitu-team-theme');
+    const shouldUseDarkMode = savedTheme === 'dark';
+    document.documentElement.classList.toggle('dark', shouldUseDarkMode);
+    setDarkMode(shouldUseDarkMode);
+  }, []);
 
   useEffect(() => {
     if (isInvitationRoute || isLoginRoute) return;
@@ -98,6 +106,13 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       setSignOutError('Could not sign out. Check your connection and try again.');
       setSigningOut(false);
     }
+  }
+
+  function toggleTheme() {
+    const nextDarkMode = !darkMode;
+    document.documentElement.classList.toggle('dark', nextDarkMode);
+    window.localStorage.setItem('jitu-team-theme', nextDarkMode ? 'dark' : 'light');
+    setDarkMode(nextDarkMode);
   }
 
   return (
@@ -176,6 +191,14 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             </button>
             {accountOpen && <div className="account-menu" id="account-menu" aria-label="Account menu">
               <div className="account-menu-identity"><strong className="truncate">{member?.name ?? 'JituPTN Team Platform account'}</strong><span className="truncate">{member?.role?.replaceAll('_', ' ') ?? 'Team member'}</span></div>
+              <button className="account-theme" type="button" aria-pressed={darkMode} onClick={toggleTheme}>
+                {darkMode ? (
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3.5" stroke="currentColor" strokeWidth="1.5" /><path d="M10 2.5v2m0 11v2m7.5-7.5h-2m-11 0h-2m12.8-5.3-1.4 1.4m-7.8 7.8-1.4 1.4m10.6 0-1.4-1.4m-7.8-7.8L5.7 5.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+                ) : (
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.2 12.2A7 7 0 0 1 7.8 3.8a7 7 0 1 0 8.4 8.4Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+                )}
+                <span>{darkMode ? 'Switch to light mode' : 'Switch to dark mode'}</span>
+              </button>
               {signOutError && <p className="account-menu-error" role="alert">{signOutError}</p>}
               <button className="account-logout" type="button" disabled={signingOut} onClick={() => void signOut()}>
                 <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M8 3H4.75A1.75 1.75 0 0 0 3 4.75v10.5A1.75 1.75 0 0 0 4.75 17H8m3-3 4-4-4-4m4 4H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
