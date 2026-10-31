@@ -109,29 +109,30 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="workspace">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <aside className="sidebar" aria-label="Main navigation">
         <Link className="brand" href="/" aria-label="JituPTN Team Platform home">
           <Image className="brand-logo" src="/jitu-logo.webp" alt="" width={36} height={36} />
           <span>JituPTN Team Platform</span>
         </Link>
         <div className="sidebar-label">Workspace</div>
-        <nav className="primary-nav">
-          <Link className={`nav-link ${pathname === '/' ? 'is-active' : ''}`} href="/">
+        <nav className="primary-nav" aria-label="Workspace">
+          <Link className={`nav-link ${pathname === '/' ? 'is-active' : ''}`} href="/" aria-current={pathname === '/' ? 'page' : undefined}>
             <NavIcon name="overview" />Overview
           </Link>
-          {member && <Link className={`nav-link ${pathname === '/tasks' ? 'is-active' : ''}`} href="/tasks">
+          {member && <Link className={`nav-link ${pathname === '/tasks' ? 'is-active' : ''}`} href="/tasks" aria-current={pathname === '/tasks' ? 'page' : undefined}>
             <NavIcon name="tasks" />Tasks
           </Link>}
-          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/team') ? 'is-active' : ''}`} href="/team">
+          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/team') ? 'is-active' : ''}`} href="/team" aria-current={pathname.startsWith('/team') ? 'page' : undefined}>
             <NavIcon name="team" />Team members
           </Link>}
-          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname === '/activity' ? 'is-active' : ''}`} href="/activity">
+          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname === '/activity' ? 'is-active' : ''}`} href="/activity" aria-current={pathname === '/activity' ? 'page' : undefined}>
             <NavIcon name="activity" />Team activity
           </Link>}
-          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/control-center') ? 'is-active' : ''}`} href="/control-center">
+          {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/control-center') ? 'is-active' : ''}`} href="/control-center" aria-current={pathname.startsWith('/control-center') ? 'page' : undefined}>
             <NavIcon name="analytics" />Control Center
           </Link>}
-          {member && <Link className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`} href="/departments">
+          {member && <Link className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`} href="/departments" aria-current={pathname.startsWith('/departments') ? 'page' : undefined}>
             <NavIcon name="departments" />Departments
           </Link>}
         </nav>
@@ -139,7 +140,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           <span>Project</span>
           <span className="count-pill">{projects.length}</span>
         </div>
-        <Link className={`nav-link archived-project-nav ${pathname === '/projects/archived' ? 'is-active' : ''}`} href="/projects/archived">
+        <Link className={`nav-link archived-project-nav ${pathname === '/projects/archived' ? 'is-active' : ''}`} href="/projects/archived" aria-current={pathname === '/projects/archived' ? 'page' : undefined}>
           <NavIcon name="archive" />Archived projects
         </Link>
         <nav className="project-nav" aria-label="Project">
@@ -164,7 +165,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </aside>
-      <main className="main-area">
+      <main className="main-area" id="main-content" tabIndex={-1}>
         <header className="topbar">
           <div className="breadcrumb"><Link href="/">JituPTN Team Platform</Link><span className="breadcrumb-separator">/</span><span aria-current="page">{pageLabel}</span></div>
           <div className="account-control" ref={accountControlRef}>
