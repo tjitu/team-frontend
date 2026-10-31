@@ -1498,11 +1498,12 @@ input[type="date"] { color-scheme: light; }
 
 /* Control Center operations */
 .control-center-page { max-width: 1480px; }
-.control-tabs { display: flex; gap: 21px; overflow-x: auto; border-bottom: 1px solid var(--line); margin: -9px 0 20px; }
-.control-tab { position: relative; min-height: 41px; flex: 0 0 auto; border: 0; background: var(--literal-background-11); padding: 0 2px; color: var(--literal-foreground-48); cursor: pointer; font-size: 12px; font-weight: 550; }
-.control-tab:hover, .control-tab.is-active { color: var(--literal-foreground-38); }
-.control-tab.is-active { font-weight: 650; }
-.control-tab.is-active::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--brand); content: ''; }
+.control-tabs { display: flex; width: fit-content; max-width: 100%; gap: 4px; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; margin: -9px 0 26px; background: var(--surface); padding: 5px; scrollbar-width: none; }
+.control-tabs::-webkit-scrollbar { display: none; }
+.control-tab { display: inline-flex; min-height: 38px; flex: 0 0 auto; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; padding: 0 15px; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 550; transition: background-color .16s ease, color .16s ease; }
+.control-tab:hover { background: var(--surface-hover); color: var(--ink); }
+.control-tab.is-active { background: var(--brand-tint); color: var(--brand); font-weight: 650; }
+.control-tab:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .control-panel { min-width: 0; }
 .control-panel-heading { align-items: center; margin-bottom: 16px; }
 .control-panel-heading > div { display: grid; gap: 5px; }
@@ -1539,7 +1540,7 @@ input[type="date"] { color-scheme: light; }
 .control-empty { display: grid; min-height: 180px; place-items: center; border: 1px dashed var(--literal-border-103); border-radius: 8px; background: var(--literal-background-46); color: var(--ink-soft); font-size: 12px; }
 .control-panel > .revenue-metrics { margin-top: 0; }
 @media (max-width: 760px) { .control-table { min-width: 690px; } }
-@media (max-width: 560px) { .control-form-grid { grid-template-columns: 1fr; } .control-form-wide { grid-column: auto; } .control-tabs { gap: 17px; } .control-panel-heading { align-items: flex-start; } }
+@media (max-width: 560px) { .control-form-grid { grid-template-columns: 1fr; } .control-form-wide { grid-column: auto; } .control-tabs { width: 100%; gap: 3px; } .control-tab { padding: 0 12px; } .control-panel-heading { align-items: flex-start; } }
 
 /* Standalone workspace tasks */
 .standalone-tasks-page .page-heading { margin-bottom: 24px; }
