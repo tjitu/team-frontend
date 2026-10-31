@@ -494,42 +494,20 @@ export default function OverviewPage() {
         <article className="overview-card">
           <div className="overview-card-header">
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2>Visitors Trend</h2>
-                <span className="source-pill" style={{ fontSize: '11px' }}>
-                  {visitorInterval}
-                </span>
-              </div>
+              <h2>Visitors Trend</h2>
               <p>Daily website visitors and traffic volume</p>
             </div>
-            <div className="project-view-tabs" role="tablist" aria-label="Visitors interval switcher">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={visitorInterval === '14d'}
-                className={`project-view-tab ${visitorInterval === '14d' ? 'is-active' : ''}`}
-                onClick={() => setVisitorInterval('14d')}
+            <div className="chart-select-wrapper">
+              <select
+                className="chart-interval-select"
+                value={visitorInterval}
+                onChange={(e) => setVisitorInterval(e.target.value as '14d' | '7d' | '30d')}
+                aria-label="Select visitor interval"
               >
-                14d
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={visitorInterval === '7d'}
-                className={`project-view-tab ${visitorInterval === '7d' ? 'is-active' : ''}`}
-                onClick={() => setVisitorInterval('7d')}
-              >
-                7d
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={visitorInterval === '30d'}
-                className={`project-view-tab ${visitorInterval === '30d' ? 'is-active' : ''}`}
-                onClick={() => setVisitorInterval('30d')}
-              >
-                30d
-              </button>
+                <option value="14d">Last 14 Days</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+              </select>
             </div>
           </div>
 
@@ -617,25 +595,16 @@ export default function OverviewPage() {
                   : 'Monthly confirmed coin purchases over the last 6 months'}
               </p>
             </div>
-            <div className="project-view-tabs" role="tablist" aria-label="Coin trend switcher">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={coinChartMode === 'daily'}
-                className={`project-view-tab ${coinChartMode === 'daily' ? 'is-active' : ''}`}
-                onClick={() => setCoinChartMode('daily')}
+            <div className="chart-select-wrapper">
+              <select
+                className="chart-interval-select"
+                value={coinChartMode}
+                onChange={(e) => setCoinChartMode(e.target.value as 'daily' | 'monthly')}
+                aria-label="Select coin trend interval"
               >
-                14d
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={coinChartMode === 'monthly'}
-                className={`project-view-tab ${coinChartMode === 'monthly' ? 'is-active' : ''}`}
-                onClick={() => setCoinChartMode('monthly')}
-              >
-                6m
-              </button>
+                <option value="daily">Last 14 Days</option>
+                <option value="monthly">Last 6 Months</option>
+              </select>
             </div>
           </div>
 

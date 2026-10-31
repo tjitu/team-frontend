@@ -21,3 +21,4 @@ export function PixelCoin({
 }
 
 export default PixelCoin;
+
