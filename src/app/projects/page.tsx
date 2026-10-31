@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { FolderKanban, Building2, Users, CalendarRange, ArrowUpRight, Plus } from 'lucide-react';
 import { api, CurrentMember, Department, Project, signInUrl } from '@/lib/api';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { getCartoonAvatarUrl } from '@/lib/avatar';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(value));
@@ -258,6 +259,7 @@ export default function ProjectsPage() {
               <p className="project-description">{project.description || 'No description for this project yet.'}</p>
               <div className="project-card-owner-row">
                 <Avatar size="sm" className="size-6 text-[10px]">
+                  <AvatarImage src={getCartoonAvatarUrl(project.createdBy.name, 'open-peeps')} alt={project.createdBy.name} />
                   <AvatarFallback>{initials(project.createdBy.name)}</AvatarFallback>
                 </Avatar>
                 <span className="project-card-metadata">Lead: {project.createdBy.name}</span>

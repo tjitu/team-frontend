@@ -19,7 +19,8 @@ import {
   Users,
 } from 'lucide-react';
 import { api, CurrentMember, signInUrl } from '@/lib/api';
-import { Avatar, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
+import { getCartoonAvatarUrl } from '@/lib/avatar';
 
 type VercelConfigStatus = {
   configured: boolean;
@@ -465,6 +466,7 @@ export default function SettingsPage() {
           <div className="settings-card-body">
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '8px 0' }}>
               <Avatar size="lg" className="size-14">
+                <AvatarImage src={getCartoonAvatarUrl(member?.name || member?.email || 'admin', 'open-peeps')} alt={member?.name} />
                 <AvatarFallback className="text-lg">
                   {member?.name ? member.name.slice(0, 2).toUpperCase() : 'ME'}
                 </AvatarFallback>

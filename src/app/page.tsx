@@ -27,7 +27,8 @@ import {
   Settings as SettingsIcon,
 } from 'lucide-react';
 import { api, CurrentMember, signInUrl } from '@/lib/api';
-import { Avatar, AvatarFallback, AvatarBadge, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback, AvatarBadge, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
+import { getCartoonAvatarUrl } from '@/lib/avatar';
 
 type VisitorPerPageItem = {
   id: string;
@@ -429,14 +430,17 @@ export default function OverviewPage() {
               {loading || !data ? '—' : compactNumber.format(data.users.totalUsers)}
             </strong>
             <AvatarGroup className="h-6">
-              <Avatar size="xs" className="size-6 text-[10px]" title="Registered User">
-                <AvatarFallback>RU</AvatarFallback>
+              <Avatar size="xs" className="size-6" title="Siswa Rian (SMA 1 Jakarta)">
+                <AvatarImage src={getCartoonAvatarUrl('Rian Pratama', 'open-peeps')} alt="Rian Pratama" />
+                <AvatarFallback>RP</AvatarFallback>
               </Avatar>
-              <Avatar size="xs" className="size-6 text-[10px]" title="Student Member">
-                <AvatarFallback>SM</AvatarFallback>
+              <Avatar size="xs" className="size-6" title="Siswa Siti (SMA 8 Jakarta)">
+                <AvatarImage src={getCartoonAvatarUrl('Siti Nurhaliza', 'open-peeps')} alt="Siti Nurhaliza" />
+                <AvatarFallback>SN</AvatarFallback>
               </Avatar>
-              <Avatar size="xs" className="size-6 text-[10px]" title="Batch 2026">
-                <AvatarFallback>B2</AvatarFallback>
+              <Avatar size="xs" className="size-6" title="Siswa Ahmad (SMA 70 Jakarta)">
+                <AvatarImage src={getCartoonAvatarUrl('Ahmad Dhani', 'open-peeps')} alt="Ahmad Dhani" />
+                <AvatarFallback>AD</AvatarFallback>
               </Avatar>
               <AvatarGroupCount className="size-6 text-[9px]">
                 +{Math.max(1, (data?.users.newUsersThisMonth ?? 12))}
@@ -472,16 +476,19 @@ export default function OverviewPage() {
               {loading || !data ? '—' : compactNumber.format(data.users.activeUsers)}
             </strong>
             <AvatarGroup className="h-6">
-              <Avatar size="xs" className="size-6 text-[10px]" title="Active User HG">
-                <AvatarFallback>HG</AvatarFallback>
+              <Avatar size="xs" className="size-6" title="Dimas (Live Exam SNBT)">
+                <AvatarImage src={getCartoonAvatarUrl('Dimas Anggara', 'adventurer')} alt="Dimas Anggara" />
+                <AvatarFallback>DA</AvatarFallback>
                 <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
               </Avatar>
-              <Avatar size="xs" className="size-6 text-[10px]" title="Active User SN">
-                <AvatarFallback>SN</AvatarFallback>
+              <Avatar size="xs" className="size-6" title="Nadia (Live Exam SNBT)">
+                <AvatarImage src={getCartoonAvatarUrl('Nadia Vega', 'adventurer')} alt="Nadia Vega" />
+                <AvatarFallback>NV</AvatarFallback>
                 <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
               </Avatar>
-              <Avatar size="xs" className="size-6 text-[10px]" title="Active User AD">
-                <AvatarFallback>AD</AvatarFallback>
+              <Avatar size="xs" className="size-6" title="Budi (Live Exam SNBT)">
+                <AvatarImage src={getCartoonAvatarUrl('Budi Santoso', 'adventurer')} alt="Budi Santoso" />
+                <AvatarFallback>BS</AvatarFallback>
                 <AvatarBadge className="bg-emerald-500 size-2 ring-1" />
               </Avatar>
               <AvatarGroupCount className="size-6 text-[9px]">

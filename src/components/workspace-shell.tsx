@@ -33,7 +33,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { Avatar, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
+import { getCartoonAvatarUrl } from '@/lib/avatar';
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -377,6 +378,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
 
         <div className="sidebar-footer" title={member ? `${member.name} (${member.role?.replaceAll('_', ' ')})` : undefined}>
           <Avatar size="sm" className="size-8">
+            <AvatarImage src={getCartoonAvatarUrl(member?.name || member?.email || 'admin', 'open-peeps')} alt={member?.name} />
             <AvatarFallback>{member?.name?.slice(0, 2).toUpperCase() ?? '—'}</AvatarFallback>
             <AvatarBadge className="bg-emerald-500" />
           </Avatar>
@@ -490,6 +492,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                 onClick={() => { setSignOutError(''); setAccountOpen((open) => !open); }}
               >
                 <Avatar size="sm" className="size-8">
+                  <AvatarImage src={getCartoonAvatarUrl(member?.name || member?.email || 'admin', 'open-peeps')} alt={member?.name} />
                   <AvatarFallback>{member?.name?.slice(0, 2).toUpperCase() ?? '—'}</AvatarFallback>
                   <AvatarBadge className="bg-emerald-500" />
                 </Avatar>
