@@ -1815,6 +1815,8 @@ input[type="date"] { color-scheme: light; }
   text-align: left;
   white-space: nowrap;
 }
+.control-panel [data-slot="table-head"]:last-child,
+.control-panel [data-slot="table-cell"]:last-child { width: 1%; white-space: nowrap; text-align: right; }
 .control-panel [data-slot="table-cell"] {
   min-height: 54px;
   border-bottom: 1px solid var(--border);
