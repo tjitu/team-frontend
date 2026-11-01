@@ -19,8 +19,11 @@ import {
   LogOut,
   Sun,
   Moon,
+  Bell,
+  CheckCheck,
 } from 'lucide-react';
 import { api, clearSessionCache, CurrentMember, Project, signInUrl } from '@/lib/api';
+import { useInactivityTracker, clearSessionTracking } from '@/lib/session';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { BrandLogo } from '@/components/brand-logo';
@@ -41,6 +44,8 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const isInvitationRoute = pathname.startsWith('/invitations/accept');
   const isLoginRoute = pathname === '/login';
 
+  useInactivityTracker(!isInvitationRoute && !isLoginRoute);
+
   const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
   const [projects, setProjects] = useState<Project[]>(() => api.getCached<Project[]>('/team/projects') ?? []);
   const [fallbackProject, setFallbackProject] = useState<Project | null>(null);
@@ -52,9 +57,52 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
+  // Notifications
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(3);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    title: string;
+    message: string;
+    time: string;
+    timestamp: number;
+    unread: boolean;
+    link?: string;
+  }>>([
+    {
+      id: 'notif-1',
+      title: 'Task update',
+      message: 'New high priority tasks need review in Standalone Tasks',
+      time: '12m ago',
+      timestamp: Date.now() - 12 * 60 * 1000,
+      unread: true,
+      link: '/tasks',
+    },
+    {
+      id: 'notif-2',
+      title: 'Project Activity',
+      message: 'Townhall & UTBK Batch 1 milestones were updated',
+      time: '1h ago',
+      timestamp: Date.now() - 60 * 60 * 1000,
+      unread: true,
+      link: '/projects',
+    },
+    {
+      id: 'notif-3',
+      title: 'Security Notice',
+      message: 'Session persistence active with 12h idle protection',
+      time: '3h ago',
+      timestamp: Date.now() - 180 * 60 * 1000,
+      unread: true,
+      link: '/settings',
+    },
+  ]);
+
   const accountControlRef = useRef<HTMLDivElement>(null);
   const accountTriggerRef = useRef<HTMLButtonElement>(null);
   const breadcrumbMenuRef = useRef<HTMLLIElement>(null);
+  const notificationControlRef = useRef<HTMLDivElement>(null);
+  const notificationBtnRef = useRef<HTMLButtonElement>(null);
 
   const matchedProject = projects.find((project) => pathname.startsWith(`/projects/${project.id}`));
   const activeProject = matchedProject ?? (fallbackProject && pathname.startsWith(`/projects/${fallbackProject.id}`) ? fallbackProject : undefined);
@@ -180,8 +228,37 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [isInvitationRoute, isLoginRoute]);
 
+  // Load notification read timestamp
   useEffect(() => {
-    if (!accountOpen && !breadcrumbMenuOpen) return;
+    try {
+      const readAtStr = window.localStorage.getItem('jitu-team-notifications-read-at');
+      if (readAtStr) {
+        const readAt = Number(readAtStr);
+        setNotifications((prev) =>
+          prev.map((item) => ({ ...item, unread: item.timestamp > readAt }))
+        );
+        setUnreadCount((prev) => {
+          const unread = notifications.filter((item) => item.timestamp > readAt).length;
+          return unread;
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const markNotificationsRead = () => {
+    try {
+      window.localStorage.setItem('jitu-team-notifications-read-at', String(Date.now()));
+    } catch {
+      // ignore
+    }
+    setUnreadCount(0);
+    setNotifications((prev) => prev.map((item) => ({ ...item, unread: false })));
+  };
+
+  useEffect(() => {
+    if (!accountOpen && !breadcrumbMenuOpen && !notificationOpen) return;
     function closeOnOutsideClick(event: PointerEvent) {
       if (event.target instanceof Node) {
         if (accountOpen && !accountControlRef.current?.contains(event.target)) {
@@ -189,6 +266,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         }
         if (breadcrumbMenuOpen && !breadcrumbMenuRef.current?.contains(event.target)) {
           setBreadcrumbMenuOpen(false);
+        }
+        if (notificationOpen && !notificationControlRef.current?.contains(event.target)) {
+          setNotificationOpen(false);
         }
       }
     }
@@ -201,6 +281,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         if (breadcrumbMenuOpen) {
           setBreadcrumbMenuOpen(false);
         }
+        if (notificationOpen) {
+          setNotificationOpen(false);
+          notificationBtnRef.current?.focus();
+        }
       }
     }
     document.addEventListener('pointerdown', closeOnOutsideClick);
@@ -209,7 +293,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       document.removeEventListener('pointerdown', closeOnOutsideClick);
       document.removeEventListener('keydown', closeOnEscape);
     };
-  }, [accountOpen, breadcrumbMenuOpen]);
+  }, [accountOpen, breadcrumbMenuOpen, notificationOpen]);
 
   if (isInvitationRoute || isLoginRoute) {
     return <main className={isLoginRoute ? 'auth-page' : 'invitation-shell'}>{children}</main>;
@@ -220,6 +304,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     setSigningOut(true);
     setSignOutError('');
     try {
+      clearSessionTracking();
       clearSessionCache();
       api.invalidate();
       const { error } = await createSupabaseBrowserClient().auth.signOut();
@@ -254,8 +339,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <div className="sidebar-label">Dashboards</div>
-        <nav className="primary-nav" aria-label="Workspace">
+        <div className="sidebar-content">
+          <div className="sidebar-label">Dashboards</div>
+          <nav className="primary-nav" aria-label="Workspace">
           <Link
             className={`nav-link ${pathname === '/' ? 'is-active' : ''}`}
             href="/"
@@ -377,6 +463,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
             <span className="nav-link-text">Archived</span>
           </Link>
         </nav>
+        </div>
 
         <div className="sidebar-footer" title={member ? `${member.name} (${member.role?.replaceAll('_', ' ')})` : undefined}>
           <Avatar size="sm" className="size-8" seed={member?.name || member?.email || 'admin'} styleType="open-peeps">
@@ -451,6 +538,88 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="topbar-right">
+            {/* Notification Bell Dropdown */}
+            <div className="notification-control" ref={notificationControlRef}>
+              <button
+                ref={notificationBtnRef}
+                type="button"
+                className="topbar-icon-btn notification-btn"
+                onClick={() => {
+                  setNotificationOpen((prev) => !prev);
+                  if (!notificationOpen && unreadCount > 0) {
+                    markNotificationsRead();
+                  }
+                }}
+                title="Notifications"
+                aria-label="Notifications"
+                aria-expanded={notificationOpen}
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="notification-badge-dot" aria-label={`${unreadCount} unread notifications`}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notificationOpen && (
+                <div className="notification-popover" role="dialog" aria-label="Notifications">
+                  <div className="notification-header">
+                    <div className="notification-title-wrap">
+                      <strong>Notifications</strong>
+                      {unreadCount > 0 && (
+                        <span className="notification-pill-count">{unreadCount} new</span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        className="notification-mark-all"
+                        onClick={markNotificationsRead}
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  <div className="notification-list">
+                    {notifications.length === 0 ? (
+                      <div className="notification-empty">
+                        <CheckCheck className="w-5 h-5 text-[var(--muted-fg)]" />
+                        <span>All caught up! No new notifications.</span>
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <Link
+                          key={n.id}
+                          href={n.link || '/activity'}
+                          className={`notification-item ${n.unread ? 'is-unread' : ''}`}
+                          onClick={() => setNotificationOpen(false)}
+                        >
+                          <div className="notification-item-icon">
+                            <Activity className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="notification-item-content">
+                            <p className="notification-item-text">{n.message}</p>
+                            <span className="notification-item-time">{n.time}</span>
+                          </div>
+                          {n.unread && <span className="notification-unread-indicator" />}
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                  <div className="notification-footer">
+                    <Link
+                      href="/activity"
+                      className="notification-view-all"
+                      onClick={() => setNotificationOpen(false)}
+                    >
+                      View all activity →
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
               className="topbar-icon-btn"

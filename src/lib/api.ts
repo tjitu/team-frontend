@@ -1,4 +1,5 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { isSessionExpiredDueToInactivity, recordActivity, performInactivityLogout } from '@/lib/session';
 
 const API_URL = (process.env.NEXT_PUBLIC_TEAM_API_URL ?? 'http://localhost:3200/api').replace(/\/$/, '');
 
@@ -196,6 +197,11 @@ function invalidateForPath(path: string) {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (isSessionExpiredDueToInactivity()) {
+    void performInactivityLogout();
+    throw new Error('SESSION_EXPIRED');
+  }
+  recordActivity();
   const accessToken = await getAccessToken();
 
   let response: Response;

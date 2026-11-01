@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { api, CurrentMember, Department, DepartmentMember, isAdministrator, signInUrl, TeamRole } from '@/lib/api';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
+import { DepartmentIcon } from '@/components/department-icon';
 
 const roleLabels: Record<TeamRole, string> = { SYSTEM_OWNER: 'System Owner', SYSTEM_ADMIN: 'System Admin', MEMBER: 'Member' };
 
@@ -171,7 +172,14 @@ export default function DepartmentsPage() {
 
       {loading ? <div className="department-grid" aria-label="Loading departments">{[1, 2, 3].map((item) => <div className="loading-skeleton" key={item} />)}</div> : visibleDepartments.length ? <div className="department-grid">
         {visibleDepartments.map((department) => <article className={`department-card ${!department.isActive ? 'is-inactive' : ''}`} key={department.id}>
-          <div className="department-card-top"><span className="project-card-mark">{department.name.slice(0, 1).toUpperCase()}</span><span className={`member-status ${department.isActive ? 'is-enabled' : 'is-disabled'}`}>{department.isActive ? 'Active' : 'Inactive'}</span></div>
+          <div className="department-card-top">
+            <span className="department-card-mark" aria-hidden="true">
+              <DepartmentIcon name={department.name} size={18} />
+            </span>
+            <span className={`member-status ${department.isActive ? 'is-enabled' : 'is-disabled'}`}>
+              {department.isActive ? 'Active' : 'Inactive'}
+            </span>
+          </div>
           <h2>{department.name}</h2>
           <p>{department.description || 'No department description yet.'}</p>
           <div className="department-card-meta"><span>{department._count?.members ?? 0} active members</span><span>Updated {dateLabel(department.updatedAt)}</span></div>
@@ -181,7 +189,18 @@ export default function DepartmentsPage() {
 
       {(createOpen || editing) && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setCreateOpen(false); setEditing(null); } }}>
         <section className="modal" role="dialog" aria-modal="true" aria-labelledby="department-form-title">
-          <div className="modal-header"><div><h2 id="department-form-title">{editing ? 'Edit department' : 'Create department'}</h2><p>{editing ? 'Update the department name, description, or status.' : 'Enter the basic details for the new department.'}</p></div><button className="icon-button" aria-label="Close" onClick={() => { setCreateOpen(false); setEditing(null); }}>×</button></div>
+          <div className="modal-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className="department-card-mark" style={{ width: '36px', height: '36px' }}>
+                <DepartmentIcon name={editing?.name} size={18} />
+              </span>
+              <div>
+                <h2 id="department-form-title">{editing ? 'Edit department' : 'Create department'}</h2>
+                <p>{editing ? 'Update the department name, description, or status.' : 'Enter the basic details for the new department.'}</p>
+              </div>
+            </div>
+            <button className="icon-button" aria-label="Close" onClick={() => { setCreateOpen(false); setEditing(null); }}>×</button>
+          </div>
           <form className="form-stack" onSubmit={saveDepartment}>
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Department name<input className="field-input" name="name" key={editing?.id ?? 'new'} defaultValue={editing?.name ?? ''} minLength={2} maxLength={100} placeholder="e.g. Engineering" required autoFocus /></label>
@@ -195,7 +214,18 @@ export default function DepartmentsPage() {
 
       {managing && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setManaging(null); }}>
         <section className="modal department-members-modal" role="dialog" aria-modal="true" aria-labelledby="department-members-title">
-          <div className="modal-header"><div><h2 id="department-members-title">Members of {managing.name}</h2><p>Add active team members or remove them from this department.</p></div><button className="icon-button" aria-label="Close" onClick={() => setManaging(null)}>×</button></div>
+          <div className="modal-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className="department-card-mark" style={{ width: '36px', height: '36px' }}>
+                <DepartmentIcon name={managing.name} size={18} />
+              </span>
+              <div>
+                <h2 id="department-members-title">Members of {managing.name}</h2>
+                <p>Add active team members or remove them from this department.</p>
+              </div>
+            </div>
+            <button className="icon-button" aria-label="Close" onClick={() => setManaging(null)}>×</button>
+          </div>
           <div className="form-stack">
             {memberError && <p className="form-error" role="alert">{memberError}</p>}
             <form className="department-member-add" onSubmit={addDepartmentMember}><label className="field-label">Active member email<input className="field-input" name="email" type="email" maxLength={320} placeholder="name@company.com" required /></label><button className="button button-primary" disabled={saving || !managing.isActive}>{saving ? 'Adding…' : 'Add'}</button></form>

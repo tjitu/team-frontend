@@ -10,6 +10,7 @@ import { TaskAttachmentEditor, TaskAttachmentLinks } from '@/components/task-att
 import { api, CurrentMember, Department, isAdministrator, Project, ProjectRole, signInUrl, Task, TaskListPage, TaskPriority, TaskStatus } from '@/lib/api';
 import { Avatar, AvatarImage, AvatarFallback, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
+import { DepartmentIcon } from '@/components/department-icon';
 
 const statuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE'];
 const priorities: TaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
@@ -472,7 +473,12 @@ export default function ProjectPage() {
         <div>
           <h1>{project?.name ?? (loading ? 'Loading project…' : 'Project')}</h1>
           <p className="page-subtitle">{project?.description || 'Organize work and track project task progress.'}</p>
-          {project && <p className="project-meta-line">{project.department.name}, owner: {project.createdBy.name}, period: {dateLabel(project.startsAt)} to {dateLabel(project.endsAt)}</p>}
+          {project && (
+            <p className="project-meta-line" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <DepartmentIcon name={project.department.name} size={14} className="shrink-0 text-[var(--brand)]" />
+              <span><strong>{project.department.name}</strong> · owner: {project.createdBy.name} · period: {dateLabel(project.startsAt)} to {dateLabel(project.endsAt)}</span>
+            </p>
+          )}
         </div>
         <div className="page-heading-actions">{canManage && <><button className="button button-secondary" onClick={() => { setProjectError(''); setEditProjectOpen(true); }}>Edit project</button><button className="button button-quiet danger-action" disabled={projectSaving} onClick={() => void archiveProject()}>Archive</button></>}{canWrite && <button className="button button-primary" onClick={() => { setFormError(''); setCreateOpen(true); }}><span className="button-symbol" aria-hidden="true">+</span>New task</button>}</div>
       </div>

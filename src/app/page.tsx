@@ -353,9 +353,6 @@ export default function OverviewPage() {
             />
             <span>{data?.visitorsSource === 'vercel' ? 'Vercel Connected' : 'Vercel Disconnected'}</span>
           </Link>
-          <Link className="button button-secondary" href="/projects">
-            View projects
-          </Link>
           <button
             type="button"
             className="button button-primary"

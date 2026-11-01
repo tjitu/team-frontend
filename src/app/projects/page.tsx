@@ -6,6 +6,7 @@ import { FolderKanban, Building2, Users, CalendarRange, ArrowUpRight, Plus } fro
 import { api, CurrentMember, Department, Project, signInUrl } from '@/lib/api';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
+import { DepartmentIcon } from '@/components/department-icon';
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(value));
@@ -251,7 +252,10 @@ export default function ProjectsPage() {
               <div className="project-card-top">
                 <div className="project-card-badges">
                   <span className="project-card-mark">{project.name.slice(0, 1).toUpperCase()}</span>
-                  <span className="project-dept-pill">{project.department.name}</span>
+                  <span className="project-dept-pill">
+                    <DepartmentIcon name={project.department.name} size={12} className="shrink-0" />
+                    {project.department.name}
+                  </span>
                 </div>
                 <span className="project-card-open">
                   Open <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />

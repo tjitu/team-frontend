@@ -5,22 +5,33 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { markSessionStarted } from '@/lib/session';
 
 function safeNextPath(value: string | undefined) {
   if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\') || value.startsWith('/login')) return '/';
   return value;
 }
 
-export function LoginForm({ nextPath, initialError }: { nextPath?: string; initialError?: string }) {
+export function LoginForm({
+  nextPath,
+  initialError,
+  initialNotice,
+}: {
+  nextPath?: string;
+  initialError?: string;
+  initialNotice?: string;
+}) {
   const router = useRouter();
   const destination = safeNextPath(nextPath);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(initialError ?? '');
+  const [notice, setNotice] = useState(initialNotice ?? '');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
+    if (initialNotice) return;
     try {
       void createSupabaseBrowserClient().auth.getSession().then(({ data, error: sessionError }) => {
         if (active && !sessionError && data.session) router.replace(destination);
@@ -31,18 +42,20 @@ export function LoginForm({ nextPath, initialError }: { nextPath?: string; initi
       if (active) setError('Supabase is not configured. Contact your administrator.');
     }
     return () => { active = false; };
-  }, [destination, router]);
+  }, [destination, router, initialNotice]);
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError('');
+    setNotice('');
     try {
       const { error: authError } = await createSupabaseBrowserClient().auth.signInWithPassword({
         email: email.trim(),
         password,
       });
       if (authError) throw authError;
+      markSessionStarted();
       router.replace(destination);
       router.refresh();
     } catch (cause) {
@@ -74,6 +87,7 @@ export function LoginForm({ nextPath, initialError }: { nextPath?: string; initi
           <p>Sign in with an account that has access to JituPTN Team Platform.</p>
         </div>
         <form className="form-stack auth-form" onSubmit={signIn}>
+          {notice && <p className="inline-message info" role="status">{notice}</p>}
           {error && <p className="inline-message error" role="alert">{error}</p>}
           <label className="field-label" htmlFor="login-email">Email
             <input id="login-email" className="field-input" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
