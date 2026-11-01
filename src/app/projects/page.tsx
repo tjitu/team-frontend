@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { FolderKanban, Building2, Users, CalendarRange, ArrowUpRight, Plus } from 'lucide-react';
+import { ArrowUpRight, Plus } from 'lucide-react';
 import { api, CurrentMember, Department, Project, signInUrl } from '@/lib/api';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
@@ -45,14 +45,6 @@ export default function ProjectsPage() {
   }, [projects, departmentFilter, ownerFilter, activeQuery]);
 
   const hasProjectFilters = Boolean(projectQuery || appliedProjectQuery || departmentFilter || ownerFilter);
-  const totalSeatsAssigned = useMemo(
-    () => projects.reduce((sum, p) => sum + (p._count?.members ?? 0), 0),
-    [projects],
-  );
-  const scheduledProjectsCount = useMemo(
-    () => projects.filter((p) => p.startsAt || p.endsAt).length,
-    [projects],
-  );
 
   async function load(force = false) {
     if (!api.getCached<Project[]>('/team/projects')) {
@@ -127,45 +119,6 @@ export default function ProjectsPage() {
           <button className="button button-quiet" onClick={() => void load(true)}>Reload</button>
         </div>
       )}
-
-      {/* SHADCN UI KIT KPI CARDS ROW */}
-      <section className="dashboard-kpi-grid" aria-label="Project metrics">
-        <article className="dashboard-kpi-card">
-          <div className="dashboard-kpi-header">
-            <span>Active Projects</span>
-            <FolderKanban className="w-4 h-4" aria-hidden="true" />
-          </div>
-          <strong>{loading ? '—' : projects.length}</strong>
-          <small>{visibleProjects.length} visible with current filters</small>
-        </article>
-
-        <article className="dashboard-kpi-card">
-          <div className="dashboard-kpi-header">
-            <span>Departments</span>
-            <Building2 className="w-4 h-4" aria-hidden="true" />
-          </div>
-          <strong>{loading ? '—' : departments.length}</strong>
-          <small>{departments.map((d) => d.name).join(' · ') || 'Engineering · Marketing · Product & Ops'}</small>
-        </article>
-
-        <article className="dashboard-kpi-card">
-          <div className="dashboard-kpi-header">
-            <span>Project Assignments</span>
-            <Users className="w-4 h-4" aria-hidden="true" />
-          </div>
-          <strong>{loading ? '—' : totalSeatsAssigned}</strong>
-          <small>Across {owners.length} project {owners.length === 1 ? 'lead' : 'leads'}</small>
-        </article>
-
-        <article className="dashboard-kpi-card">
-          <div className="dashboard-kpi-header">
-            <span>Scheduled Timelines</span>
-            <CalendarRange className="w-4 h-4" aria-hidden="true" />
-          </div>
-          <strong>{loading ? '—' : scheduledProjectsCount}</strong>
-          <small>Projects with active start & end dates</small>
-        </article>
-      </section>
 
       <div className="section-heading project-overview-heading">
         <div>

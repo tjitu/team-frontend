@@ -22,8 +22,6 @@ export default function DepartmentsPage() {
   const [loading, setLoading] = useState(() => !api.getCached<Department[]>('/team/departments'));
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [query, setQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('active');
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
   const [managing, setManaging] = useState<Department | null>(null);
@@ -57,11 +55,7 @@ export default function DepartmentsPage() {
   useEffect(() => { void load(); }, []);
 
   const canManage = isAdministrator(member?.role);
-  const visibleDepartments = useMemo(() => departments.filter((department) => {
-    const matchesStatus = !canManage || activeFilter === 'all' || (activeFilter === 'active' ? department.isActive : !department.isActive);
-    const matchesQuery = !query.trim() || `${department.name} ${department.description ?? ''}`.toLowerCase().includes(query.trim().toLowerCase());
-    return matchesStatus && matchesQuery;
-  }), [departments, canManage, activeFilter, query]);
+  const visibleDepartments = departments;
 
   async function saveDepartment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -165,11 +159,6 @@ export default function DepartmentsPage() {
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(true)}>Reload</button></div>}
       {notice && <div className="inline-message success" role="status">{notice}<button className="icon-button" aria-label="Close message" onClick={() => setNotice('')}>×</button></div>}
 
-      <div className="department-toolbar">
-        <label className="team-search-label"><span className="sr-only">Search departments</span><input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search departments…" /></label>
-        {canManage && <label><span className="sr-only">Department status</span><select className="filter-select" value={activeFilter} onChange={(event) => setActiveFilter(event.target.value)}><option value="active">Active departments</option><option value="inactive">Inactive departments</option><option value="all">All departments</option></select></label>}
-      </div>
-
       {loading ? <div className="department-grid" aria-label="Loading departments">{[1, 2, 3].map((item) => <div className="loading-skeleton" key={item} />)}</div> : visibleDepartments.length ? <div className="department-grid">
         {visibleDepartments.map((department) => <article className={`department-card ${!department.isActive ? 'is-inactive' : ''}`} key={department.id}>
           <div className="department-card-top">
@@ -185,7 +174,7 @@ export default function DepartmentsPage() {
           <div className="department-card-meta"><span>{department._count?.members ?? 0} active members</span><span>Updated {dateLabel(department.updatedAt)}</span></div>
           <div className="department-card-actions">{canManage && <><button className="button button-secondary" disabled={!department.isActive} onClick={() => void openDepartmentMembers(department)}>Manage members</button><button className="button button-quiet" onClick={() => { setFormError(''); setEditing(department); }}>Edit</button></>}</div>
         </article>)}
-      </div> : <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true" /><h3>{query ? 'No departments found' : 'No departments yet'}</h3><p>{query ? 'Try a different search term.' : canManage ? 'Create departments to organize your team members.' : 'Active departments will appear here.'}</p>{canManage && !query && <button className="button button-primary" onClick={() => { setEditing(null); setFormError(''); setCreateOpen(true); }}>Create department</button>}</div></section>}
+      </div> : <section className="empty-state"><div><div className="empty-state-icon" aria-hidden="true" /><h3>No departments yet</h3><p>{canManage ? 'Create departments to organize your team members.' : 'Active departments will appear here.'}</p>{canManage && <button className="button button-primary" onClick={() => { setEditing(null); setFormError(''); setCreateOpen(true); }}>Create department</button>}</div></section>}
 
       {(createOpen || editing) && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setCreateOpen(false); setEditing(null); } }}>
         <section className="modal" role="dialog" aria-modal="true" aria-labelledby="department-form-title">
