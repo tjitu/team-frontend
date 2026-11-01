@@ -210,6 +210,7 @@ export default function ControlCenterPage() {
   const [summary, setSummary] = React.useState<RevenueSummary | null>(() => api.getCached<RevenueSummary>('/team/control-center/revenue'));
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [error, setError] = React.useState('');
   const [notice, setNotice] = React.useState('');
   const [search, setSearch] = React.useState('');
@@ -354,6 +355,44 @@ export default function ControlCenterPage() {
     }
   }
 
+  async function deleteTryoutItem(item: Tryout) {
+    if (!window.confirm(`Delete tryout "${item.title}"? Tryouts with exam content or student history cannot be deleted.`)) return;
+    setDeletingId(item.id); setError(''); setNotice('');
+    try {
+      await api.delete(`/team/control-center/tryouts/${encodeURIComponent(item.id)}`);
+      if (editingTryout === item.id) {
+        setTryoutForm(initialTryoutForm);
+        setEditingTryout(null);
+        setTryoutFormOpen(false);
+      }
+      await loadSection('tryouts', '', true);
+      setNotice(`Tryout "${item.title}" deleted.`);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function deletePackageItem(item: Package) {
+    if (!window.confirm(`Delete package "${item.name}"? Packages with payment history cannot be deleted; deactivate those instead.`)) return;
+    setDeletingId(item.id); setError(''); setNotice('');
+    try {
+      await api.delete(`/team/control-center/packages/${encodeURIComponent(item.id)}`);
+      if (editingPackage === item.id) {
+        setPackageForm(initialPackageForm);
+        setEditingPackage(null);
+        setPackageFormOpen(false);
+      }
+      await loadSection('pricing', '', true);
+      setNotice(`Package "${item.name}" deleted.`);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   function editTryout(item: Tryout) {
     setEditingTryout(item.id); setTryoutFormOpen(true); setError(''); setNotice('');
     setTryoutForm({
@@ -476,7 +515,7 @@ export default function ControlCenterPage() {
       id: 'actions',
       header: () => <div className="text-right">Action</div>,
       cell: ({ row }) => (
-        <div className="text-right">
+        <div className="control-row-actions">
           <button
             type="button"
             className="control-text-button"
@@ -484,10 +523,20 @@ export default function ControlCenterPage() {
           >
             Edit
           </button>
+          <button
+            type="button"
+            className="control-text-button control-delete-button"
+            onClick={() => void deleteTryoutItem(row.original)}
+            disabled={deletingId === row.original.id}
+            aria-label={`Delete tryout ${row.original.title}`}
+            title="Delete tryout"
+          >
+            <Trash2 aria-hidden="true" /> {deletingId === row.original.id ? 'Deleting…' : 'Delete'}
+          </button>
         </div>
       ),
     }),
-  ], []);
+  ], [deletingId, editingTryout]);
 
   // TANSTACK TABLE COLUMNS FOR PRICING
   const packageColumns = React.useMemo(() => [
@@ -519,7 +568,7 @@ export default function ControlCenterPage() {
       id: 'actions',
       header: () => <div className="text-right">Action</div>,
       cell: ({ row }) => (
-        <div className="text-right">
+        <div className="control-row-actions">
           <button
             type="button"
             className="control-text-button"
@@ -527,10 +576,20 @@ export default function ControlCenterPage() {
           >
             Edit
           </button>
+          <button
+            type="button"
+            className="control-text-button control-delete-button"
+            onClick={() => void deletePackageItem(row.original)}
+            disabled={deletingId === row.original.id}
+            aria-label={`Delete package ${row.original.name}`}
+            title={row.original.paymentCount ? 'Has payment history; deactivate it instead' : 'Delete package'}
+          >
+            <Trash2 aria-hidden="true" /> {deletingId === row.original.id ? 'Deleting…' : 'Delete'}
+          </button>
         </div>
       ),
     }),
-  ], []);
+  ], [deletingId, editingPackage]);
 
   // TANSTACK TABLE COLUMNS FOR USERS
   const userColumns = React.useMemo(() => [
