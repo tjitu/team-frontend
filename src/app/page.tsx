@@ -29,6 +29,7 @@ import {
 import { api, CurrentMember, signInUrl } from '@/lib/api';
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 import { PixelCoin } from '@/components/pixel-coin';
+import { PassTicket } from '@/components/pass-ticket';
 import { ComboboxSelect } from '@/components/ui/combobox';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
 
@@ -140,6 +141,8 @@ type OverviewResponse = {
   revenue: {
     totalRevenue: number;
     coinsSold: number;
+    passSold?: number;
+    passRevenue?: number;
     confirmedPayments: number;
     pendingPayments: number;
     avgPricePerCoin: number;
@@ -457,31 +460,30 @@ export default function OverviewPage() {
             <span>Coins Sold</span>
             <PixelCoin size={16} />
           </div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <strong>
-              {loading || !data ? '—' : compactNumber.format(data.revenue.coinsSold)}
-            </strong>
-            <PixelCoin size={22} />
-          </div>
+          <strong style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            {loading || !data ? '—' : compactNumber.format(data.revenue.coinsSold)}
+            <PixelCoin size={24} />
+          </strong>
           <small>
             {data
-              ? `Across ${data.coinPackages.length} active token packages`
+              ? `Across ${data.coinPackages.filter((p) => !p.name.toLowerCase().includes('pass')).length} active token packages`
               : 'Loading coin sales…'}
           </small>
         </article>
 
         <article className="dashboard-kpi-card">
           <div className="dashboard-kpi-header">
-            <span>Price per Coin</span>
-            <Tag className="w-4 h-4" aria-hidden="true" />
+            <span>Pass Sold</span>
+            <PassTicket size={18} />
           </div>
-          <strong>
-            {loading || !data ? '—' : idrFormatter.format(data.revenue.avgPricePerCoin)}
+          <strong style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            {loading || !data ? '—' : compactNumber.format(data.revenue.passSold ?? 0)}
+            <PassTicket size={24} />
           </strong>
           <small>
             {data
-              ? `Tier range: ${idrFormatter.format(data.revenue.minPricePerCoin)} – ${idrFormatter.format(data.revenue.maxPricePerCoin)} / coin`
-              : 'Loading coin pricing…'}
+              ? `${idrFormatter.format(data.revenue.passRevenue ?? 0)} revenue · PTN Premium Pass`
+              : 'Loading pass sales…'}
           </small>
         </article>
       </section>

@@ -7,9 +7,9 @@ import { api, CurrentMember, RevenueSummary, signInUrl } from '@/lib/api';
 import { DataTable } from '@/components/ui/data-table';
 import { type DataTableFeatures } from '@/components/ui/data-table-features';
 import { ComboboxSelect } from '@/components/ui/combobox';
-import { ExternalLink, Eye, Edit, Trash2 } from 'lucide-react';
+import { ExternalLink, Eye, Edit, Trash2, Zap, Sparkles, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 
-export type Section = 'tryouts' | 'pricing' | 'users' | 'articles' | 'careers' | 'revenue';
+export type Section = 'tryouts' | 'pricing' | 'users' | 'articles' | 'careers' | 'revenue' | 'questions';
 
 export type Tryout = {
   id: string;
@@ -61,6 +61,102 @@ export type Article = {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+
+export type QuestionOption = {
+  id?: string;
+  content: string;
+  isCorrect: boolean;
+  order: number;
+};
+
+export type SolutionStep = {
+  stepNumber: number;
+  category?: string;
+  title: string;
+  content: string;
+};
+
+export type QuestionItem = {
+  id: string;
+  subtest: string;
+  subtopicId?: string | null;
+  subtopicTitle?: string | null;
+  topicTitle?: string | null;
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  type: 'MULTIPLE_CHOICE' | 'COMPLEX_MULTIPLE_CHOICE' | 'SHORT_ANSWER';
+  target: 'DRAFT' | 'FOR_TRYOUT' | 'FOR_PRACTICE';
+  narration?: string | null;
+  content: string;
+  imageUrl?: string | null;
+  points: number;
+  createdAt: string;
+  options: QuestionOption[];
+  solution?: {
+    id?: string;
+    steps?: SolutionStep[] | null;
+    staticContent?: string | null;
+    quickTrick?: string | null;
+    keyFormula?: string | null;
+    defaultView?: string;
+  } | null;
+};
+
+export type TopicItem = {
+  id: string;
+  subtest: string;
+  title: string;
+  slug: string;
+  order: number;
+  subtopics: Array<{
+    id: string;
+    title: string;
+    slug: string;
+    order: number;
+  }>;
+};
+
+export type QuestionForm = {
+  subtest: string;
+  subtopicId: string;
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  target: 'DRAFT' | 'FOR_TRYOUT' | 'FOR_PRACTICE';
+  narration: string;
+  content: string;
+  imageUrl: string;
+  points: string;
+  options: Array<{ content: string; isCorrect: boolean; order: number }>;
+  keyFormula: string;
+  quickTrick: string;
+  staticExplanation: string;
+  solutionSteps: Array<{ stepNumber: number; category: string; title: string; content: string }>;
+};
+
+const initialQuestionForm: QuestionForm = {
+  subtest: 'PENGETAHUAN_KUANTITATIF',
+  subtopicId: '',
+  difficulty: 'MEDIUM',
+  target: 'DRAFT', // 'DRAFT' (Unpublish dulu), 'FOR_TRYOUT', 'FOR_PRACTICE'
+  narration: '',
+  content: '',
+  imageUrl: '',
+  points: '1',
+  options: [
+    { content: '', isCorrect: true, order: 1 },
+    { content: '', isCorrect: false, order: 2 },
+    { content: '', isCorrect: false, order: 3 },
+    { content: '', isCorrect: false, order: 4 },
+    { content: '', isCorrect: false, order: 5 },
+  ],
+  keyFormula: '',
+  quickTrick: '',
+  staticExplanation: '',
+  solutionSteps: [
+    { stepNumber: 1, category: 'IDENTIFIKASI', title: 'Analisis Informasi & Variabel', content: '' },
+    { stepNumber: 2, category: 'EKSEKUSI', title: 'Langkah Perhitungan', content: '' },
+    { stepNumber: 3, category: 'KESIMPULAN', title: 'Kunci Jawaban Akhir', content: '' },
+  ],
 };
 
 export type CareerApplication = {
@@ -157,6 +253,7 @@ const initialArticleForm: ArticleForm = {
 
 const sections: Array<{ id: Section; label: string }> = [
   { id: 'tryouts', label: 'Tryouts' },
+  { id: 'questions', label: 'Bank Soal' },
   { id: 'pricing', label: 'Pricing' },
   { id: 'users', label: 'Users' },
   { id: 'articles', label: 'Articles' },
@@ -198,6 +295,7 @@ const packageColHelper = createColumnHelper<DataTableFeatures, Package>();
 const userColHelper = createColumnHelper<DataTableFeatures, User>();
 const articleColHelper = createColumnHelper<DataTableFeatures, Article>();
 const careerColHelper = createColumnHelper<DataTableFeatures, CareerApplication>();
+const questionColHelper = createColumnHelper<DataTableFeatures, QuestionItem>();
 
 export default function ControlCenterPage() {
   const [section, setSection] = React.useState<Section>('tryouts');
@@ -214,6 +312,19 @@ export default function ControlCenterPage() {
   const [error, setError] = React.useState('');
   const [notice, setNotice] = React.useState('');
   const [search, setSearch] = React.useState('');
+
+  // Questions State
+  const [questions, setQuestions] = React.useState<QuestionItem[]>([]);
+  const [topics, setTopics] = React.useState<TopicItem[]>([]);
+  const [questionForm, setQuestionForm] = React.useState<QuestionForm>(initialQuestionForm);
+  const [questionFormOpen, setQuestionFormOpen] = React.useState(false);
+  const [editingQuestion, setEditingQuestion] = React.useState<string | null>(null);
+  const [previewQuestion, setPreviewQuestion] = React.useState<QuestionItem | null>(null);
+  const [aiImportOpen, setAiImportOpen] = React.useState(false);
+  const [aiJsonInput, setAiJsonInput] = React.useState('');
+  const [previewSlideIdx, setPreviewSlideIdx] = React.useState(0);
+  const [filterSubtest, setFilterSubtest] = React.useState<string>('ALL');
+  const [filterTarget, setFilterTarget] = React.useState<string>('ALL');
 
   // Form states
   const [tryoutForm, setTryoutForm] = React.useState<TryoutForm>(initialTryoutForm);
@@ -233,7 +344,12 @@ export default function ControlCenterPage() {
   const [applicantNotesDraft, setApplicantNotesDraft] = React.useState('');
   const [savingApplicant, setSavingApplicant] = React.useState(false);
 
-  const loadSection = React.useCallback(async (target: Section, query = '', force = false) => {
+  const loadSection = React.useCallback(async (
+    target: Section,
+    query = '',
+    force = false,
+    filters?: { subtest?: string; target?: string }
+  ) => {
     const cachedUrl = target === 'tryouts' ? '/team/control-center/tryouts'
       : target === 'pricing' ? '/team/control-center/packages'
       : target === 'articles' ? '/team/control-center/articles'
@@ -250,6 +366,21 @@ export default function ControlCenterPage() {
       if (target === 'articles') setArticles(await api.get<Article[]>(`/team/control-center/articles${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
       if (target === 'careers') setApplications(await api.get<CareerApplication[]>(`/team/control-center/careers/applications${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
       if (target === 'revenue') setSummary(await api.get<RevenueSummary>('/team/control-center/revenue', { force }));
+      if (target === 'questions') {
+        const activeSubtest = filters?.subtest !== undefined ? filters.subtest : filterSubtest;
+        const activeTarget = filters?.target !== undefined ? filters.target : filterTarget;
+        const queryParams = new URLSearchParams();
+        if (query) queryParams.set('search', query);
+        if (activeSubtest && activeSubtest !== 'ALL') queryParams.set('subtest', activeSubtest);
+        if (activeTarget && activeTarget !== 'ALL') queryParams.set('target', activeTarget);
+        const qs = queryParams.toString() ? `?${queryParams.toString()}` : '';
+        const [qRes, topRes] = await Promise.all([
+          api.get<QuestionItem[]>(`/team/control-center/questions${qs}`, { force }),
+          api.get<TopicItem[]>('/team/control-center/topics', { force })
+        ]);
+        setQuestions(qRes);
+        setTopics(topRes);
+      }
     } catch (cause) {
       const message = errorMessage(cause);
       if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
@@ -257,7 +388,7 @@ export default function ControlCenterPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filterSubtest, filterTarget]);
 
   React.useEffect(() => {
     void api.get<CurrentMember>('/team/me').then(setMember).catch((cause: unknown) => {
@@ -268,6 +399,181 @@ export default function ControlCenterPage() {
   React.useEffect(() => {
     void loadSection(section);
   }, [section, loadSection]);
+
+  async function saveQuestion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true); setError(''); setNotice('');
+    const body = {
+      subtest: questionForm.subtest,
+      subtopicId: questionForm.subtopicId || null,
+      difficulty: questionForm.difficulty,
+      target: questionForm.target,
+      narration: questionForm.narration.trim() || null,
+      content: questionForm.content.trim(),
+      imageUrl: questionForm.imageUrl.trim() || null,
+      points: Number(questionForm.points) || 1,
+      options: questionForm.options.map((opt, i) => ({
+        content: opt.content.trim(),
+        isCorrect: opt.isCorrect,
+        order: i + 1,
+      })),
+      keyFormula: questionForm.keyFormula.trim() || null,
+      quickTrick: questionForm.quickTrick.trim() || null,
+      staticExplanation: questionForm.staticExplanation.trim() || null,
+      solutionSteps: questionForm.solutionSteps
+        .filter((s) => s.title.trim() || s.content.trim())
+        .map((s, i) => ({
+          stepNumber: i + 1,
+          category: s.category || `Langkah ${i + 1}`,
+          title: s.title.trim(),
+          content: s.content.trim(),
+        })),
+    };
+
+    try {
+      if (editingQuestion) await api.patch(`/team/control-center/questions/${editingQuestion}`, body);
+      else await api.post('/team/control-center/questions', body);
+      const successMessage = editingQuestion ? 'Question updated.' : 'Question created.';
+      setQuestionForm(initialQuestionForm);
+      setEditingQuestion(null);
+      setQuestionFormOpen(false);
+      await loadSection('questions', '', true);
+      setNotice(successMessage);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteQuestionItem(item: QuestionItem) {
+    if (!window.confirm(`Delete question #${item.id.slice(0, 8)}? This action cannot be undone.`)) return;
+    setDeletingId(item.id); setError(''); setNotice('');
+    try {
+      await api.delete(`/team/control-center/questions/${encodeURIComponent(item.id)}`);
+      if (editingQuestion === item.id) {
+        setQuestionForm(initialQuestionForm);
+        setEditingQuestion(null);
+        setQuestionFormOpen(false);
+      }
+      setQuestions((prev) => prev.filter((q) => q.id !== item.id));
+      setNotice('Question deleted.');
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function applyAiJson() {
+    try {
+      let parsed = JSON.parse(aiJsonInput.trim());
+      if (Array.isArray(parsed)) parsed = parsed[0];
+      if (!parsed || typeof parsed !== 'object') {
+        throw new Error('Format JSON tidak valid.');
+      }
+      const subtestMap: Record<string, string> = {
+        PENALARAN_MATEMATIKA: 'PENALARAN_MATEMATIKA',
+        PENALARAN_UMUM: 'PENALARAN_UMUM',
+        PEMAHAMAN_BACAAN_MENULIS: 'PEMAHAMAN_BACAAN_MENULIS',
+        PENGETAHUAN_KUANTITATIF: 'PENGETAHUAN_KUANTITATIF',
+        PENGETAHUAN_PEMAHAMAN_UMUM: 'PENGETAHUAN_PEMAHAMAN_UMUM',
+        LITERASI_INDONESIA: 'LITERASI_INDONESIA',
+        LITERASI_BAHASA_INDONESIA: 'LITERASI_INDONESIA',
+        LITERASI_INGGRIS: 'LITERASI_INGGRIS',
+        LITERASI_BAHASA_INGGRIS: 'LITERASI_INGGRIS',
+      };
+      const rawSubtest = String(parsed.subtest || 'PENALARAN_MATEMATIKA').toUpperCase();
+      const mappedSubtest = subtestMap[rawSubtest] || rawSubtest;
+
+      let matchedSubtopicId = '';
+      if (parsed.subtopic) {
+        const needle = String(parsed.subtopic).toLowerCase();
+        const found = topics
+          .flatMap((t) => t.subtopics)
+          .find((s) => s.title.toLowerCase().includes(needle) || needle.includes(s.title.toLowerCase()));
+        if (found) matchedSubtopicId = found.id;
+      }
+
+      const rawOptions = Array.isArray(parsed.options) ? parsed.options : [];
+      const opts = [0, 1, 2, 3, 4].map((i) => {
+        const o = rawOptions[i];
+        return {
+          content: o ? String(o.content || '') : '',
+          isCorrect: o ? Boolean(o.isCorrect) : i === 0,
+          order: i + 1,
+        };
+      });
+
+      const sol = parsed.solution || {};
+      const rawSteps = Array.isArray(sol.steps) ? sol.steps : [];
+      const solSteps = rawSteps.length > 0
+        ? rawSteps.map((s: any, i: number) => ({
+            stepNumber: i + 1,
+            category: s.category || `Langkah ${i + 1}`,
+            title: s.title || '',
+            content: s.content || '',
+          }))
+        : initialQuestionForm.solutionSteps;
+
+      const diff = String(parsed.difficulty || 'MEDIUM').toUpperCase();
+      const validDiff = (diff === 'EASY' || diff === 'HARD') ? diff : 'MEDIUM';
+
+      const tgt = String(parsed.target || 'FOR_PRACTICE').toUpperCase();
+      const validTarget = (tgt === 'DRAFT' || tgt === 'FOR_TRYOUT') ? tgt : 'FOR_PRACTICE';
+
+      setQuestionForm({
+        subtest: mappedSubtest,
+        subtopicId: matchedSubtopicId,
+        difficulty: validDiff,
+        target: validTarget,
+        narration: parsed.narration || '',
+        content: parsed.content || '',
+        imageUrl: parsed.imageUrl || '',
+        points: String(parsed.points || 1),
+        options: opts,
+        keyFormula: sol.keyFormula || '',
+        quickTrick: sol.quickTrick || '',
+        staticExplanation: sol.staticExplanation || '',
+        solutionSteps: solSteps,
+      });
+
+      setEditingQuestion(null);
+      setAiImportOpen(false);
+      setQuestionFormOpen(true);
+      setNotice('Soal dari AI berhasil diterapkan ke form! Silakan periksa dan simpan.');
+    } catch (err: any) {
+      setError(`Gagal membaca JSON AI: ${err.message || 'Format tidak valid'}`);
+    }
+  }
+
+  function editQuestionItem(item: QuestionItem) {
+    setEditingQuestion(item.id);
+    setQuestionFormOpen(true);
+    setError(''); setNotice('');
+    const formOptions = item.options.length > 0
+      ? item.options.map((o) => ({ content: o.content, isCorrect: o.isCorrect, order: o.order }))
+      : initialQuestionForm.options;
+    const formSteps = item.solution?.steps && item.solution.steps.length > 0
+      ? item.solution.steps.map((s) => ({ stepNumber: s.stepNumber, category: s.category || '', title: s.title, content: s.content }))
+      : initialQuestionForm.solutionSteps;
+
+    setQuestionForm({
+      subtest: item.subtest,
+      subtopicId: item.subtopicId || '',
+      difficulty: item.difficulty,
+      target: item.target,
+      narration: item.narration || '',
+      content: item.content,
+      imageUrl: item.imageUrl || '',
+      points: String(item.points || 1),
+      options: formOptions,
+      keyFormula: item.solution?.keyFormula || '',
+      quickTrick: item.solution?.quickTrick || '',
+      staticExplanation: item.solution?.staticContent || '',
+      solutionSteps: formSteps,
+    });
+  }
 
   async function saveTryout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -513,25 +819,26 @@ export default function ControlCenterPage() {
     }),
     tryoutColHelper.display({
       id: 'actions',
-      header: () => <div className="text-right">Action</div>,
+      header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
-        <div className="control-row-actions">
+        <div className="table-action-group">
           <button
             type="button"
-            className="control-text-button"
+            className="table-action-btn"
             onClick={() => editTryout(row.original)}
+            title="Edit tryout"
           >
-            Edit
+            <Edit className="action-icon" /> Edit
           </button>
           <button
             type="button"
-            className="control-text-button control-delete-button"
+            className="table-action-btn table-action-btn-danger"
             onClick={() => void deleteTryoutItem(row.original)}
             disabled={deletingId === row.original.id}
             aria-label={`Delete tryout ${row.original.title}`}
             title="Delete tryout"
           >
-            <Trash2 aria-hidden="true" /> {deletingId === row.original.id ? 'Deleting…' : 'Delete'}
+            <Trash2 className="action-icon" /> {deletingId === row.original.id ? 'Deleting…' : 'Delete'}
           </button>
         </div>
       ),
@@ -566,25 +873,26 @@ export default function ControlCenterPage() {
     }),
     packageColHelper.display({
       id: 'actions',
-      header: () => <div className="text-right">Action</div>,
+      header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
-        <div className="control-row-actions">
+        <div className="table-action-group">
           <button
             type="button"
-            className="control-text-button"
+            className="table-action-btn"
             onClick={() => editPackage(row.original)}
+            title="Edit package"
           >
-            Edit
+            <Edit className="action-icon" /> Edit
           </button>
           <button
             type="button"
-            className="control-text-button control-delete-button"
+            className="table-action-btn table-action-btn-danger"
             onClick={() => void deletePackageItem(row.original)}
             disabled={deletingId === row.original.id}
             aria-label={`Delete package ${row.original.name}`}
             title={row.original.paymentCount ? 'Has payment history; deactivate it instead' : 'Delete package'}
           >
-            <Trash2 aria-hidden="true" /> {deletingId === row.original.id ? 'Deleting…' : 'Delete'}
+            <Trash2 className="action-icon" /> {deletingId === row.original.id ? 'Deleting…' : 'Delete'}
           </button>
         </div>
       ),
@@ -692,35 +1000,169 @@ export default function ControlCenterPage() {
       id: 'actions',
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => (
-        <div className="flex items-center justify-end gap-1.5">
+        <div className="table-action-group">
           <button
             type="button"
-            className="button button-secondary h-7 px-2 text-xs flex items-center gap-1"
+            className="table-action-btn"
             onClick={() => setPreviewArticle(row.original)}
             title="Preview article"
           >
-            <Eye className="h-3 w-3" /> Preview
+            <Eye className="action-icon" /> Preview
           </button>
           <button
             type="button"
-            className="button button-secondary h-7 px-2 text-xs flex items-center gap-1"
+            className="table-action-btn"
             onClick={() => editArticleItem(row.original)}
             title="Edit article"
           >
-            <Edit className="h-3 w-3" /> Edit
+            <Edit className="action-icon" /> Edit
           </button>
           <button
             type="button"
-            className="button button-secondary h-7 px-2 text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+            className="table-action-btn table-action-btn-danger"
             onClick={() => void deleteArticleItem(row.original)}
             title="Delete article"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="action-icon" /> Delete
           </button>
         </div>
       ),
     }),
   ], []);
+
+  // TANSTACK TABLE COLUMNS FOR QUESTIONS
+  const questionColumns = React.useMemo(() => [
+    questionColHelper.accessor('content', {
+      header: 'Soal & Kurikulum',
+      cell: ({ row }) => {
+        const text = row.original.content || '';
+        const subtestName = (row.original.subtest || '').replace(/_/g, ' ');
+        const path = row.original.topicTitle
+          ? `${row.original.topicTitle}${row.original.subtopicTitle ? ` › ${row.original.subtopicTitle}` : ''}`
+          : '';
+        return (
+          <div className="question-content-cell">
+            <strong className="question-content-prompt line-clamp-2" title={text}>
+              {text}
+            </strong>
+            <div className="question-content-meta">
+              <span className="question-subtest-pill">{subtestName}</span>
+              {path ? <span className="question-topic-path">· {path}</span> : null}
+            </div>
+          </div>
+        );
+      },
+    }),
+    questionColHelper.accessor('target', {
+      header: 'Status / Target',
+      cell: ({ getValue }) => {
+        const val = getValue();
+        if (val === 'DRAFT') {
+          return (
+            <span className="question-status-badge question-target-draft">
+              📁 Draft
+            </span>
+          );
+        }
+        if (val === 'FOR_TRYOUT') {
+          return (
+            <span className="question-status-badge question-target-tryout">
+              🏆 Khusus Tryout
+            </span>
+          );
+        }
+        return (
+          <span className="question-status-badge question-target-practice">
+            🎯 Latihan (Free)
+          </span>
+        );
+      },
+    }),
+    questionColHelper.accessor('difficulty', {
+      header: 'Kesulitan',
+      cell: ({ getValue }) => {
+        const d = getValue();
+        const diffClass =
+          d === 'EASY'
+            ? 'difficulty-easy'
+            : d === 'MEDIUM'
+            ? 'difficulty-medium'
+            : 'difficulty-hard';
+        return (
+          <span className={`difficulty-badge ${diffClass}`}>
+            {d}
+          </span>
+        );
+      },
+    }),
+    questionColHelper.display({
+      id: 'solution',
+      header: 'Pembahasan Deck',
+      cell: ({ row }) => {
+        const sol = row.original.solution;
+        const stepCount = sol?.steps?.length || 0;
+        const hasTrick = Boolean(sol?.quickTrick);
+        const hasFormula = Boolean(sol?.keyFormula);
+        return (
+          <div className="deck-pill-container">
+            {stepCount > 0 ? (
+              <span className="deck-slides-pill">
+                {stepCount} Slides
+              </span>
+            ) : (
+              <span className="deck-empty-text">Belum ada slide</span>
+            )}
+            {hasTrick && (
+              <span className="deck-trick-pill" title="Ada Trik Cepat">
+                ⚡ Trik
+              </span>
+            )}
+            {hasFormula && (
+              <span className="deck-formula-pill" title="Ada Rumus Kunci">
+                📐 Rumus
+              </span>
+            )}
+          </div>
+        );
+      },
+    }),
+    questionColHelper.display({
+      id: 'actions',
+      header: () => <div className="text-right">Aksi</div>,
+      cell: ({ row }) => (
+        <div className="table-action-group">
+          <button
+            type="button"
+            className="table-action-btn"
+            onClick={() => {
+              setPreviewQuestion(row.original);
+              setPreviewSlideIdx(0);
+            }}
+            title="Preview Soal & Pembahasan Interaktif"
+          >
+            <Eye className="action-icon" /> Preview
+          </button>
+          <button
+            type="button"
+            className="table-action-btn"
+            onClick={() => editQuestionItem(row.original)}
+            title="Edit Soal"
+          >
+            <Edit className="action-icon" /> Edit
+          </button>
+          <button
+            type="button"
+            className="table-action-btn table-action-btn-danger"
+            onClick={() => void deleteQuestionItem(row.original)}
+            disabled={deletingId === row.original.id}
+            title="Hapus Soal"
+          >
+            <Trash2 className="action-icon" /> {deletingId === row.original.id ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      ),
+    }),
+  ], [deletingId]);
 
   // TANSTACK TABLE COLUMNS FOR CAREERS
   const careerColumns = React.useMemo(() => [
@@ -768,13 +1210,14 @@ export default function ControlCenterPage() {
       id: 'candidateDetails',
       header: () => <div className="text-right">Candidate Details</div>,
       cell: ({ row }) => (
-        <div className="text-right">
+        <div className="table-action-group">
           <button
             type="button"
-            className="button button-secondary h-7 px-3 text-xs font-semibold inline-flex items-center gap-1"
+            className="table-action-btn"
             onClick={() => openApplicantModal(row.original)}
+            title="View candidate details"
           >
-            View details <ExternalLink className="h-3 w-3" />
+            View details <ExternalLink className="action-icon" />
           </button>
         </div>
       ),
@@ -829,10 +1272,10 @@ export default function ControlCenterPage() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder={
               section === 'users'
-                ? 'Search users by name or email'
+                ? 'Search users by name or email...'
                 : section === 'careers'
-                ? 'Search applicants by name, email, university, or position'
-                : 'Search articles by title, category, or author'
+                ? 'Search applicants by name, email, university, or position...'
+                : 'Search articles by title, category, or author...'
             }
             aria-label="Search"
           />
@@ -983,6 +1426,536 @@ export default function ControlCenterPage() {
               columns={tryoutColumns}
               data={tryouts}
               emptyMessage="No tryouts found."
+            />
+          )}
+        </section>
+      )}
+
+      {/* SECTION: QUESTIONS (BANK SOAL & CREATION FLOW) */}
+      {section === 'questions' && (
+        <section className="control-panel" aria-labelledby="question-heading">
+          <div className="section-heading control-panel-heading">
+            <div>
+              <h2 id="question-heading">Bank Soal & Kurikulum</h2>
+              <p>Kelola bank soal atomik terpadu dengan opsi Draft, Khusus Tryout, atau Bank Latihan.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="button button-secondary flex items-center gap-1.5"
+                onClick={() => setAiImportOpen(!aiImportOpen)}
+              >
+                <Zap className="w-4 h-4 text-amber-400" />
+                {aiImportOpen ? 'Tutup Import AI' : '⚡ Import JSON (AI)'}
+              </button>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => {
+                  setEditingQuestion(null);
+                  setQuestionForm(initialQuestionForm);
+                  setQuestionFormOpen(true);
+                  setError('');
+                  setNotice('');
+                }}
+              >
+                + Buat Soal Baru
+              </button>
+            </div>
+          </div>
+
+          {/* AI JSON IMPORT BOX */}
+          {aiImportOpen && (
+            <div className="mb-5 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> Import Soal Otomatis dari AI
+                </span>
+                <span className="text-[11px] text-[var(--muted-fg)]">Paste array atau single JSON soal</span>
+              </div>
+              <textarea
+                className="field-input font-mono text-xs w-full"
+                rows={6}
+                placeholder="Paste JSON dari AI di sini..."
+                value={aiJsonInput}
+                onChange={(e) => setAiJsonInput(e.target.value)}
+              />
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="button button-secondary text-xs h-8"
+                  onClick={() => setAiImportOpen(false)}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  className="button button-primary text-xs h-8 flex items-center gap-1.5"
+                  onClick={applyAiJson}
+                  disabled={!aiJsonInput.trim()}
+                >
+                  <Zap className="w-3.5 h-3.5" /> Terapkan ke Form
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* QUESTION TOOLBAR & FILTERS */}
+          <div className="control-filter-toolbar">
+            <div className="control-filter-items">
+              <div className="control-filter-search">
+                <Search className="control-filter-search-icon" />
+                <input
+                  type="text"
+                  className="control-filter-search-input"
+                  placeholder="Cari soal atau kurikulum..."
+                  value={search}
+                  onChange={(e) => {
+                    const q = e.target.value;
+                    setSearch(q);
+                    void loadSection('questions', q, true);
+                  }}
+                />
+              </div>
+
+              <div className="control-filter-group">
+                <span className="control-filter-label">Subtes</span>
+                <ComboboxSelect
+                  value={filterSubtest}
+                  onValueChange={(val) => {
+                    setFilterSubtest(val);
+                    void loadSection('questions', search, true, { subtest: val });
+                  }}
+                  options={[
+                    { label: 'Semua Subtes', value: 'ALL' },
+                    { label: 'Pengetahuan Kuantitatif', value: 'PENGETAHUAN_KUANTITATIF' },
+                    { label: 'Penalaran Umum', value: 'PENALARAN_UMUM' },
+                    { label: 'Pemahaman Bacaan & Menulis', value: 'PEMAHAMAN_BACAAN_MENULIS' },
+                    { label: 'Pengetahuan & Pemahaman Umum', value: 'PENGETAHUAN_PEMAHAMAN_UMUM' },
+                    { label: 'Literasi Bahasa Indonesia', value: 'LITERASI_INDONESIA' },
+                    { label: 'Literasi Bahasa Inggris', value: 'LITERASI_INGGRIS' },
+                    { label: 'Penalaran Matematika', value: 'PENALARAN_MATEMATIKA' },
+                  ]}
+                  triggerClassName="min-w-[190px]"
+                />
+              </div>
+
+              <div className="control-filter-group">
+                <span className="control-filter-label">Status</span>
+                <ComboboxSelect
+                  value={filterTarget}
+                  onValueChange={(val) => {
+                    setFilterTarget(val);
+                    void loadSection('questions', search, true, { target: val });
+                  }}
+                  options={[
+                    { label: 'Semua Status', value: 'ALL' },
+                    { label: '📁 Draft', value: 'DRAFT' },
+                    { label: '🏆 Khusus Tryout', value: 'FOR_TRYOUT' },
+                    { label: '🎯 Bank Latihan', value: 'FOR_PRACTICE' },
+                  ]}
+                  triggerClassName="min-w-[150px]"
+                />
+              </div>
+
+              {(filterSubtest !== 'ALL' || filterTarget !== 'ALL' || search) && (
+                <button
+                  type="button"
+                  className="control-filter-reset"
+                  onClick={() => {
+                    setFilterSubtest('ALL');
+                    setFilterTarget('ALL');
+                    setSearch('');
+                    void loadSection('questions', '', true, { subtest: 'ALL', target: 'ALL' });
+                  }}
+                  title="Reset filter"
+                >
+                  <X className="action-icon" /> Reset
+                </button>
+              )}
+            </div>
+
+            <div className="control-filter-count-badge">
+              <span>{questions.length}</span>
+              <span>{questions.length === 1 ? 'soal' : 'soal terdaftar'}</span>
+            </div>
+          </div>
+
+          {/* QUESTION CREATION / EDIT FORM */}
+          {questionFormOpen && (
+            <form className="control-edit-form" onSubmit={saveQuestion} style={{ maxWidth: '920px' }}>
+              <div className="flex items-center justify-between pb-3.5 border-b border-[var(--border)] mb-5">
+                <div>
+                  <h3 className="text-base font-bold text-[var(--foreground)] m-0">
+                    {editingQuestion ? 'Edit Soal' : 'Buat Soal Baru'}
+                  </h3>
+                  <p className="text-xs text-[var(--muted-fg)] m-0 mt-0.5">
+                    Lengkapi stimulus, pertanyaan, opsi jawaban A-E, dan slide deck solusi.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="button button-secondary text-xs h-7 px-2.5 flex items-center gap-1"
+                  onClick={() => setAiImportOpen(!aiImportOpen)}
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  Import AI
+                </button>
+              </div>
+
+              {/* 1. TARGET / PUBLICATION OPTIONS */}
+              <div className="mb-5 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)] block">
+                  Status & Target Publikasi Soal <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                  <label className={`flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-all ${questionForm.target === 'DRAFT' ? 'border-zinc-400 bg-zinc-500/10' : 'border-[var(--border)] bg-[var(--background)]'}`}>
+                    <input
+                      type="radio"
+                      name="questionTarget"
+                      checked={questionForm.target === 'DRAFT'}
+                      onChange={() => setQuestionForm({ ...questionForm, target: 'DRAFT' })}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="text-xs font-bold">Unpublish dulu (Draft)</div>
+                      <div className="text-[11px] text-[var(--muted-fg)]">Belum tayang, disimpan privat untuk editing.</div>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-all ${questionForm.target === 'FOR_TRYOUT' ? 'border-indigo-400 bg-indigo-500/10' : 'border-[var(--border)] bg-[var(--background)]'}`}>
+                    <input
+                      type="radio"
+                      name="questionTarget"
+                      checked={questionForm.target === 'FOR_TRYOUT'}
+                      onChange={() => setQuestionForm({ ...questionForm, target: 'FOR_TRYOUT' })}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-indigo-400">Khusus Tryout</div>
+                      <div className="text-[11px] text-[var(--muted-fg)]">Eksklusif CBT Tryout, tidak bocor ke latihan acak.</div>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-start gap-2.5 p-3 rounded-lg border cursor-pointer transition-all ${questionForm.target === 'FOR_PRACTICE' ? 'border-emerald-400 bg-emerald-500/10' : 'border-[var(--border)] bg-[var(--background)]'}`}>
+                    <input
+                      type="radio"
+                      name="questionTarget"
+                      checked={questionForm.target === 'FOR_PRACTICE'}
+                      onChange={() => setQuestionForm({ ...questionForm, target: 'FOR_PRACTICE' })}
+                      className="mt-1"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-emerald-400">Bank Latihan (Free Set)</div>
+                      <div className="text-[11px] text-[var(--muted-fg)]">Bebas diakses di bank latihan mandiri siswa.</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* 2. TAXONOMY: SUBTEST, SUBTOPIC & DIFFICULTY */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-5">
+                <label className="field-label">
+                  Subtes SNBT
+                  <ComboboxSelect
+                    value={questionForm.subtest}
+                    onValueChange={(val) => {
+                      setQuestionForm({ ...questionForm, subtest: val, subtopicId: '' });
+                    }}
+                    options={[
+                      { label: 'Pengetahuan Kuantitatif', value: 'PENGETAHUAN_KUANTITATIF' },
+                      { label: 'Penalaran Umum', value: 'PENALARAN_UMUM' },
+                      { label: 'Pemahaman Bacaan & Menulis', value: 'PEMAHAMAN_BACAAN_MENULIS' },
+                      { label: 'Pengetahuan & Pemahaman Umum', value: 'PENGETAHUAN_PEMAHAMAN_UMUM' },
+                      { label: 'Literasi Bahasa Indonesia', value: 'LITERASI_INDONESIA' },
+                      { label: 'Literasi Bahasa Inggris', value: 'LITERASI_INGGRIS' },
+                      { label: 'Penalaran Matematika', value: 'PENALARAN_MATEMATIKA' },
+                    ]}
+                    triggerClassName="w-full h-9"
+                  />
+                </label>
+
+                <label className="field-label">
+                  Topik & Subtopik (Kurikulum)
+                  <ComboboxSelect
+                    value={questionForm.subtopicId}
+                    onValueChange={(val) => setQuestionForm({ ...questionForm, subtopicId: val })}
+                    options={[
+                      { label: 'Pilih Subtopik...', value: '' },
+                      ...topics
+                        .filter((t) => t.subtest === questionForm.subtest)
+                        .flatMap((t) =>
+                          t.subtopics.map((s) => ({
+                            label: `${t.title} › ${s.title}`,
+                            value: s.id,
+                          }))
+                        ),
+                    ]}
+                    triggerClassName="w-full h-9"
+                  />
+                </label>
+
+                <label className="field-label">
+                  Tingkat Kesulitan
+                  <ComboboxSelect
+                    value={questionForm.difficulty}
+                    onValueChange={(val) => setQuestionForm({ ...questionForm, difficulty: val as QuestionForm['difficulty'] })}
+                    options={[
+                      { label: 'Mudah (Easy)', value: 'EASY' },
+                      { label: 'Sedang (Medium)', value: 'MEDIUM' },
+                      { label: 'Sulit (Hard / HOTS)', value: 'HARD' },
+                    ]}
+                    triggerClassName="w-full h-9"
+                  />
+                </label>
+              </div>
+
+              {/* 3. QUESTION CONTENT & STIMULUS */}
+              <div className="space-y-3.5 mb-5 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
+                <label className="field-label">
+                  Narasi / Teks Bacaan Stimulus (Opsional)
+                  <textarea
+                    className="field-input text-xs"
+                    rows={2}
+                    placeholder="Teks bacaan panjang, pengantar cerita, atau konteks soal..."
+                    value={questionForm.narration}
+                    onChange={(e) => setQuestionForm({ ...questionForm, narration: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Pertanyaan Soal (Wajib, support LaTeX e.g. $2x + 1 = 5$)
+                  <textarea
+                    className="field-input text-xs font-sans"
+                    rows={3}
+                    required
+                    placeholder="Tuliskan pertanyaan inti soal di sini..."
+                    value={questionForm.content}
+                    onChange={(e) => setQuestionForm({ ...questionForm, content: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  URL Gambar Diagram / Grafik (Opsional)
+                  <input
+                    className="field-input text-xs"
+                    placeholder="https://... (URL gambar ilustrasi jika ada)"
+                    value={questionForm.imageUrl}
+                    onChange={(e) => setQuestionForm({ ...questionForm, imageUrl: e.target.value })}
+                  />
+                </label>
+              </div>
+
+              {/* 4. MULTIPLE CHOICE OPTIONS (A to E) */}
+              <div className="mb-5 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
+                    Pilihan Jawaban (Tandai Kunci Jawaban)
+                  </span>
+                  <span className="text-xs text-[var(--muted-fg)]">Pilih 1 opsi yang benar</span>
+                </div>
+
+                <div className="space-y-2">
+                  {questionForm.options.map((opt, idx) => {
+                    const letters = ['A', 'B', 'C', 'D', 'E'];
+                    const letter = letters[idx] || String(idx + 1);
+                    return (
+                      <div
+                        key={idx}
+                        className={`question-option-item ${opt.isCorrect ? 'is-correct' : ''}`}
+                      >
+                        <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                          <input
+                            type="radio"
+                            name="correctAnswerGroup"
+                            checked={opt.isCorrect}
+                            onChange={() => {
+                              const newOpts = questionForm.options.map((o, i) => ({
+                                ...o,
+                                isCorrect: i === idx,
+                              }));
+                              setQuestionForm({ ...questionForm, options: newOpts });
+                            }}
+                          />
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${opt.isCorrect ? 'bg-emerald-500 text-white' : 'border border-[var(--border)] text-[var(--muted-fg)]'}`}>
+                            {letter}
+                          </span>
+                        </label>
+                        <input
+                          className="field-input flex-1 text-xs"
+                          placeholder={`Pilihan ${letter}...`}
+                          required
+                          value={opt.content}
+                          onChange={(e) => {
+                            const newOpts = [...questionForm.options];
+                            newOpts[idx] = { ...newOpts[idx], content: e.target.value };
+                            setQuestionForm({ ...questionForm, options: newOpts });
+                          }}
+                        />
+                        {opt.isCorrect && (
+                          <span className="text-[11px] font-bold text-emerald-400 shrink-0 pr-1">
+                            ✓ Kunci
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 5. INTERACTIVE SOLUTION BUILDER (USP JITU) */}
+              <div className="mb-5 p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" /> Solution Builder (Interactive Deck USP)
+                    </span>
+                    <p className="text-[11px] text-[var(--muted-fg)] mt-0.5">Potong pembahasan menjadi slide-slide presentasi interaktif.</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="button button-secondary text-xs h-7 px-2.5"
+                    onClick={() => {
+                      const nextNum = questionForm.solutionSteps.length + 1;
+                      setQuestionForm({
+                        ...questionForm,
+                        solutionSteps: [
+                          ...questionForm.solutionSteps,
+                          { stepNumber: nextNum, category: 'EKSEKUSI', title: '', content: '' },
+                        ],
+                      });
+                    }}
+                  >
+                    + Tambah Slide Langkah
+                  </button>
+                </div>
+
+                {/* Rumus Kunci & Trik Jitu */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="field-label">
+                    <span className="flex items-center gap-1.5 text-purple-400 font-bold">
+                      <span>📐</span> Rumus Kunci (Key Formula)
+                    </span>
+                    <input
+                      className="field-input text-xs"
+                      placeholder="e.g. A(t) = A_0 * (1/2)^(t/T)"
+                      value={questionForm.keyFormula}
+                      onChange={(e) => setQuestionForm({ ...questionForm, keyFormula: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="field-label">
+                    <span className="flex items-center gap-1.5 text-amber-400 font-bold">
+                      <span>💡</span> Trik Jitu 10 Detik (Quick Trick)
+                    </span>
+                    <input
+                      className="field-input text-xs"
+                      placeholder="Cara kilat / eliminasi opsi..."
+                      value={questionForm.quickTrick}
+                      onChange={(e) => setQuestionForm({ ...questionForm, quickTrick: e.target.value })}
+                    />
+                  </label>
+                </div>
+
+                {/* Steps List */}
+                <div className="space-y-3 pt-1">
+                  {questionForm.solutionSteps.map((step, sIdx) => (
+                    <div key={sIdx} className="question-step-card space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-blue-400">Slide {sIdx + 1}</span>
+                        {questionForm.solutionSteps.length > 1 && (
+                          <button
+                            type="button"
+                            className="text-xs text-red-400 hover:text-red-300"
+                            onClick={() => {
+                              const newSteps = questionForm.solutionSteps.filter((_, i) => i !== sIdx);
+                              setQuestionForm({ ...questionForm, solutionSteps: newSteps });
+                            }}
+                          >
+                            Hapus
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input
+                          className="field-input text-xs"
+                          placeholder="Kategori (e.g. IDENTIFIKASI)"
+                          value={step.category}
+                          onChange={(e) => {
+                            const newSteps = [...questionForm.solutionSteps];
+                            newSteps[sIdx] = { ...newSteps[sIdx], category: e.target.value };
+                            setQuestionForm({ ...questionForm, solutionSteps: newSteps });
+                          }}
+                        />
+                        <input
+                          className="field-input text-xs sm:col-span-2"
+                          placeholder="Judul langkah (e.g. Analisis Variabel Soal)"
+                          value={step.title}
+                          onChange={(e) => {
+                            const newSteps = [...questionForm.solutionSteps];
+                            newSteps[sIdx] = { ...newSteps[sIdx], title: e.target.value };
+                            setQuestionForm({ ...questionForm, solutionSteps: newSteps });
+                          }}
+                        />
+                      </div>
+                      <textarea
+                        className="field-input text-xs"
+                        rows={2}
+                        placeholder="Penjelasan detail langkah ini (Mendukung Markdown & LaTeX rumus)..."
+                        value={step.content}
+                        onChange={(e) => {
+                          const newSteps = [...questionForm.solutionSteps];
+                          newSteps[sIdx] = { ...newSteps[sIdx], content: e.target.value };
+                          setQuestionForm({ ...questionForm, solutionSteps: newSteps });
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Static Explanation (Fallback) */}
+                <label className="field-label pt-2 border-t border-[var(--border)]">
+                  <span className="text-xs text-[var(--muted-fg)] font-medium">
+                    Penjelasan Lengkap Statis (Fallback / PDF)
+                  </span>
+                  <textarea
+                    className="field-input text-xs"
+                    rows={2}
+                    placeholder="Versi teks lengkap konvensional..."
+                    value={questionForm.staticExplanation}
+                    onChange={(e) => setQuestionForm({ ...questionForm, staticExplanation: e.target.value })}
+                  />
+                </label>
+              </div>
+
+              {/* Form Actions */}
+              <div className="control-form-actions">
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => {
+                    setQuestionForm(initialQuestionForm);
+                    setEditingQuestion(null);
+                    setQuestionFormOpen(false);
+                  }}
+                >
+                  Batal
+                </button>
+                <button type="submit" className="button button-primary" disabled={saving}>
+                  {saving ? 'Menyimpan…' : editingQuestion ? 'Simpan Perubahan' : 'Buat Soal'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* QUESTIONS DATA TABLE */}
+          {loading ? (
+            <div className="control-empty">Loading questions…</div>
+          ) : (
+            <DataTable
+              columns={questionColumns}
+              data={questions}
+              emptyMessage="Belum ada soal. Klik '+ Buat Soal Baru' atau gunakan 'Import JSON (AI)'."
             />
           )}
         </section>
@@ -1594,6 +2567,195 @@ export default function ControlCenterPage() {
                 onClick={() => setSelectedApplicant(null)}
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+            {/* PREVIEW QUESTION & INTERACTIVE SOLUTION MODAL */}
+      {previewQuestion && (
+        <div className="modal-overlay" onClick={() => setPreviewQuestion(null)}>
+          <div
+            className="modal-dialog modal-wide"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxHeight: '92vh' }}
+          >
+            <div className="modal-header">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="question-status-badge question-target-practice">
+                    {previewQuestion.target}
+                  </span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    {previewQuestion.difficulty}
+                  </span>
+                  <span className="text-xs text-[var(--muted-fg)]">
+                    {previewQuestion.subtest.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <h3 className="m-0 text-base font-bold">Preview Soal & Solution Deck</h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setPreviewQuestion(null)}
+                aria-label="Tutup"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body space-y-4" style={{ overflowY: 'auto' }}>
+              {/* Stimulus if any */}
+              {previewQuestion.narration && (
+                <div className="p-3.5 rounded-lg bg-[var(--surface)] text-xs italic text-[var(--muted-fg)] leading-relaxed border-l-4 border-amber-500">
+                  <strong className="text-[var(--foreground)]">Teks Bacaan / Stimulus:</strong>
+                  <p className="mt-1 m-0">{previewQuestion.narration}</p>
+                </div>
+              )}
+
+              {/* Question Content */}
+              <div className="p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
+                <div className="text-sm font-semibold text-[var(--foreground)] leading-relaxed mb-3">
+                  {previewQuestion.content}
+                </div>
+
+                {/* Options A - E */}
+                <div className="space-y-2">
+                  {previewQuestion.options?.map((opt, i) => {
+                    const letters = ['A', 'B', 'C', 'D', 'E'];
+                    const letter = letters[i] || String(i + 1);
+                    return (
+                      <div
+                        key={i}
+                        className={`flex items-center gap-3 p-2.5 rounded-lg border text-xs transition-all ${
+                          opt.isCorrect
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 font-medium'
+                            : 'border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]'
+                        }`}
+                      >
+                        <span
+                          className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                            opt.isCorrect
+                              ? 'bg-emerald-500 text-white'
+                              : 'border border-[var(--border)] text-[var(--muted-fg)]'
+                          }`}
+                        >
+                          {letter}
+                        </span>
+                        <span className="flex-1">{opt.content}</span>
+                        {opt.isCorrect && (
+                          <span className="text-[11px] font-bold text-emerald-400 shrink-0">
+                            ✓ Kunci Jawaban
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Companion Tricks & Formulas */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {previewQuestion.solution?.keyFormula && (
+                  <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs">
+                    <span className="font-bold text-purple-400 block mb-1">📐 Rumus Kunci:</span>
+                    <code className="text-purple-200 font-mono text-[11px]">
+                      {previewQuestion.solution.keyFormula}
+                    </code>
+                  </div>
+                )}
+                {previewQuestion.solution?.quickTrick && (
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs">
+                    <span className="font-bold text-amber-400 block mb-1">💡 Trik Jitu:</span>
+                    <span className="text-amber-200">{previewQuestion.solution.quickTrick}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Interactive Deck Simulator */}
+              {previewQuestion.solution?.steps && previewQuestion.solution.steps.length > 0 ? (
+                <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/25 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+                        Interactive Deck Simulator
+                      </span>
+                      <span className="text-[11px] px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 font-medium">
+                        Slide {previewSlideIdx + 1} dari {previewQuestion.solution.steps.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        className="button button-secondary text-xs h-7 px-2.5 flex items-center gap-1"
+                        disabled={previewSlideIdx === 0}
+                        onClick={() => setPreviewSlideIdx((prev) => Math.max(0, prev - 1))}
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" /> Sebelumnya
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-secondary text-xs h-7 px-2.5 flex items-center gap-1"
+                        disabled={previewSlideIdx >= (previewQuestion.solution?.steps?.length ?? 1) - 1}
+                        onClick={() =>
+                          setPreviewSlideIdx((prev) =>
+                            Math.min((previewQuestion.solution?.steps?.length ?? 1) - 1, prev + 1)
+                          )
+                        }
+                      >
+                        Selanjutnya <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Current Slide Display */}
+                  {(() => {
+                    const curStep = previewQuestion.solution?.steps?.[previewSlideIdx];
+                    if (!curStep) return null;
+                    return (
+                      <div className="p-4 rounded-lg bg-[var(--card)] border border-[var(--border)] space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300">
+                            {curStep.category || `Langkah ${curStep.stepNumber}`}
+                          </span>
+                          <h4 className="m-0 text-sm font-bold text-[var(--foreground)]">
+                            {curStep.title}
+                          </h4>
+                        </div>
+                        <div className="text-xs text-[var(--foreground)] leading-relaxed whitespace-pre-wrap font-sans pt-1">
+                          {curStep.content}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div className="p-3 text-xs text-[var(--muted-fg)] italic bg-[var(--surface)] rounded-lg">
+                  Tidak ada slide pembahasan interaktif untuk soal ini.
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => {
+                  const toEdit = previewQuestion;
+                  setPreviewQuestion(null);
+                  editQuestionItem(toEdit);
+                }}
+              >
+                Edit Soal Ini
+              </button>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => setPreviewQuestion(null)}
+              >
+                Tutup Preview
               </button>
             </div>
           </div>

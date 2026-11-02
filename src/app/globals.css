@@ -1816,7 +1816,7 @@ input[type="date"] { color-scheme: light; }
   white-space: nowrap;
 }
 .control-panel [data-slot="table-head"]:last-child,
-.control-panel [data-slot="table-cell"]:last-child { width: 160px; white-space: nowrap; text-align: center; }
+.control-panel [data-slot="table-cell"]:last-child { min-width: 220px; width: auto; white-space: nowrap; text-align: right; }
 .control-panel [data-slot="table-cell"] {
   min-height: 54px;
   border-bottom: 1px solid var(--border);
@@ -2798,7 +2798,8 @@ h1 {
   font-weight: 500;
 }
 
-.dashboard-kpi-card > strong {
+.dashboard-kpi-card > strong,
+.dashboard-kpi-card strong {
   color: var(--foreground);
   font-size: 26px;
   font-weight: 700;
@@ -5066,3 +5067,407 @@ html.dark .department-chip {
   color: var(--brand);
 }
 
+
+
+/* ==========================================================================
+   Question Management (Bank Soal) Styles
+   ========================================================================== */
+.question-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.question-target-draft {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.question-target-tryout {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.question-target-practice {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.question-option-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--background);
+  transition: all 0.15s ease;
+}
+
+.question-option-item.is-correct {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.question-step-card {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+/* ==========================================================================
+   Modern Layout Utilities (for Tailwind compatibility in vanilla CSS)
+   ========================================================================== */
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.justify-center { justify-content: center; }
+.flex-1 { flex: 1 1 0%; }
+.shrink-0 { flex-shrink: 0; }
+.gap-1 { gap: 4px; }
+.gap-1\.5 { gap: 6px; }
+.gap-2 { gap: 8px; }
+.gap-2\.5 { gap: 10px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+.gap-6 { gap: 24px; }
+.space-y-2 > * + * { margin-top: 8px; }
+.space-y-3 > * + * { margin-top: 12px; }
+.space-y-4 > * + * { margin-top: 16px; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.mb-4 { margin-bottom: 16px; }
+.mb-5 { margin-bottom: 20px; }
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 13px; }
+.text-base { font-size: 14px; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.text-muted { color: var(--muted-fg); }
+.text-foreground { color: var(--foreground); }
+.line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* ==========================================================================
+   Control Center Filter Toolbar & Question Management Styles
+   ========================================================================== */
+.control-filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xs);
+}
+
+.control-filter-items {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.control-filter-group {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+  height: 34px;
+}
+
+.control-filter-label {
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-fg);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+}
+
+.control-filter-group .combobox-root {
+  border: none !important;
+}
+
+.control-filter-group .combobox-trigger {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  box-shadow: none !important;
+}
+
+.control-filter-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 240px;
+  max-width: 320px;
+  flex: 1;
+}
+
+.control-filter-search-icon {
+  position: absolute;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  color: var(--muted-fg);
+  pointer-events: none;
+}
+
+.control-filter-search-input {
+  width: 100%;
+  height: 34px;
+  padding-left: 32px;
+  padding-right: 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--muted-bg);
+  color: var(--foreground);
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.control-filter-search-input:focus {
+  border-color: var(--ring);
+  background: var(--card);
+}
+
+.control-filter-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 550;
+  color: var(--muted-fg);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.control-filter-reset:hover {
+  color: var(--foreground);
+  border-color: var(--ring);
+  background: var(--surface-hover);
+}
+
+.control-filter-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-fg);
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+/* Question Content Cells */
+.question-content-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 480px;
+  padding: 2px 0;
+}
+
+.question-content-prompt {
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.4;
+  color: var(--foreground);
+  word-break: break-word;
+}
+
+.question-content-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted-fg);
+}
+
+.question-subtest-pill {
+  font-weight: 600;
+  color: var(--foreground);
+  opacity: 0.85;
+}
+
+.question-topic-path {
+  color: var(--muted-fg);
+  font-size: 11px;
+}
+
+/* Difficulty Badges */
+.difficulty-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.difficulty-easy {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.difficulty-medium {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.difficulty-hard {
+  color: #f87171;
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.25);
+}
+
+/* Solution Deck Badges */
+.deck-pill-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.deck-slides-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 550;
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.deck-trick-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.deck-formula-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #c084fc;
+  background: rgba(192, 132, 252, 0.12);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+}
+
+.deck-empty-text {
+  font-size: 11px;
+  color: var(--muted-fg);
+}
+
+/* Uniform Table Action Buttons */
+.table-action-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.table-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 550;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--muted-bg);
+  color: var(--foreground);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.14s ease;
+  user-select: none;
+}
+
+.table-action-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--ring);
+  color: var(--foreground);
+}
+
+.table-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.table-action-btn-danger {
+  color: var(--destructive);
+  border-color: rgba(228, 0, 20, 0.25);
+  background: rgba(228, 0, 20, 0.06);
+}
+
+.table-action-btn-danger:hover {
+  background: rgba(228, 0, 20, 0.14);
+  border-color: var(--destructive);
+  color: #ff6b6b;
+}
+
+.action-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
