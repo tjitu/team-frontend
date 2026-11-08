@@ -869,10 +869,6 @@ export default function ControlCenterPage() {
       header: 'Price (IDR)',
       cell: ({ getValue }) => <span>{currency.format(getValue())}</span>,
     }),
-    packageColHelper.accessor('paymentCount', {
-      header: 'Purchases',
-      cell: ({ getValue }) => <span>{getValue() ?? '—'}</span>,
-    }),
     packageColHelper.accessor('isActive', {
       header: 'Status',
       cell: ({ getValue }) => (
