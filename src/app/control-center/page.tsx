@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import type { FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createColumnHelper } from '@tanstack/react-table';
 import { api, CurrentMember, RevenueSummary, signInUrl } from '@/lib/api';
 import { DataTable } from '@/components/ui/data-table';
@@ -339,8 +340,15 @@ const careerColHelper = createColumnHelper<DataTableFeatures, CareerApplication>
 const questionColHelper = createColumnHelper<DataTableFeatures, QuestionItem>();
 const paymentColHelper = createColumnHelper<DataTableFeatures, PaymentLog>();
 
-export default function ControlCenterPage() {
-  const [section, setSection] = React.useState<Section>('tryouts');
+function ControlCenterContent() {
+  const searchParams = useSearchParams();
+  const urlSec = searchParams?.get('section') as Section | null;
+  const [section, setSection] = React.useState<Section>(() => {
+    if (urlSec && ['tryouts', 'pricing', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
+      return urlSec;
+    }
+    return 'tryouts';
+  });
   const [member, setMember] = React.useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
   const [tryouts, setTryouts] = React.useState<Tryout[]>(() => api.getCached<Tryout[]>('/team/control-center/tryouts') ?? []);
   const [packages, setPackages] = React.useState<Package[]>(() => api.getCached<Package[]>('/team/control-center/packages') ?? []);
@@ -449,14 +457,12 @@ export default function ControlCenterPage() {
   }, [filterSubtest, filterTarget, paymentStatusFilter]);
 
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const urlSec = params.get('section') as Section | null;
-      if (urlSec && ['tryouts', 'pricing', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
-        setSection(urlSec);
-      }
+    if (urlSec && ['tryouts', 'pricing', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
+      setSection(urlSec);
+    } else if (!urlSec) {
+      setSection('tryouts');
     }
-  }, []);
+  }, [urlSec]);
 
   React.useEffect(() => {
     void api.get<CurrentMember>('/team/me').then(setMember).catch((cause: unknown) => {
@@ -1497,44 +1503,6 @@ export default function ControlCenterPage() {
 
   return (
     <div className="page-content control-center-page">
-      <div className="page-heading">
-        <div>
-          <h1>Control Center</h1>
-          <p className="page-subtitle">Manage Jitu services, content, and applications from one workspace.</p>
-        </div>
-        <button
-          className="button button-secondary"
-          onClick={() => { setNotice(''); void loadSection(section, search, true); }}
-          disabled={loading}
-        >
-          {loading ? 'Loading…' : 'Refresh'}
-        </button>
-      </div>
-
-      {/* SECTION TABS: Explicitly includes Articles */}
-      <nav className="control-tabs" aria-label="Control Center sections">
-        {sections.map((item) => (
-          <button
-            className={`control-tab ${section === item.id ? 'is-active' : ''}`}
-            type="button"
-            key={item.id}
-            onClick={() => {
-              setSection(item.id);
-              setSearch('');
-              setError('');
-              setNotice('');
-              if (typeof window !== 'undefined') {
-                const url = new URL(window.location.href);
-                url.searchParams.set('section', item.id);
-                window.history.replaceState({}, '', url.toString());
-              }
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
-
       {error && <div className="inline-message error" role="alert">{error}</div>}
       {notice && <div className="inline-message control-success" role="status">{notice}</div>}
 
@@ -3259,5 +3227,13 @@ export default function ControlCenterPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ControlCenterPage() {
+  return (
+    <React.Suspense fallback={<div className="control-empty">Loading control center…</div>}>
+      <ControlCenterContent />
+    </React.Suspense>
   );
 }
