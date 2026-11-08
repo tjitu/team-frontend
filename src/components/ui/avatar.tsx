@@ -93,10 +93,10 @@ function AvatarFallback({
 
   return (
     <img
-      data-slot="avatar-image"
+      data-slot="avatar-fallback"
       src={cartoonSrc}
       alt="Cartoon Avatar"
-      className={cn('shadcn-avatar-image', className)}
+      className={cn('shadcn-avatar-image shadcn-avatar-fallback', className)}
       loading="lazy"
     />
   );

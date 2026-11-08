@@ -35,11 +35,19 @@ import {
   Crown,
   Coins,
   Ticket,
+  BookOpen,
+  Plus,
+  FolderPlus,
+  Clock,
+  XCircle,
+  Wallet,
+  QrCode,
+  Calendar,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
 
-export type Section = 'tryouts' | 'pricing' | 'vouchers' | 'discounts' | 'users' | 'articles' | 'careers' | 'payments' | 'questions';
+export type Section = 'tryouts' | 'pricing' | 'vouchers' | 'discounts' | 'users' | 'articles' | 'careers' | 'payments' | 'questions' | 'curriculum';
 
 export type Voucher = {
   id: string;
@@ -483,7 +491,7 @@ function ControlCenterContent() {
   const searchParams = useSearchParams();
   const urlSec = searchParams?.get('section') as Section | null;
   const [section, setSection] = React.useState<Section>(() => {
-    if (urlSec && ['tryouts', 'pricing', 'vouchers', 'discounts', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
+    if (urlSec && ['tryouts', 'pricing', 'vouchers', 'discounts', 'users', 'articles', 'careers', 'payments', 'questions', 'curriculum'].includes(urlSec)) {
       return urlSec;
     }
     return 'tryouts';
@@ -533,19 +541,197 @@ function ControlCenterContent() {
   const [createMethodView, setCreateMethodView] = React.useState<'SELECT' | 'IMPORT_JSON'>('SELECT');
   const [isPromptAdjusterOpen, setIsPromptAdjusterOpen] = React.useState(false);
   const [importingBulk, setImportingBulk] = React.useState(false);
-  const [promptSubtests, setPromptSubtests] = React.useState<string[]>(['PENALARAN_MATEMATIKA']);
-  const [promptCount, setPromptCount] = React.useState<number>(5);
+
+  // New Per-Subtest Count Stepper State
+  const [promptSubtestCounts, setPromptSubtestCounts] = React.useState<Record<string, number>>({
+    PENALARAN_MATEMATIKA: 5,
+  });
   const [promptDifficulty, setPromptDifficulty] = React.useState<string>('MEDIUM');
-  const [promptTarget, setPromptTarget] = React.useState<string>('FOR_PRACTICE');
-  const [promptTopic, setPromptTopic] = React.useState<string>('');
+  const [promptSelectedSubtopicId, setPromptSelectedSubtopicId] = React.useState<string>('');
+  const [promptCustomTopic, setPromptCustomTopic] = React.useState<string>('');
   const [promptIncludePassage, setPromptIncludePassage] = React.useState<boolean>(true);
   const [promptIncludeTricks, setPromptIncludeTricks] = React.useState<boolean>(true);
   const [copiedPrompt, setCopiedPrompt] = React.useState<boolean>(false);
 
+  // Curriculum State & Modal Forms
+  const [curriculumSubtestFilter, setCurriculumSubtestFilter] = React.useState<string>('ALL');
+  const [topicModalOpen, setTopicModalOpen] = React.useState<boolean>(false);
+  const [subtopicModalOpen, setSubtopicModalOpen] = React.useState<boolean>(false);
+  const [editingTopic, setEditingTopic] = React.useState<TopicItem | null>(null);
+  const [editingSubtopic, setEditingSubtopic] = React.useState<{ id: string; topicId: string; title: string; slug: string; order: number } | null>(null);
+  const [activeParentTopic, setActiveParentTopic] = React.useState<TopicItem | null>(null);
+  const [topicForm, setTopicForm] = React.useState<{ subtest: string; title: string; slug: string; order: number }>({
+    subtest: 'PENALARAN_MATEMATIKA',
+    title: '',
+    slug: '',
+    order: 1,
+  });
+  const [subtopicForm, setSubtopicForm] = React.useState<{ topicId: string; title: string; slug: string; order: number }>({
+    topicId: '',
+    title: '',
+    slug: '',
+    order: 1,
+  });
+  const [topicSaving, setTopicSaving] = React.useState(false);
+  const [subtopicSaving, setSubtopicSaving] = React.useState(false);
+
+  const activeSubtestEntries = React.useMemo(() => {
+    return Object.entries(promptSubtestCounts).filter(([_, c]) => typeof c === 'number' && c > 0);
+  }, [promptSubtestCounts]);
+
+  const totalPromptCount = React.useMemo(() => {
+    return activeSubtestEntries.reduce((sum, [_, c]) => sum + c, 0);
+  }, [activeSubtestEntries]);
+
+  const selectedSubtopicMeta = React.useMemo(() => {
+    if (!promptSelectedSubtopicId) return null;
+    for (const t of topics) {
+      const s = t.subtopics.find((sub) => sub.id === promptSelectedSubtopicId);
+      if (s) {
+        const subtestMeta = ALL_SUBTESTS.find((sub) => sub.id === t.subtest);
+        return {
+          topicTitle: t.title,
+          subtopicTitle: s.title,
+          subtestId: t.subtest,
+          subtestLabel: subtestMeta?.label || t.subtest,
+        };
+      }
+    }
+    return null;
+  }, [promptSelectedSubtopicId, topics]);
+
+  const handleOpenCreateTopic = (defaultSubtest?: string) => {
+    setEditingTopic(null);
+    const targetSub = defaultSubtest && defaultSubtest !== 'ALL'
+      ? defaultSubtest
+      : (curriculumSubtestFilter !== 'ALL' ? curriculumSubtestFilter : 'PENALARAN_MATEMATIKA');
+    const nextOrder = (topics.filter((t) => t.subtest === targetSub).length + 1) * 10;
+    setTopicForm({ subtest: targetSub, title: '', slug: '', order: nextOrder });
+    setTopicModalOpen(true);
+  };
+
+  const handleOpenEditTopic = (top: TopicItem) => {
+    setEditingTopic(top);
+    setTopicForm({ subtest: top.subtest, title: top.title, slug: top.slug, order: top.order });
+    setTopicModalOpen(true);
+  };
+
+  const handleSaveTopic = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!topicForm.title.trim()) {
+      alert('Judul Materi Utama wajib diisi');
+      return;
+    }
+    setTopicSaving(true);
+    try {
+      const slug = topicForm.slug.trim() || topicForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const payload = {
+        subtest: topicForm.subtest,
+        title: topicForm.title.trim(),
+        slug,
+        order: Number(topicForm.order) || 0,
+      };
+      if (editingTopic) {
+        await api.patch(`/team/control-center/topics/${editingTopic.id}`, payload);
+      } else {
+        await api.post('/team/control-center/topics', payload);
+      }
+      const fresh = await api.get<TopicItem[]>('/team/control-center/topics', { force: true });
+      setTopics(fresh);
+      setTopicModalOpen(false);
+    } catch (err) {
+      alert('Gagal menyimpan materi: ' + errorMessage(err));
+    } finally {
+      setTopicSaving(false);
+    }
+  };
+
+  const handleDeleteTopic = async (top: TopicItem) => {
+    const subCount = top.subtopics ? top.subtopics.length : 0;
+    const msg = subCount > 0
+      ? `Materi "${top.title}" memiliki ${subCount} submateri. Hapus materi ini beserta seluruh submaterinya?`
+      : `Hapus materi "${top.title}"?`;
+    if (!confirm(msg)) return;
+    try {
+      await api.delete(`/team/control-center/topics/${top.id}`);
+      const fresh = await api.get<TopicItem[]>('/team/control-center/topics', { force: true });
+      setTopics(fresh);
+    } catch (err) {
+      alert('Gagal menghapus materi: ' + errorMessage(err));
+    }
+  };
+
+  const handleOpenCreateSubtopic = (parent: TopicItem) => {
+    setActiveParentTopic(parent);
+    setEditingSubtopic(null);
+    const nextOrder = ((parent.subtopics?.length || 0) + 1) * 10;
+    setSubtopicForm({ topicId: parent.id, title: '', slug: '', order: nextOrder });
+    setSubtopicModalOpen(true);
+  };
+
+  const handleOpenEditSubtopic = (parent: TopicItem, sub: { id: string; title: string; slug: string; order: number }) => {
+    setActiveParentTopic(parent);
+    setEditingSubtopic({ ...sub, topicId: parent.id });
+    setSubtopicForm({ topicId: parent.id, title: sub.title, slug: sub.slug, order: sub.order });
+    setSubtopicModalOpen(true);
+  };
+
+  const handleSaveSubtopic = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!subtopicForm.title.trim()) {
+      alert('Judul Submateri wajib diisi');
+      return;
+    }
+    if (!subtopicForm.topicId) {
+      alert('Materi Induk belum dipilih');
+      return;
+    }
+    setSubtopicSaving(true);
+    try {
+      const slug = subtopicForm.slug.trim() || subtopicForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const payload = {
+        topicId: subtopicForm.topicId,
+        title: subtopicForm.title.trim(),
+        slug,
+        order: Number(subtopicForm.order) || 0,
+      };
+      if (editingSubtopic) {
+        await api.patch(`/team/control-center/subtopics/${editingSubtopic.id}`, payload);
+      } else {
+        await api.post('/team/control-center/subtopics', payload);
+      }
+      const fresh = await api.get<TopicItem[]>('/team/control-center/topics', { force: true });
+      setTopics(fresh);
+      setSubtopicModalOpen(false);
+    } catch (err) {
+      alert('Gagal menyimpan submateri: ' + errorMessage(err));
+    } finally {
+      setSubtopicSaving(false);
+    }
+  };
+
+  const handleDeleteSubtopic = async (subId: string, title: string) => {
+    if (!confirm(`Hapus submateri "${title}"?`)) return;
+    try {
+      await api.delete(`/team/control-center/subtopics/${subId}`);
+      const fresh = await api.get<TopicItem[]>('/team/control-center/topics', { force: true });
+      setTopics(fresh);
+    } catch (err) {
+      alert('Gagal menghapus submateri: ' + errorMessage(err));
+    }
+  };
+
   const generatedPrompt = React.useMemo(() => {
-    const subtestLabels = promptSubtests.length > 0
-      ? promptSubtests.map((s) => ALL_SUBTESTS.find((item) => item.id === s)?.label || s).join(', ')
-      : 'Semua Subtes UTBK SNBT';
+    const subtestBreakdown = activeSubtestEntries.length > 0
+      ? activeSubtestEntries.map(([subId, count]) => {
+          const subMeta = ALL_SUBTESTS.find((item) => item.id === subId);
+          return `- ${subMeta?.label || subId}: ${count} butir soal`;
+        }).join('\n')
+      : '- Penalaran Matematika (PM): 5 butir soal';
+
+    const targetSubtestNames = activeSubtestEntries.length > 0
+      ? activeSubtestEntries.map(([subId]) => ALL_SUBTESTS.find((item) => item.id === subId)?.label || subId).join(', ')
+      : 'Penalaran Matematika (PM)';
 
     const diffText = promptDifficulty === 'EASY'
       ? 'Mudah (Konseptual & Fundamental)'
@@ -556,27 +742,39 @@ function ControlCenterContent() {
       : 'Sedang (Standar Resmi UTBK SNBT BPPP)';
 
     const passageInstruction = promptIncludePassage
-      ? '- Untuk subtes berbasis bahasa/literasi atau penalaran naratif, sertakan wacana/teks bacaan kontekstual yang berkualitas di field "narration".'
+      ? '- Untuk subtes berbasis bahasa/literasi atau penalaran naratif kontekstual, sertakan wacana/teks bacaan berkualitas di field "narration".'
       : '- Soal dibuat langsung tanpa wacana panjang (kosongkan "narration" jika tidak perlu).';
 
     const trickInstruction = promptIncludeTricks
       ? '- Pada bagian "solution", wajib cantumkan "keyFormula" (konsep dasar), "quickTrick" (tips eliminasi / cara cepat 30 detik), serta "steps" bertahap.'
       : '- Pada bagian "solution", cantumkan langkah penjelasan yang jelas dan ringkas.';
 
-    const topicLine = promptTopic.trim()
-      ? `- Fokus Topik / Kisi-kisi Khusus: ${promptTopic.trim()}`
-      : '- Fokus Topik: Kisi-kisi resmi SNBT terbaru';
+    let topicLine = '- Fokus Topik: Standar kisi-kisi resmi SNBT terbaru';
+    if (selectedSubtopicMeta) {
+      topicLine = `- Fokus Materi Kurikulum: ${selectedSubtopicMeta.topicTitle} › ${selectedSubtopicMeta.subtopicTitle} (${selectedSubtopicMeta.subtestLabel})`;
+      if (promptCustomTopic.trim()) {
+        topicLine += `\n- Catatan Spesifik Materi: ${promptCustomTopic.trim()}`;
+      }
+    } else if (promptCustomTopic.trim()) {
+      topicLine = `- Fokus Topik / Kisi-kisi Khusus: ${promptCustomTopic.trim()}`;
+    }
+
+    const primarySubtestId = activeSubtestEntries[0]?.[0] || 'PENALARAN_MATEMATIKA';
+    const sampleSubtopicName = selectedSubtopicMeta?.subtopicTitle || 'Nama Submateri';
 
     return `Kamu adalah spesialis pembuat soal seleksi masuk PTN (UTBK SNBT & Ujian Mandiri) nomor 1 di Indonesia dengan pemahaman mendalam tentang standar BPPP Kemendikbudristek.
 
 TUGAS UTAMA:
-Buatkan ${promptCount} soal pilihan ganda berkualitas tinggi, orisinal, dan terkalibrasi akurat dengan ketentuan berikut:
+Buatkan ${totalPromptCount} soal pilihan ganda berkualitas tinggi, orisinal, dan terkalibrasi akurat dengan ketentuan berikut:
 
 SPESIFIKASI SOAL:
-- Target Subtes: ${subtestLabels}
-- Jumlah Soal: ${promptCount} butir soal
+DISTRIBUSI SUBTES & JUMLAH SOAL:
+${subtestBreakdown}
+Total Keseluruhan: ${totalPromptCount} butir soal
+
+PARAMETER SOAL:
+- Target Subtes: ${targetSubtestNames}
 - Tingkat Kesulitan: ${diffText}
-- Target Penggunaan: ${promptTarget === 'FOR_TRYOUT' ? 'Tryout Resmi SNBT (Ketat & Standar Waktu)' : promptTarget === 'FOR_PRACTICE' ? 'Bank Latihan Harian Mandiri' : 'Draft Kurasi'}
 ${topicLine}
 - Opsi Jawaban: Tepat 5 pilihan ganda (A, B, C, D, E) dengan 1 kunci jawaban benar dan 4 distraktor pengecoh yang logis.
 - Notasi Matematika/Sains: Tulis rumus dan simbol matematika menggunakan notasi LaTeX standard (contoh: $f(x) = \\frac{-b \\pm \\sqrt{D}}{2a}$).
@@ -587,11 +785,11 @@ FORMAT KELUARAN (STRICT JSON ONLY):
 Hasilkan HANYA output berupa JSON murni (array of objects jika > 1 soal, atau single object jika 1 soal) tanpa teks pengantar, tanpa penjelasan di luar JSON, dan tanpa code fence markdown.
 
 Struktur JSON yang WAJIB dipatuhi:
-${promptCount > 1 ? '[' : ''}
+${totalPromptCount > 1 ? '[' : ''}
   {
-    "subtest": "${promptSubtests[0] || 'PENALARAN_MATEMATIKA'}",
+    "subtest": "${primarySubtestId}",
+    "subtopic": "${sampleSubtopicName}",
     "difficulty": "${promptDifficulty === 'MIXED' ? 'MEDIUM' : promptDifficulty}",
-    "target": "${promptTarget}",
     "narration": "Teks wacana atau konteks bacaan jika ada (kosongkan string jika tidak ada)",
     "content": "Pertanyaan soal yang jelas dan tidak ambigu...",
     "points": 1,
@@ -612,8 +810,8 @@ ${promptCount > 1 ? '[' : ''}
       ]
     }
   }
-${promptCount > 1 ? ']' : ''}`;
-  }, [promptSubtests, promptCount, promptDifficulty, promptTarget, promptTopic, promptIncludePassage, promptIncludeTricks]);
+${totalPromptCount > 1 ? ']' : ''}`;
+  }, [activeSubtestEntries, totalPromptCount, promptDifficulty, selectedSubtopicMeta, promptCustomTopic, promptIncludePassage, promptIncludeTricks]);
 
   const jsonValidation = React.useMemo(() => {
     if (!aiJsonInput.trim()) return null;
@@ -724,6 +922,10 @@ ${promptCount > 1 ? ']' : ''}`;
         setQuestions(qRes);
         setTopics(topRes);
       }
+      if (target === 'curriculum') {
+        const topRes = await api.get<TopicItem[]>('/team/control-center/topics', { force });
+        setTopics(topRes);
+      }
     } catch (cause) {
       const message = errorMessage(cause);
       if (message === 'SESSION_EXPIRED') window.location.assign(signInUrl());
@@ -734,7 +936,7 @@ ${promptCount > 1 ? ']' : ''}`;
   }, [filterSubtest, filterTarget, paymentStatusFilter]);
 
   React.useEffect(() => {
-    if (urlSec && ['tryouts', 'pricing', 'vouchers', 'discounts', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
+    if (urlSec && ['tryouts', 'pricing', 'vouchers', 'discounts', 'users', 'articles', 'careers', 'payments', 'questions', 'curriculum'].includes(urlSec)) {
       setSection(urlSec);
     } else if (!urlSec) {
       setSection('tryouts');
@@ -1495,7 +1697,8 @@ ${promptCount > 1 ? ']' : ''}`;
       cell: ({ row }) => {
         const d = row.original;
         return (
-          <span className="font-bold text-[13px] text-blue-500">
+          <span className="cell-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Tag className="cell-accessory-icon" />
             {d.type === 'PERCENTAGE' ? `${d.value}% OFF` : `${currency.format(d.value)} OFF`}
           </span>
         );
@@ -1511,9 +1714,10 @@ ${promptCount > 1 ? ']' : ''}`;
         const isExpired = now > end;
         const isScheduled = now < start;
         return (
-          <div>
-            <span className="text-xs">{formatDate(d.startDate)} – {formatDate(d.endDate)}</span>
-            <small className={`block text-[11px] font-medium ${isExpired ? 'text-zinc-500' : isScheduled ? 'text-amber-500' : 'text-emerald-500'}`}>
+          <div className="cell-stack">
+            <span className="cell-primary" style={{ fontWeight: 500 }}>{formatDate(d.startDate)} – {formatDate(d.endDate)}</span>
+            <small className="cell-meta-row">
+              <Calendar className="cell-accessory-icon" />
               {isExpired ? 'Expired' : isScheduled ? 'Scheduled (Starts soon)' : 'Active now'}
             </small>
           </div>
@@ -1581,23 +1785,19 @@ ${promptCount > 1 ? ']' : ''}`;
       cell: ({ row }) => {
         const u = row.original;
         const avatarSrc = u.image || getCartoonAvatarUrl(u.email || u.name || u.id);
-        const initial = (u.name || u.email || 'U').charAt(0).toUpperCase();
         return (
-          <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8 shrink-0 border border-[var(--border)]">
-              <AvatarImage src={avatarSrc} alt={u.name} />
-              <AvatarFallback className="bg-[var(--card-subtle)] text-xs font-bold text-[var(--foreground)]">
-                {initial}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <strong className="truncate font-semibold text-xs text-[var(--foreground)]">{u.name || 'Anonymous'}</strong>
+          <div className="flex items-center gap-2.5">
+            <Avatar size="sm" src={avatarSrc} alt={u.name || 'User'} />
+            <div className="user-cell-info">
+              <strong className="user-cell-name">
+                {u.name || 'Anonymous'}
                 {u.emailVerified && (
-                  <span className="text-[10px] text-emerald-400 font-bold" title="Email verified">✓</span>
+                  <span title="Email verified" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                    <CheckCircle2 className="cell-accessory-icon" />
+                  </span>
                 )}
-              </div>
-              <small className="block truncate text-[var(--muted-fg)] text-[11px]">{u.email}</small>
+              </strong>
+              <small className="user-cell-email">{u.email}</small>
             </div>
           </div>
         );
@@ -1609,6 +1809,7 @@ ${promptCount > 1 ? ']' : ''}`;
         const banned = getValue();
         return (
           <span className={`control-status ${banned ? 'status-rejected' : 'status-accepted'}`}>
+            {banned ? <XCircle /> : <CheckCircle2 />}
             {banned ? 'Banned' : 'Active'}
           </span>
         );
@@ -1636,11 +1837,15 @@ ${promptCount > 1 ? ']' : ''}`;
     userColHelper.accessor('tokenBalance', {
       header: 'Coins & Streak',
       cell: ({ row }) => (
-        <div>
-          <span className="font-semibold text-xs">{row.original.tokenBalance} coins</span>
+        <div className="cell-stack">
+          <span className="cell-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+            <Coins className="cell-accessory-icon" />
+            {row.original.tokenBalance} coins
+          </span>
           {row.original.currentStreak !== undefined && (
-            <small className="block text-[var(--muted-fg)] text-[11px]">
-              🔥 {row.original.currentStreak} hari
+            <small className="cell-meta-row">
+              <Flame className="cell-accessory-icon" />
+              {row.original.currentStreak} hari
             </small>
           )}
         </div>
@@ -1648,7 +1853,12 @@ ${promptCount > 1 ? ']' : ''}`;
     }),
     userColHelper.accessor('createdAt', {
       header: 'Joined',
-      cell: ({ getValue }) => <span className="text-xs">{formatDate(getValue())}</span>,
+      cell: ({ getValue }) => (
+        <span className="cell-meta-row">
+          <Calendar className="cell-accessory-icon" />
+          {formatDate(getValue())}
+        </span>
+      ),
     }),
     userColHelper.display({
       id: 'actions',
@@ -1672,7 +1882,7 @@ ${promptCount > 1 ? ']' : ''}`;
             </button>
             <button
               type="button"
-              className="table-action-btn table-action-btn-warn"
+              className="table-action-btn"
               onClick={() => void toggleBanUser(u)}
               disabled={isSelf || isTargetOwner || banningUserId === u.id}
               title={u.isBanned ? 'Unban user' : 'Ban user'}
@@ -1700,45 +1910,42 @@ ${promptCount > 1 ? ']' : ''}`;
   const paymentColumns = React.useMemo(() => [
     paymentColHelper.accessor('orderId', {
       header: 'Order ID',
-      cell: ({ row }) => (
-        <div>
-          <strong className="font-mono text-xs">{row.original.orderId}</strong>
-          <small className="block text-[var(--muted-fg)] uppercase text-[10px]">
-            {row.original.paymentMethod || 'QRIS'}
-          </small>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const method = (row.original.paymentMethod || 'QRIS').replace('_STATIC', '');
+        const isQris = method.toUpperCase().includes('QRIS');
+        return (
+          <div className="cell-stack">
+            <strong className="cell-mono">{row.original.orderId}</strong>
+            <small className="cell-meta-row">
+              {isQris ? <QrCode className="cell-accessory-icon" /> : <CreditCard className="cell-accessory-icon" />}
+              <span>{method}</span>
+            </small>
+          </div>
+        );
+      },
     }),
     paymentColHelper.accessor('user', {
       header: 'User',
       cell: ({ row }) => {
         const u = row.original.user;
         if (!u) {
-          return <span className="text-[var(--muted-fg)] text-xs">Deleted User</span>;
+          return <span className="cell-meta-row">Deleted User</span>;
         }
         const avatarSrc = u.image || getCartoonAvatarUrl(u.email || u.name || u.id);
-        const initial = (u.name || u.email || 'U').charAt(0).toUpperCase();
         return (
           <button
             type="button"
-            className="flex items-center gap-2.5 text-left hover:opacity-80 transition-opacity"
+            className="user-cell-btn"
             onClick={() => {
               setSelectedUserForModal(u);
               setUserModalOpen(true);
             }}
             title="View user details"
           >
-            <Avatar className="h-7 w-7 shrink-0 border border-[var(--border)]">
-              <AvatarImage src={avatarSrc} alt={u.name} />
-              <AvatarFallback className="bg-[var(--card-subtle)] text-[10px] font-bold">
-                {initial}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <strong className="text-xs font-semibold block truncate text-blue-400 hover:underline">
-                {u.name || 'User'}
-              </strong>
-              <small className="text-[var(--muted-fg)] block truncate text-[11px]">{u.email}</small>
+            <Avatar size="sm" src={avatarSrc} alt={u.name || 'User'} />
+            <div className="user-cell-info">
+              <strong className="user-cell-name">{u.name || 'User'}</strong>
+              <small className="user-cell-email">{u.email}</small>
             </div>
           </button>
         );
@@ -1746,32 +1953,57 @@ ${promptCount > 1 ? ']' : ''}`;
     }),
     paymentColHelper.accessor('amount', {
       header: 'Amount',
-      cell: ({ row }) => (
-        <div>
-          <strong className="font-semibold text-xs">{currency.format(row.original.amount)}</strong>
-          <small className="block text-[var(--muted-fg)] text-[11px]">
-            {row.original.tokenAmount} coins · {row.original.tokenPackage?.name || 'Package'}
-          </small>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const pkgName = row.original.tokenPackage?.name?.trim() || '';
+        const isPass = row.original.tokenAmount >= 999 || pkgName.toLowerCase().includes('pass');
+        const coinLabel = `${row.original.tokenAmount} ${row.original.tokenAmount === 1 ? 'coin' : 'coins'}`;
+        const hasDistinctPkgName = pkgName && !/^\d+\s*coins?$/i.test(pkgName);
+        return (
+          <div className="cell-stack">
+            <strong className="cell-primary">{currency.format(row.original.amount)}</strong>
+            <small className="cell-meta-row">
+              {isPass ? (
+                <>
+                  <Ticket className="cell-accessory-icon" />
+                  <span>{pkgName || 'PTN Premium Pass'}</span>
+                </>
+              ) : (
+                <>
+                  <Coins className="cell-accessory-icon" />
+                  <span>{hasDistinctPkgName ? `${coinLabel} · ${pkgName}` : coinLabel}</span>
+                </>
+              )}
+            </small>
+          </div>
+        );
+      },
     }),
     paymentColHelper.accessor('status', {
       header: 'Status',
       cell: ({ getValue }) => {
         const st = getValue();
-        let badgeClass = 'status-submitted';
+        let badgeClass = 'status-pending';
         let label = 'Waiting / Pending';
+        let IconComp = Clock;
         if (st === 'CONFIRMED') {
           badgeClass = 'status-accepted';
           label = 'Confirmed';
+          IconComp = CheckCircle2;
         } else if (st === 'CANCELLED') {
           badgeClass = 'status-rejected';
           label = 'Cancelled';
+          IconComp = XCircle;
         } else if (st === 'DECLINED') {
           badgeClass = 'status-rejected';
           label = 'Declined';
+          IconComp = AlertCircle;
         }
-        return <span className={`control-status ${badgeClass}`}>{label}</span>;
+        return (
+          <span className={`control-status ${badgeClass}`}>
+            <IconComp />
+            {label}
+          </span>
+        );
       },
     }),
     paymentColHelper.accessor('createdAt', {
@@ -1779,10 +2011,11 @@ ${promptCount > 1 ? ']' : ''}`;
       cell: ({ getValue }) => {
         const d = new Date(getValue());
         return (
-          <div>
-            <span className="text-xs">{dateLabel.format(d)}</span>
-            <small className="block text-[var(--muted-fg)] text-[11px]">
-              {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          <div className="cell-stack">
+            <span className="cell-primary" style={{ fontWeight: 500 }}>{dateLabel.format(d)}</span>
+            <small className="cell-meta-row">
+              <Clock className="cell-accessory-icon" />
+              <span>{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             </small>
           </div>
         );
@@ -2723,6 +2956,196 @@ ${promptCount > 1 ? ']' : ''}`;
               emptyMessage="Belum ada soal. Klik '+ Buat Soal Baru' atau gunakan 'Import JSON (AI)'."
             />
           )}
+        </section>
+      )}
+
+            {/* SECTION: CURRICULUM (MATERI & STRUKTUR KURIKULUM) */}
+      {section === 'curriculum' && (
+        <section className="control-panel" aria-labelledby="curriculum-heading">
+          <div className="section-heading control-panel-heading">
+            <div>
+              <h2 id="curriculum-heading">Materi & Struktur Kurikulum</h2>
+              <p>Kelola taksonomi kurikulum bertingkat (Subtes › Materi Utama › Submateri) untuk standarisasi bank soal dan pemetaan diagnostik siswa.</p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                className="button button-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => handleOpenCreateTopic()}
+              >
+                <Plus style={{ width: 14, height: 14 }} />
+                <span>Tambah Materi Utama</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Subtest Filter Tabs */}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
+            <button
+              type="button"
+              className={`filter-btn ${curriculumSubtestFilter === 'ALL' ? 'is-active' : ''}`}
+              onClick={() => setCurriculumSubtestFilter('ALL')}
+            >
+              Semua Subtes ({topics.length})
+            </button>
+            {ALL_SUBTESTS.map((sub) => {
+              const count = topics.filter((t) => t.subtest === sub.id).length;
+              return (
+                <button
+                  type="button"
+                  key={sub.id}
+                  className={`filter-btn ${curriculumSubtestFilter === sub.id ? 'is-active' : ''}`}
+                  onClick={() => setCurriculumSubtestFilter(sub.id)}
+                >
+                  {sub.label.split(' ')[0]} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Topics Grid */}
+          {(() => {
+            const filteredTopics = curriculumSubtestFilter === 'ALL'
+              ? topics
+              : topics.filter((t) => t.subtest === curriculumSubtestFilter);
+
+            if (filteredTopics.length === 0) {
+              return (
+                <div style={{ textAlign: 'center', padding: '48px 16px', background: 'var(--surface)', borderRadius: '12px', border: '1px dashed var(--border)' }}>
+                  <BookOpen style={{ width: 36, height: 36, color: 'var(--muted-fg)', margin: '0 auto 12px' }} />
+                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
+                    Belum Ada Materi Terdaftar
+                  </h3>
+                  <p style={{ fontSize: '13px', color: 'var(--muted-fg)', maxWidth: '420px', margin: '0 auto 16px' }}>
+                    {curriculumSubtestFilter === 'ALL'
+                      ? 'Belum ada materi kurikulum yang ditambahkan. Buat materi pertama untuk mulai membangun bank soal terstruktur.'
+                      : `Belum ada materi untuk subtes ${ALL_SUBTESTS.find((s) => s.id === curriculumSubtestFilter)?.label || curriculumSubtestFilter}.`}
+                  </p>
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    onClick={() => handleOpenCreateTopic(curriculumSubtestFilter)}
+                  >
+                    <Plus style={{ width: 14, height: 14 }} />
+                    <span>Tambah Materi Pertama</span>
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="curriculum-grid">
+                {filteredTopics.map((top) => {
+                  const subMeta = ALL_SUBTESTS.find((s) => s.id === top.subtest);
+                  const subCount = top.subtopics ? top.subtopics.length : 0;
+                  return (
+                    <div key={top.id} className="curriculum-topic-card">
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+                              {subMeta?.label.split(' ')[0] || top.subtest}
+                            </span>
+                            <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
+                              #{top.order}
+                            </span>
+                          </div>
+                          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--foreground)', lineHeight: 1.3 }}>
+                            {top.title}
+                          </h3>
+                          <span style={{ fontSize: '11px', color: 'var(--muted-fg)', fontFamily: 'monospace' }}>
+                            slug: {top.slug}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            type="button"
+                            className="button-icon-subtle"
+                            title="Tambah Submateri"
+                            onClick={() => handleOpenCreateSubtopic(top)}
+                          >
+                            <Plus style={{ width: 14, height: 14, color: '#fbbf24' }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="button-icon-subtle"
+                            title="Edit Materi"
+                            onClick={() => handleOpenEditTopic(top)}
+                          >
+                            <Edit style={{ width: 14, height: 14 }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="button-icon-subtle"
+                            title="Hapus Materi"
+                            onClick={() => handleDeleteTopic(top)}
+                          >
+                            <Trash2 style={{ width: 14, height: 14, color: 'var(--destructive)' }} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Subtopics List */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--muted-fg)', textTransform: 'uppercase' }}>
+                          <span>Submateri ({subCount})</span>
+                          <button
+                            type="button"
+                            style={{ background: 'none', border: 'none', color: '#fbbf24', fontSize: '11px', cursor: 'pointer', padding: 0 }}
+                            onClick={() => handleOpenCreateSubtopic(top)}
+                          >
+                            + Submateri
+                          </button>
+                        </div>
+
+                        {subCount === 0 ? (
+                          <div style={{ padding: '8px 10px', fontSize: '12px', color: 'var(--muted-fg)', background: 'var(--surface-muted, rgba(255, 255, 255, 0.02))', borderRadius: '6px', textAlign: 'center' }}>
+                            Belum ada submateri terdaftar.
+                          </div>
+                        ) : (
+                          top.subtopics.map((sub) => (
+                            <div key={sub.id} className="curriculum-subtopic-row">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>
+                                  {sub.title}
+                                </span>
+                                <span style={{ fontSize: '10px', color: 'var(--muted-fg)', fontFamily: 'monospace' }}>
+                                  #{sub.order} • {sub.slug}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                <button
+                                  type="button"
+                                  className="button-icon-subtle"
+                                  style={{ padding: '2px' }}
+                                  title="Edit Submateri"
+                                  onClick={() => handleOpenEditSubtopic(top, sub)}
+                                >
+                                  <Edit style={{ width: 12, height: 12 }} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="button-icon-subtle"
+                                  style={{ padding: '2px' }}
+                                  title="Hapus Submateri"
+                                  onClick={() => handleDeleteSubtopic(sub.id, sub.title)}
+                                >
+                                  <Trash2 style={{ width: 12, height: 12, color: 'var(--destructive)' }} />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </section>
       )}
 
@@ -3875,23 +4298,43 @@ ${promptCount > 1 ? ']' : ''}`;
                 {/* 4 Summary Cards */}
                 <div className="revenue-metrics" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                   <article className="revenue-metric">
-                    <span>Total confirmed revenue</span>
-                    <strong style={{ color: '#34d399' }}>{currency.format(paymentSummary.totalRevenue)}</strong>
+                    <div className="revenue-metric-head">
+                      <span>Total confirmed revenue</span>
+                      <span className="revenue-metric-icon" aria-hidden="true">
+                        <Wallet />
+                      </span>
+                    </div>
+                    <strong>{currency.format(paymentSummary.totalRevenue)}</strong>
                     <small>From settled transactions</small>
                   </article>
                   <article className="revenue-metric">
-                    <span>Confirmed payments</span>
-                    <strong style={{ color: '#34d399' }}>{paymentSummary.confirmedPayments.toLocaleString('en-US')}</strong>
+                    <div className="revenue-metric-head">
+                      <span>Confirmed payments</span>
+                      <span className="revenue-metric-icon" aria-hidden="true">
+                        <CheckCircle2 />
+                      </span>
+                    </div>
+                    <strong>{paymentSummary.confirmedPayments.toLocaleString('en-US')}</strong>
                     <small>Completed & coins credited</small>
                   </article>
                   <article className="revenue-metric">
-                    <span>Waiting / pending</span>
-                    <strong style={{ color: '#fbbf24' }}>{paymentSummary.pendingPayments.toLocaleString('en-US')}</strong>
+                    <div className="revenue-metric-head">
+                      <span>Waiting / pending</span>
+                      <span className="revenue-metric-icon" aria-hidden="true">
+                        <Clock />
+                      </span>
+                    </div>
+                    <strong>{paymentSummary.pendingPayments.toLocaleString('en-US')}</strong>
                     <small>Awaiting QRIS completion</small>
                   </article>
                   <article className="revenue-metric">
-                    <span>Cancelled / expired</span>
-                    <strong style={{ color: '#f87171' }}>{paymentSummary.cancelledPayments.toLocaleString('en-US')}</strong>
+                    <div className="revenue-metric-head">
+                      <span>Cancelled / expired</span>
+                      <span className="revenue-metric-icon" aria-hidden="true">
+                        <XCircle />
+                      </span>
+                    </div>
+                    <strong>{paymentSummary.cancelledPayments.toLocaleString('en-US')}</strong>
                     <small>Cancelled by user or expired</small>
                   </article>
                 </div>
@@ -3940,31 +4383,34 @@ ${promptCount > 1 ? ']' : ''}`;
           )}
 
           {/* Status Filters Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mt-6 mb-4">
-            <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[var(--card-subtle)] border border-[var(--border)]">
+          <div className="payment-filter-bar">
+            <div className="payment-filter-tabs" role="tablist" aria-label="Filter payments by status">
               {[
-                { id: 'ALL', label: 'All Transactions' },
-                { id: 'CONFIRMED', label: 'Confirmed' },
-                { id: 'PENDING', label: 'Waiting / Pending' },
-                { id: 'CANCELLED', label: 'Cancelled' },
-                { id: 'DECLINED', label: 'Declined' },
-              ].map((st) => (
-                <button
-                  key={st.id}
-                  type="button"
-                  onClick={() => {
-                    setPaymentStatusFilter(st.id);
-                    void loadSection('payments', search, true, { status: st.id });
-                  }}
-                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                    paymentStatusFilter === st.id
-                      ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
-                      : 'text-[var(--muted-fg)] hover:text-[var(--foreground)]'
-                  }`}
-                >
-                  {st.label}
-                </button>
-              ))}
+                { id: 'ALL', label: 'All Transactions', icon: CreditCard },
+                { id: 'CONFIRMED', label: 'Confirmed', icon: CheckCircle2 },
+                { id: 'PENDING', label: 'Waiting / Pending', icon: Clock },
+                { id: 'CANCELLED', label: 'Cancelled', icon: XCircle },
+                { id: 'DECLINED', label: 'Declined', icon: AlertCircle },
+              ].map((st) => {
+                const TabIcon = st.icon;
+                const isActive = paymentStatusFilter === st.id;
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => {
+                      setPaymentStatusFilter(st.id);
+                      void loadSection('payments', search, true, { status: st.id });
+                    }}
+                    className={`payment-filter-tab ${isActive ? 'is-active' : ''}`}
+                  >
+                    <TabIcon />
+                    <span>{st.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -4391,25 +4837,22 @@ ${promptCount > 1 ? ']' : ''}`;
           <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div className="modal-header">
               <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12 border-2 border-[var(--border)]">
-                  <AvatarImage
-                    src={selectedUserForModal.image || getCartoonAvatarUrl(selectedUserForModal.email || selectedUserForModal.name || selectedUserForModal.id)}
-                    alt={selectedUserForModal.name}
-                  />
-                  <AvatarFallback className="bg-[var(--card-subtle)] text-sm font-bold">
-                    {(selectedUserForModal.name || selectedUserForModal.email || 'U').charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <Avatar
+                  size="lg"
+                  src={selectedUserForModal.image || getCartoonAvatarUrl(selectedUserForModal.email || selectedUserForModal.name || selectedUserForModal.id)}
+                  alt={selectedUserForModal.name || 'User'}
+                />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="m-0 text-base font-bold text-[var(--foreground)]">
+                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--foreground)' }}>
                       {selectedUserForModal.name || 'Anonymous User'}
                     </h3>
                     <span className={`control-status ${selectedUserForModal.isBanned ? 'status-rejected' : 'status-accepted'}`}>
+                      {selectedUserForModal.isBanned ? <XCircle /> : <CheckCircle2 />}
                       {selectedUserForModal.isBanned ? 'Banned' : 'Active'}
                     </span>
                   </div>
-                  <small className="text-[var(--muted-fg)] block mt-0.5">
+                  <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '2px', fontSize: '12px' }}>
                     {selectedUserForModal.email}
                   </small>
                 </div>
@@ -4424,59 +4867,77 @@ ${promptCount > 1 ? ']' : ''}`;
               </button>
             </div>
 
-            <div className="modal-body space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-[var(--card-subtle)] border border-[var(--border)] text-xs">
-                <div>
-                  <span className="text-[var(--muted-fg)] block text-[11px]">Role</span>
-                  <strong className="text-[var(--foreground)]">{selectedUserForModal.role}</strong>
+            <div className="modal-body space-y-3" style={{ paddingTop: '8px' }}>
+              <div className="user-modal-grid">
+                <div className="user-modal-stat">
+                  <span className="user-modal-stat-label">Role</span>
+                  <strong className="user-modal-stat-value">{selectedUserForModal.role}</strong>
                 </div>
-                <div>
-                  <span className="text-[var(--muted-fg)] block text-[11px]">Coin Balance</span>
-                  <strong className="text-amber-400 font-bold">{selectedUserForModal.tokenBalance} coins</strong>
+                <div className="user-modal-stat">
+                  <span className="user-modal-stat-label">Coin Balance</span>
+                  <strong className="user-modal-stat-value">
+                    <Coins className="cell-accessory-icon" />
+                    {selectedUserForModal.tokenBalance} coins
+                  </strong>
                 </div>
-                <div>
-                  <span className="text-[var(--muted-fg)] block text-[11px]">Target PTN / Prodi</span>
-                  <strong className="text-[var(--foreground)] truncate block">{selectedUserForModal.target || 'Not set'}</strong>
+                <div className="user-modal-stat">
+                  <span className="user-modal-stat-label">Target PTN / Prodi</span>
+                  <strong className="user-modal-stat-value">{selectedUserForModal.target || 'Not set'}</strong>
                 </div>
-                <div>
-                  <span className="text-[var(--muted-fg)] block text-[11px]">Daily Streak</span>
-                  <strong className="text-[var(--foreground)]">🔥 {selectedUserForModal.currentStreak ?? 0} hari</strong>
+                <div className="user-modal-stat">
+                  <span className="user-modal-stat-label">Daily Streak</span>
+                  <strong className="user-modal-stat-value">
+                    <Flame className="cell-accessory-icon" />
+                    {selectedUserForModal.currentStreak ?? 0} hari
+                  </strong>
                 </div>
-                <div>
-                  <span className="text-[var(--muted-fg)] block text-[11px]">Joined Date</span>
-                  <span className="text-[var(--foreground)]">{formatDate(selectedUserForModal.createdAt)}</span>
+                <div className="user-modal-stat">
+                  <span className="user-modal-stat-label">Joined Date</span>
+                  <span className="user-modal-stat-value">
+                    <Calendar className="cell-accessory-icon" />
+                    {formatDate(selectedUserForModal.createdAt)}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-[var(--muted-fg)] block text-[11px]">Email Verification</span>
-                  <span className={selectedUserForModal.emailVerified ? 'text-emerald-400 font-semibold' : 'text-[var(--muted-fg)]'}>
-                    {selectedUserForModal.emailVerified ? 'Verified ✓' : 'Unverified'}
+                <div className="user-modal-stat">
+                  <span className="user-modal-stat-label">Email Verification</span>
+                  <span className="user-modal-stat-value">
+                    {selectedUserForModal.emailVerified ? (
+                      <>
+                        <CheckCircle2 className="cell-accessory-icon" />
+                        Verified
+                      </>
+                    ) : (
+                      'Unverified'
+                    )}
                   </span>
                 </div>
               </div>
 
-              <div className="text-[11px] text-[var(--muted-fg)] font-mono break-all p-2 rounded bg-[var(--background)] border border-[var(--border)]">
+              <div className="user-modal-id">
                 ID: {selectedUserForModal.id}
               </div>
 
               {/* User Actions inside Modal */}
-              <div className="pt-2 flex items-center justify-between gap-2 border-t border-[var(--border)]">
+              <div className="user-modal-actions">
                 <button
                   type="button"
-                  className={`button ${selectedUserForModal.isBanned ? 'button-secondary' : 'button-secondary text-amber-400'}`}
+                  className="button button-secondary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   onClick={() => void toggleBanUser(selectedUserForModal)}
                   disabled={banningUserId === selectedUserForModal.id || member?.email === selectedUserForModal.email}
                 >
-                  <Ban className="w-3.5 h-3.5 mr-1" />
+                  <Ban className="action-icon" />
                   {selectedUserForModal.isBanned ? 'Unban Account' : 'Ban Account'}
                 </button>
 
                 <button
                   type="button"
                   className="button button-danger"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   onClick={() => void deleteUserItem(selectedUserForModal)}
                   disabled={deletingUserId === selectedUserForModal.id || member?.email === selectedUserForModal.email}
                 >
-                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  <Trash2 className="action-icon" />
                   Delete Account
                 </button>
               </div>
@@ -4553,6 +5014,153 @@ ${promptCount > 1 ? ']' : ''}`;
                 Close Preview
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREATE / EDIT TOPIC */}
+      {topicModalOpen && (
+        <div className="modal-overlay" onClick={() => setTopicModalOpen(false)}>
+          <div className="modal-content" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingTopic ? 'Edit Materi Utama' : 'Tambah Materi Utama'}</h3>
+              <button type="button" className="modal-close-btn" onClick={() => setTopicModalOpen(false)}>
+                <X style={{ width: 18, height: 18 }} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveTopic}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label className="field-label">Subtes UTBK</label>
+                  <select
+                    className="field-input"
+                    value={topicForm.subtest}
+                    onChange={(e) => setTopicForm({ ...topicForm, subtest: e.target.value })}
+                  >
+                    {ALL_SUBTESTS.map((s) => (
+                      <option key={s.id} value={s.id}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">Judul Materi Utama</label>
+                  <input
+                    type="text"
+                    required
+                    className="field-input"
+                    placeholder="Contoh: Aljabar & Fungsi, Aritmetika..."
+                    value={topicForm.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                      setTopicForm({ ...topicForm, title, slug });
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Slug URL / Identifier</label>
+                  <input
+                    type="text"
+                    className="field-input"
+                    placeholder="aljabar-dan-fungsi"
+                    value={topicForm.slug}
+                    onChange={(e) => setTopicForm({ ...topicForm, slug: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Urutan Tampilan (Order)</label>
+                  <input
+                    type="number"
+                    className="field-input"
+                    value={topicForm.order}
+                    onChange={(e) => setTopicForm({ ...topicForm, order: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="button button-outline" onClick={() => setTopicModalOpen(false)}>
+                  Batal
+                </button>
+                <button type="submit" className="button button-primary" disabled={topicSaving}>
+                  {topicSaving ? 'Menyimpan...' : (editingTopic ? 'Simpan Perubahan' : 'Buat Materi')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREATE / EDIT SUBTOPIC */}
+      {subtopicModalOpen && (
+        <div className="modal-overlay" onClick={() => setSubtopicModalOpen(false)}>
+          <div className="modal-content" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingSubtopic ? 'Edit Submateri' : 'Tambah Submateri'}</h3>
+              <button type="button" className="modal-close-btn" onClick={() => setSubtopicModalOpen(false)}>
+                <X style={{ width: 18, height: 18 }} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveSubtopic}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label className="field-label">Materi Utama Induk</label>
+                  <select
+                    className="field-input"
+                    value={subtopicForm.topicId}
+                    onChange={(e) => setSubtopicForm({ ...subtopicForm, topicId: e.target.value })}
+                    disabled={Boolean(activeParentTopic && !editingSubtopic)}
+                  >
+                    {topics.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        [{t.subtest.split('_')[0]}] {t.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">Judul Submateri</label>
+                  <input
+                    type="text"
+                    required
+                    className="field-input"
+                    placeholder="Contoh: Persamaan & Pertidaksamaan Kuadrat..."
+                    value={subtopicForm.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                      setSubtopicForm({ ...subtopicForm, title, slug });
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Slug URL / Identifier</label>
+                  <input
+                    type="text"
+                    className="field-input"
+                    placeholder="persamaan-dan-pertidaksamaan-kuadrat"
+                    value={subtopicForm.slug}
+                    onChange={(e) => setSubtopicForm({ ...subtopicForm, slug: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Urutan Tampilan (Order)</label>
+                  <input
+                    type="number"
+                    className="field-input"
+                    value={subtopicForm.order}
+                    onChange={(e) => setSubtopicForm({ ...subtopicForm, order: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="button button-outline" onClick={() => setSubtopicModalOpen(false)}>
+                  Batal
+                </button>
+                <button type="submit" className="button button-primary" disabled={subtopicSaving}>
+                  {subtopicSaving ? 'Menyimpan...' : (editingSubtopic ? 'Simpan Perubahan' : 'Buat Submateri')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -4708,78 +5316,128 @@ ${promptCount > 1 ? ']' : ''}`;
                       </div>
 
                       {/* 1. Multi-Select Subtests */}
+                      {/* 1. Pilih Subtes & Langsung Tentukan Jumlah Soal */}
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)' }}>
-                            1. Pilih Subtes (Bisa Multi-Select)
-                          </label>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)' }}>
+                              1. Pilih Subtes & Tentukan Jumlah Soal
+                            </label>
+                            <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', padding: '1px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                              Total: {totalPromptCount} Soal
+                            </span>
+                          </div>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               type="button"
                               style={{ background: 'none', border: 'none', color: '#fbbf24', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
-                              onClick={() => setPromptSubtests(ALL_SUBTESTS.map((s) => s.id))}
+                              onClick={() => {
+                                const allCounts: Record<string, number> = {};
+                                ALL_SUBTESTS.forEach((s) => { allCounts[s.id] = 5; });
+                                setPromptSubtestCounts(allCounts);
+                              }}
                             >
-                              Pilih Semua
+                              Pilih Semua (5 Soal/Subtes)
                             </button>
                             <span style={{ color: 'var(--border)' }}>|</span>
                             <button
                               type="button"
                               style={{ background: 'none', border: 'none', color: 'var(--muted-fg)', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
-                              onClick={() => setPromptSubtests(['PENALARAN_MATEMATIKA'])}
+                              onClick={() => setPromptSubtestCounts({ PENALARAN_MATEMATIKA: 5 })}
                             >
-                              Reset
+                              Reset Default
                             </button>
                           </div>
                         </div>
+
                         <div className="subtest-chip-grid">
                           {ALL_SUBTESTS.map((sub) => {
-                            const isSelected = promptSubtests.includes(sub.id);
+                            const isSelected = Boolean(promptSubtestCounts[sub.id] && promptSubtestCounts[sub.id] > 0);
+                            const currentCount = promptSubtestCounts[sub.id] || 0;
                             return (
-                              <button
-                                type="button"
+                              <div
                                 key={sub.id}
-                                className={`subtest-chip-btn ${isSelected ? 'is-active' : ''}`}
-                                onClick={() => {
-                                  if (isSelected) {
-                                    if (promptSubtests.length > 1) {
-                                      setPromptSubtests(promptSubtests.filter((s) => s !== sub.id));
-                                    }
-                                  } else {
-                                    setPromptSubtests([...promptSubtests, sub.id]);
-                                  }
-                                }}
+                                className={`subtest-chip-item ${isSelected ? 'is-active' : ''}`}
                               >
-                                {isSelected && <Check style={{ width: 13, height: 13, color: '#fbbf24' }} />}
-                                <span>{sub.label}</span>
-                              </button>
+                                <button
+                                  type="button"
+                                  className="subtest-chip-toggle"
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      if (Object.keys(promptSubtestCounts).length <= 1) return;
+                                      const next = { ...promptSubtestCounts };
+                                      delete next[sub.id];
+                                      setPromptSubtestCounts(next);
+                                    } else {
+                                      setPromptSubtestCounts((prev) => ({ ...prev, [sub.id]: 5 }));
+                                    }
+                                  }}
+                                >
+                                  {isSelected ? (
+                                    <Check style={{ width: 13, height: 13, color: '#fbbf24' }} />
+                                  ) : (
+                                    <span style={{ width: 13, height: 13, borderRadius: '3px', border: '1px solid var(--border)', display: 'inline-block' }} />
+                                  )}
+                                  <span>{sub.label}</span>
+                                </button>
+
+                                {isSelected && (
+                                  <div className="subtest-chip-stepper">
+                                    <button
+                                      type="button"
+                                      className="subtest-stepper-btn"
+                                      title="Kurangi soal"
+                                      onClick={() => {
+                                        setPromptSubtestCounts((prev) => ({
+                                          ...prev,
+                                          [sub.id]: Math.max(1, (prev[sub.id] || 1) - 1),
+                                        }));
+                                      }}
+                                    >
+                                      -
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={50}
+                                      className="subtest-stepper-input"
+                                      value={currentCount}
+                                      onChange={(e) => {
+                                        const val = parseInt(e.target.value, 10);
+                                        if (!isNaN(val) && val >= 1) {
+                                          setPromptSubtestCounts((prev) => ({
+                                            ...prev,
+                                            [sub.id]: Math.min(50, val),
+                                          }));
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="subtest-stepper-btn"
+                                      title="Tambah soal"
+                                      onClick={() => {
+                                        setPromptSubtestCounts((prev) => ({
+                                          ...prev,
+                                          [sub.id]: Math.min(50, (prev[sub.id] || 0) + 1),
+                                        }));
+                                      }}
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             );
                           })}
                         </div>
                       </div>
 
-                      {/* 2. Parameters: Count, Difficulty, Target */}
-                      <div className="prompt-field-row">
+                      {/* 2. Tingkat Kesulitan & Fokus Materi dari Halaman Materi */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
                         <div>
                           <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
-                            2. Jumlah Soal
-                          </label>
-                          <select
-                            className="field-input"
-                            style={{ fontSize: '12px', width: '100%' }}
-                            value={promptCount}
-                            onChange={(e) => setPromptCount(Number(e.target.value))}
-                          >
-                            <option value={1}>1 Soal</option>
-                            <option value={3}>3 Soal</option>
-                            <option value={5}>5 Soal (Standar)</option>
-                            <option value={10}>10 Soal (Paket Latihan)</option>
-                            <option value={20}>20 Soal (Full Subtes)</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
-                            3. Tingkat Kesulitan
+                            2. Tingkat Kesulitan
                           </label>
                           <select
                             className="field-input"
@@ -4796,34 +5454,59 @@ ${promptCount > 1 ? ']' : ''}`;
 
                         <div>
                           <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
-                            4. Target Penggunaan
+                            3. Fokus Materi Kurikulum (Pilih dari Page Materi)
                           </label>
                           <select
                             className="field-input"
                             style={{ fontSize: '12px', width: '100%' }}
-                            value={promptTarget}
-                            onChange={(e) => setPromptTarget(e.target.value)}
+                            value={promptSelectedSubtopicId}
+                            onChange={(e) => setPromptSelectedSubtopicId(e.target.value)}
                           >
-                            <option value="FOR_PRACTICE">Bank Latihan Harian</option>
-                            <option value="FOR_TRYOUT">Tryout Resmi SNBT</option>
-                            <option value="DRAFT">Draft Kurasi</option>
+                            <option value="">-- Bebas / Standar Kisi-kisi Resmi SNBT --</option>
+                            {topics
+                              .filter((t) => Object.keys(promptSubtestCounts).includes(t.subtest))
+                              .map((t) => {
+                                const subtestLabel = ALL_SUBTESTS.find((s) => s.id === t.subtest)?.label.split(' ')[0] || t.subtest;
+                                return (
+                                  <optgroup key={t.id} label={`[${subtestLabel}] ${t.title}`}>
+                                    {t.subtopics.map((sub) => (
+                                      <option key={sub.id} value={sub.id}>
+                                        {sub.title}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                );
+                              })}
+                            {topics.length > 0 && topics.filter((t) => !Object.keys(promptSubtestCounts).includes(t.subtest)).length > 0 && (
+                              <optgroup label="── Topik Subtes Lainnya ──">
+                                {topics
+                                  .filter((t) => !Object.keys(promptSubtestCounts).includes(t.subtest))
+                                  .map((t) =>
+                                    t.subtopics.map((sub) => (
+                                      <option key={sub.id} value={sub.id}>
+                                        [{t.subtest.split('_')[0]}] {t.title} › {sub.title}
+                                      </option>
+                                    ))
+                                  )}
+                              </optgroup>
+                            )}
                           </select>
                         </div>
                       </div>
 
-                      {/* 3. Topic Focus & Additional options */}
+                      {/* 3. Catatan Tambahan & Checkboxes */}
                       <div className="prompt-field-row-2">
                         <div>
                           <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
-                            5. Fokus Topik / Kisi-kisi Khusus (Opsional)
+                            Catatan Topik Spesifik / Tambahan (Opsional)
                           </label>
                           <input
                             type="text"
                             className="field-input"
                             style={{ fontSize: '12px', width: '100%' }}
-                            placeholder="Contoh: Silogisme, Barisan Aritmetika, Analisis Opini..."
-                            value={promptTopic}
-                            onChange={(e) => setPromptTopic(e.target.value)}
+                            placeholder="Contoh: Barisan Aritmetika bertingkat, Logika Deduktif, atau instruksi khusus..."
+                            value={promptCustomTopic}
+                            onChange={(e) => setPromptCustomTopic(e.target.value)}
                           />
                         </div>
 

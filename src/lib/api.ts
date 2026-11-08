@@ -146,7 +146,12 @@ interface CacheEntry<T> {
 
 const memoryCache = new Map<string, CacheEntry<unknown>>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
-let cachedSessionToken: { token: string; expiresAt: number } | null = null;
+let cachedSessionToken: { token: string; expiresAt: number; jwtExpiresAt: number } | null = null;
+const GET_RETRY_DELAYS_MS = [350, 800];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export function clearSessionCache() {
   cachedSessionToken = null;
@@ -159,17 +164,29 @@ async function getAccessToken(): Promise<string> {
   if (cachedSessionToken && cachedSessionToken.expiresAt > now) {
     return cachedSessionToken.token;
   }
-  const { data: { session }, error: sessionError } = await createSupabaseBrowserClient().auth.getSession();
-  if (sessionError || !session?.access_token) {
-    cachedSessionToken = null;
-    throw new Error('SESSION_EXPIRED');
+  try {
+    const { data: { session }, error: sessionError } = await createSupabaseBrowserClient().auth.getSession();
+    if (sessionError || !session?.access_token) {
+      if (cachedSessionToken && cachedSessionToken.jwtExpiresAt > now) {
+        return cachedSessionToken.token;
+      }
+      cachedSessionToken = null;
+      throw new Error('SESSION_EXPIRED');
+    }
+    const jwtExpiresAt = session.expires_at ? session.expires_at * 1000 - 10_000 : now + 60_000;
+    // Cache token in memory for up to 60 seconds to prevent constant async storage/refresh locks
+    cachedSessionToken = {
+      token: session.access_token,
+      expiresAt: Math.min(now + 60_000, jwtExpiresAt),
+      jwtExpiresAt,
+    };
+    return session.access_token;
+  } catch (error) {
+    if (cachedSessionToken && cachedSessionToken.jwtExpiresAt > now) {
+      return cachedSessionToken.token;
+    }
+    throw error;
   }
-  // Cache token in memory for up to 30 seconds to prevent constant async storage locks
-  cachedSessionToken = {
-    token: session.access_token,
-    expiresAt: now + 30_000,
-  };
-  return session.access_token;
 }
 
 function invalidateForPath(path: string) {
@@ -203,19 +220,36 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   recordActivity();
   const accessToken = await getAccessToken();
+  const isGetRequest = !init?.method || init.method.toUpperCase() === 'GET';
+  const maxRetries = isGetRequest ? GET_RETRY_DELAYS_MS.length : 0;
 
-  let response: Response;
-  try {
-    response = await fetch(`${API_URL}${path}`, {
-      ...init,
-      headers: {
-        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-        Authorization: `Bearer ${accessToken}`,
-        ...init?.headers,
-      },
-      cache: 'no-store',
-    });
-  } catch {
+  let response: Response | undefined;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      response = await fetch(`${API_URL}${path}`, {
+        ...init,
+        headers: {
+          ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+          Authorization: `Bearer ${accessToken}`,
+          ...init?.headers,
+        },
+        cache: 'no-store',
+      });
+      if ((response.status === 502 || response.status === 503 || response.status === 504) && attempt < maxRetries) {
+        await sleep(GET_RETRY_DELAYS_MS[attempt]);
+        continue;
+      }
+      break;
+    } catch {
+      if (attempt < maxRetries) {
+        await sleep(GET_RETRY_DELAYS_MS[attempt]);
+        continue;
+      }
+      throw new Error('The service could not be reached. Check your connection and try again.');
+    }
+  }
+
+  if (!response) {
     throw new Error('The service could not be reached. Check your connection and try again.');
   }
 

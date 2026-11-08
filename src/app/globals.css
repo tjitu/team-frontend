@@ -2710,9 +2710,29 @@ body {
   z-index: 1;
 }
 
-.shadcn-avatar:has(.shadcn-avatar-image) .shadcn-avatar-fallback,
-.shadcn-avatar:has(img) .shadcn-avatar-fallback {
+.shadcn-avatar:has([data-slot="avatar-image"]) .shadcn-avatar-fallback {
   display: none;
+}
+
+.shadcn-avatar.h-7.w-7 {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+}
+
+.shadcn-avatar.h-8.w-8 {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.shadcn-avatar.h-12.w-12 {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
 }
 
 /* Status Indicator Badge */
@@ -3240,7 +3260,6 @@ html.dark .control-table tbody tr:hover {
 .task-board-card-meta .priority-badge,
 .section-count,
 .task-count,
-.control-status,
 .team-workspace-scope,
 .archived-project-badge,
 .activity-entity,
@@ -3248,7 +3267,6 @@ html.dark .priority-badge,
 html.dark .task-board-card-meta .priority-badge,
 html.dark .section-count,
 html.dark .task-count,
-html.dark .control-status,
 html.dark .team-workspace-scope,
 html.dark .archived-project-badge,
 html.dark .activity-entity {
@@ -5940,4 +5958,430 @@ html.dark .department-chip {
   border-color: rgba(59, 130, 246, 0.5);
   box-shadow: 0 4px 16px rgba(59, 130, 246, 0.08);
 }
+
+/* ============================================================
+   Prompt Builder & Curriculum / Materi Styling
+   ============================================================ */
+.subtest-chip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted-fg);
+  transition: all 0.15s ease;
+}
+
+.subtest-chip-item.is-active {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--foreground);
+}
+
+.subtest-chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.subtest-chip-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+
+.subtest-stepper-btn {
+  background: none;
+  border: none;
+  color: #fbbf24;
+  cursor: pointer;
+  padding: 0 4px;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.subtest-stepper-btn:hover {
+  color: #f59e0b;
+}
+
+.subtest-stepper-input {
+  width: 32px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+}
+
+.curriculum-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+.curriculum-topic-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+.curriculum-topic-card:hover {
+  border-color: var(--primary, #3b82f6);
+}
+
+.curriculum-subtopic-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--surface-muted, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+
+/* ============================================================
+   Payments, Users & Control Center Table Refinements
+   Rule: No colored text; color strictly for status badges;
+         use icons for visual accessories.
+   ============================================================ */
+.revenue-metric-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.revenue-metric-head > span {
+  color: var(--muted-fg);
+  font-size: 11.5px;
+  font-weight: 550;
+}
+
+.revenue-metric-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--muted-bg);
+  color: var(--muted-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.revenue-metric-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.revenue-metric > strong,
+html.dark .revenue-metric > strong {
+  color: var(--foreground) !important;
+  font-size: clamp(20px, 2.1vw, 26px);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.revenue-metric > small,
+html.dark .revenue-metric > small {
+  color: var(--muted-fg);
+  font-size: 11px;
+}
+
+/* Payment Status Filter Bar */
+.payment-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px 0 14px;
+}
+
+.payment-filter-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--muted-bg);
+  border: 1px solid var(--border);
+}
+
+.payment-filter-tab {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted-fg);
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 550;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.payment-filter-tab:hover {
+  color: var(--foreground);
+  background: var(--surface-hover);
+}
+
+.payment-filter-tab.is-active {
+  background: var(--card);
+  color: var(--foreground);
+  border-color: var(--border);
+  font-weight: 650;
+  box-shadow: var(--shadow-xs);
+}
+
+.payment-filter-tab svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.75;
+}
+
+.payment-filter-tab.is-active svg {
+  opacity: 1;
+}
+
+/* User Cell Button inside DataTable */
+.user-cell-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 5px 8px;
+  margin: -5px -8px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--foreground);
+  max-width: 100%;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.user-cell-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.user-cell-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.user-cell-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground) !important;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-cell-email {
+  font-size: 11px;
+  color: var(--muted-fg) !important;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Table Cell Typography & Icon Accessories (No Colored Text) */
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cell-primary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground) !important;
+  line-height: 1.25;
+}
+
+.cell-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--foreground) !important;
+  letter-spacing: -0.01em;
+}
+
+.cell-meta-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted-fg) !important;
+  line-height: 1.25;
+}
+
+.cell-accessory-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--muted-fg);
+  flex-shrink: 0;
+}
+
+/* Semantic Status Badges (Color ONLY for status) */
+.control-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--muted-bg);
+  color: var(--muted-fg);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  text-transform: none;
+}
+
+.control-status svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.control-status.status-accepted,
+html.dark .control-status.status-accepted {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.control-status.status-pending,
+.control-status.status-under_review,
+.control-status.status-under-review,
+html.dark .control-status.status-pending,
+html.dark .control-status.status-under_review,
+html.dark .control-status.status-under-review {
+  background: rgba(245, 158, 11, 0.14) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.control-status.status-rejected,
+html.dark .control-status.status-rejected {
+  background: rgba(239, 68, 68, 0.14) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.control-status.status-interview,
+html.dark .control-status.status-interview {
+  background: rgba(168, 85, 247, 0.14) !important;
+  color: #c084fc !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
+}
+
+.control-status.status-submitted,
+html.dark .control-status.status-submitted {
+  background: var(--muted-bg) !important;
+  color: var(--muted-fg) !important;
+  border-color: var(--border) !important;
+}
+
+/* User Details Modal Layout */
+.user-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--muted-bg);
+  border: 1px solid var(--border);
+}
+
+.user-modal-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.user-modal-stat-label {
+  font-size: 11px;
+  color: var(--muted-fg);
+}
+
+.user-modal-stat-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-modal-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted-fg);
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  word-break: break-all;
+}
+
+.user-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+
 
