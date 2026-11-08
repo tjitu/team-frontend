@@ -1096,37 +1096,6 @@ export default function ControlCenterPage() {
       },
     }),
     questionColHelper.display({
-      id: 'solution',
-      header: 'Pembahasan Deck',
-      cell: ({ row }) => {
-        const sol = row.original.solution;
-        const stepCount = sol?.steps?.length || 0;
-        const hasTrick = Boolean(sol?.quickTrick);
-        const hasFormula = Boolean(sol?.keyFormula);
-        return (
-          <div className="deck-pill-container">
-            {stepCount > 0 ? (
-              <span className="deck-slides-pill">
-                {stepCount} Slides
-              </span>
-            ) : (
-              <span className="deck-empty-text">Belum ada slide</span>
-            )}
-            {hasTrick && (
-              <span className="deck-trick-pill" title="Ada Trik Cepat">
-                ⚡ Trik
-              </span>
-            )}
-            {hasFormula && (
-              <span className="deck-formula-pill" title="Ada Rumus Kunci">
-                📐 Rumus
-              </span>
-            )}
-          </div>
-        );
-      },
-    }),
-    questionColHelper.display({
       id: 'actions',
       header: () => <div className="text-right">Aksi</div>,
       cell: ({ row }) => (
