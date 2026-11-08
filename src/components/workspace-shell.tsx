@@ -21,6 +21,7 @@ import {
   Moon,
   Bell,
   CheckCheck,
+  Coins,
 } from 'lucide-react';
 import { api, clearSessionCache, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { useInactivityTracker, clearSessionTracking } from '@/lib/session';
@@ -411,15 +412,25 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           )}
 
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
-            <Link
-              className={`nav-link ${pathname.startsWith('/control-center') ? 'is-active' : ''}`}
-              href="/control-center"
-              title="Control Center"
-              aria-current={pathname.startsWith('/control-center') ? 'page' : undefined}
-            >
-              <SlidersHorizontal className="nav-icon" />
-              <span className="nav-link-text">Control Center</span>
-            </Link>
+            <>
+              <Link
+                className={`nav-link ${pathname === '/control-center' ? 'is-active' : ''}`}
+                href="/control-center"
+                title="Control Center"
+                aria-current={pathname === '/control-center' ? 'page' : undefined}
+              >
+                <SlidersHorizontal className="nav-icon" />
+                <span className="nav-link-text">Control Center</span>
+              </Link>
+              <Link
+                className="nav-link"
+                href="/control-center?section=pricing"
+                title="Pricing & Packages"
+              >
+                <Coins className="nav-icon" />
+                <span className="nav-link-text">Pricing & Packages</span>
+              </Link>
+            </>
           )}
 
           <Link

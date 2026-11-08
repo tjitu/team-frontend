@@ -391,6 +391,16 @@ export default function ControlCenterPage() {
   }, [filterSubtest, filterTarget]);
 
   React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlSec = params.get('section') as Section | null;
+      if (urlSec && ['tryouts', 'pricing', 'users', 'articles', 'careers', 'revenue', 'questions'].includes(urlSec)) {
+        setSection(urlSec);
+      }
+    }
+  }, []);
+
+  React.useEffect(() => {
     void api.get<CurrentMember>('/team/me').then(setMember).catch((cause: unknown) => {
       if (errorMessage(cause) === 'SESSION_EXPIRED') window.location.assign(signInUrl());
     });
@@ -1223,6 +1233,11 @@ export default function ControlCenterPage() {
               setSearch('');
               setError('');
               setNotice('');
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href);
+                url.searchParams.set('section', item.id);
+                window.history.replaceState({}, '', url.toString());
+              }
             }}
           >
             {item.label}
