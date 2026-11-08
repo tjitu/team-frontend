@@ -5466,6 +5466,18 @@ html.dark .department-chip {
   color: #ff6b6b;
 }
 
+.table-action-btn-warn {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.table-action-btn-warn:hover {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+
 .action-icon {
   width: 13px;
   height: 13px;

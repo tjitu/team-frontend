@@ -7,9 +7,11 @@ import { api, CurrentMember, RevenueSummary, signInUrl } from '@/lib/api';
 import { DataTable } from '@/components/ui/data-table';
 import { type DataTableFeatures } from '@/components/ui/data-table-features';
 import { ComboboxSelect } from '@/components/ui/combobox';
-import { ExternalLink, Eye, Edit, Trash2, Zap, Sparkles, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { ExternalLink, Eye, Edit, Trash2, Zap, Sparkles, ChevronLeft, ChevronRight, Search, X, Ban, CreditCard } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { getCartoonAvatarUrl } from '@/lib/avatar';
 
-export type Section = 'tryouts' | 'pricing' | 'users' | 'articles' | 'careers' | 'revenue' | 'questions';
+export type Section = 'tryouts' | 'pricing' | 'users' | 'articles' | 'careers' | 'payments' | 'questions';
 
 export type Tryout = {
   id: string;
@@ -39,10 +41,49 @@ export type User = {
   id: string;
   name: string;
   email: string;
+  image?: string | null;
   role: 'USER' | 'ADMIN';
   target: string | null;
   tokenBalance: number;
+  currentStreak?: number;
+  isBanned?: boolean;
+  emailVerified?: boolean;
   createdAt: string;
+};
+
+export type PaymentLog = {
+  id: string;
+  orderId: string;
+  amount: number;
+  tokenAmount: number;
+  status: 'CONFIRMED' | 'PENDING' | 'CANCELLED' | 'DECLINED';
+  paymentMethod: string;
+  snapToken?: string | null;
+  metadata?: any;
+  createdAt: string;
+  updatedAt: string;
+  user?: User | null;
+  tokenPackage?: {
+    id: string;
+    name: string;
+    price: number;
+  } | null;
+};
+
+export type PaymentSummary = {
+  configured: boolean;
+  totalRevenue: number;
+  confirmedPayments: number;
+  pendingPayments: number;
+  cancelledPayments: number;
+  declinedPayments: number;
+  monthlyRevenue: Array<{
+    month: string;
+    revenue: number;
+    confirmedPayments: number;
+    pendingPayments: number;
+    cancelledPayments: number;
+  }>;
 };
 
 export type Article = {
@@ -258,7 +299,7 @@ const sections: Array<{ id: Section; label: string }> = [
   { id: 'users', label: 'Users' },
   { id: 'articles', label: 'Articles' },
   { id: 'careers', label: 'Careers' },
-  { id: 'revenue', label: 'Revenue' },
+  { id: 'payments', label: 'Payments' },
 ];
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
@@ -296,6 +337,7 @@ const userColHelper = createColumnHelper<DataTableFeatures, User>();
 const articleColHelper = createColumnHelper<DataTableFeatures, Article>();
 const careerColHelper = createColumnHelper<DataTableFeatures, CareerApplication>();
 const questionColHelper = createColumnHelper<DataTableFeatures, QuestionItem>();
+const paymentColHelper = createColumnHelper<DataTableFeatures, PaymentLog>();
 
 export default function ControlCenterPage() {
   const [section, setSection] = React.useState<Section>('tryouts');
@@ -306,6 +348,13 @@ export default function ControlCenterPage() {
   const [articles, setArticles] = React.useState<Article[]>(() => api.getCached<Article[]>('/team/control-center/articles') ?? []);
   const [applications, setApplications] = React.useState<CareerApplication[]>([]);
   const [summary, setSummary] = React.useState<RevenueSummary | null>(() => api.getCached<RevenueSummary>('/team/control-center/revenue'));
+  const [payments, setPayments] = React.useState<PaymentLog[]>([]);
+  const [paymentSummary, setPaymentSummary] = React.useState<PaymentSummary | null>(null);
+  const [paymentStatusFilter, setPaymentStatusFilter] = React.useState<string>('ALL');
+  const [selectedUserForModal, setSelectedUserForModal] = React.useState<User | null>(null);
+  const [userModalOpen, setUserModalOpen] = React.useState(false);
+  const [banningUserId, setBanningUserId] = React.useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
@@ -348,12 +397,12 @@ export default function ControlCenterPage() {
     target: Section,
     query = '',
     force = false,
-    filters?: { subtest?: string; target?: string }
+    filters?: { subtest?: string; target?: string; status?: string }
   ) => {
     const cachedUrl = target === 'tryouts' ? '/team/control-center/tryouts'
       : target === 'pricing' ? '/team/control-center/packages'
       : target === 'articles' ? '/team/control-center/articles'
-      : target === 'revenue' ? '/team/control-center/revenue'
+      : target === 'payments' ? '/team/control-center/payments'
       : '';
     if (!cachedUrl || !api.getCached(cachedUrl)) {
       setLoading(true);
@@ -365,7 +414,16 @@ export default function ControlCenterPage() {
       if (target === 'users') setUsers(await api.get<User[]>(`/team/control-center/users${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
       if (target === 'articles') setArticles(await api.get<Article[]>(`/team/control-center/articles${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
       if (target === 'careers') setApplications(await api.get<CareerApplication[]>(`/team/control-center/careers/applications${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
-      if (target === 'revenue') setSummary(await api.get<RevenueSummary>('/team/control-center/revenue', { force }));
+      if (target === 'payments') {
+        const activeStatus = filters?.status !== undefined ? filters.status : paymentStatusFilter;
+        const queryParams = new URLSearchParams();
+        if (query) queryParams.set('search', query);
+        if (activeStatus && activeStatus !== 'ALL') queryParams.set('status', activeStatus);
+        const qs = queryParams.toString() ? `?${queryParams.toString()}` : '';
+        const res = await api.get<{ summary: PaymentSummary; payments: PaymentLog[] }>(`/team/control-center/payments${qs}`, { force });
+        setPaymentSummary(res.summary);
+        setPayments(res.payments);
+      }
       if (target === 'questions') {
         const activeSubtest = filters?.subtest !== undefined ? filters.subtest : filterSubtest;
         const activeTarget = filters?.target !== undefined ? filters.target : filterTarget;
@@ -388,13 +446,13 @@ export default function ControlCenterPage() {
     } finally {
       setLoading(false);
     }
-  }, [filterSubtest, filterTarget]);
+  }, [filterSubtest, filterTarget, paymentStatusFilter]);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const urlSec = params.get('section') as Section | null;
-      if (urlSec && ['tryouts', 'pricing', 'users', 'articles', 'careers', 'revenue', 'questions'].includes(urlSec)) {
+      if (urlSec && ['tryouts', 'pricing', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
         setSection(urlSec);
       }
     }
@@ -750,6 +808,47 @@ export default function ControlCenterPage() {
     } catch (cause) { setError(errorMessage(cause)); }
   }
 
+  async function toggleBanUser(targetUser: User) {
+    const newBannedState = !targetUser.isBanned;
+    const actionText = newBannedState ? 'Ban' : 'Unban';
+    if (!window.confirm(`${actionText} user "${targetUser.name || targetUser.email}"? ${newBannedState ? 'Akun ini tidak akan bisa login atau menggunakan layanan Jitu.' : 'Akun ini akan dipulihkan kembali.'}`)) return;
+    setBanningUserId(targetUser.id);
+    setError('');
+    setNotice('');
+    try {
+      await api.patch(`/team/control-center/users/${targetUser.id}`, { isBanned: newBannedState });
+      setUsers((prev) => prev.map((u) => u.id === targetUser.id ? { ...u, isBanned: newBannedState } : u));
+      if (selectedUserForModal?.id === targetUser.id) {
+        setSelectedUserForModal((prev) => prev ? { ...prev, isBanned: newBannedState } : null);
+      }
+      setNotice(`User ${targetUser.email} has been ${newBannedState ? 'banned' : 'unbanned'}.`);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBanningUserId(null);
+    }
+  }
+
+  async function deleteUserItem(targetUser: User) {
+    if (!window.confirm(`PERMANENTLY DELETE user "${targetUser.name || targetUser.email}"? Tindakan ini akan menghapus semua sesi, transaksi, saldo koin, dan data pengerjaan tryout secara permanen. Tidak dapat dibatalkan.`)) return;
+    setDeletingUserId(targetUser.id);
+    setError('');
+    setNotice('');
+    try {
+      await api.delete(`/team/control-center/users/${targetUser.id}`);
+      setUsers((prev) => prev.filter((u) => u.id !== targetUser.id));
+      if (selectedUserForModal?.id === targetUser.id) {
+        setUserModalOpen(false);
+        setSelectedUserForModal(null);
+      }
+      setNotice(`User ${targetUser.email} has been permanently deleted.`);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setDeletingUserId(null);
+    }
+  }
+
   async function updateApplicationStatus(item: CareerApplication, status: CareerApplication['status']) {
     setError(''); setNotice('');
     try {
@@ -909,12 +1008,41 @@ export default function ControlCenterPage() {
   const userColumns = React.useMemo(() => [
     userColHelper.accessor('name', {
       header: 'User',
-      cell: ({ row }) => (
-        <div>
-          <strong>{row.original.name}</strong>
-          <small className="block text-[var(--muted-fg)]">{row.original.email}</small>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const u = row.original;
+        const avatarSrc = u.image || getCartoonAvatarUrl(u.email || u.name || u.id);
+        const initial = (u.name || u.email || 'U').charAt(0).toUpperCase();
+        return (
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8 shrink-0 border border-[var(--border)]">
+              <AvatarImage src={avatarSrc} alt={u.name} />
+              <AvatarFallback className="bg-[var(--card-subtle)] text-xs font-bold text-[var(--foreground)]">
+                {initial}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <strong className="truncate font-semibold text-xs text-[var(--foreground)]">{u.name || 'Anonymous'}</strong>
+                {u.emailVerified && (
+                  <span className="text-[10px] text-emerald-400 font-bold" title="Email verified">✓</span>
+                )}
+              </div>
+              <small className="block truncate text-[var(--muted-fg)] text-[11px]">{u.email}</small>
+            </div>
+          </div>
+        );
+      },
+    }),
+    userColHelper.accessor('isBanned', {
+      header: 'Status',
+      cell: ({ getValue }) => {
+        const banned = getValue();
+        return (
+          <span className={`control-status ${banned ? 'status-rejected' : 'status-accepted'}`}>
+            {banned ? 'Banned' : 'Active'}
+          </span>
+        );
+      },
     }),
     userColHelper.accessor('role', {
       header: 'Jitu Role',
@@ -927,27 +1055,193 @@ export default function ControlCenterPage() {
             { label: 'User', value: 'USER' },
             { label: 'Admin', value: 'ADMIN' },
           ]}
-          triggerClassName="h-7 text-xs w-[100px]"
+          triggerClassName="h-7 text-xs w-[95px]"
         />
       ),
     }),
     userColHelper.accessor('target', {
-      header: 'Target',
-      cell: ({ getValue }) => <span>{getValue() || 'Not set'}</span>,
+      header: 'Target PTN',
+      cell: ({ getValue }) => <span className="text-xs">{getValue() || '—'}</span>,
     }),
     userColHelper.accessor('tokenBalance', {
-      header: 'Coins',
-      cell: ({ getValue }) => <span className="font-semibold">{getValue()}</span>,
+      header: 'Coins & Streak',
+      cell: ({ row }) => (
+        <div>
+          <span className="font-semibold text-xs">{row.original.tokenBalance} coins</span>
+          {row.original.currentStreak !== undefined && (
+            <small className="block text-[var(--muted-fg)] text-[11px]">
+              🔥 {row.original.currentStreak} hari
+            </small>
+          )}
+        </div>
+      ),
+    }),
+    userColHelper.accessor('createdAt', {
+      header: 'Joined',
+      cell: ({ getValue }) => <span className="text-xs">{formatDate(getValue())}</span>,
     }),
     userColHelper.display({
-      id: 'accessNotes',
-      header: '',
-      cell: ({ row }) =>
-        member?.role !== 'SYSTEM_OWNER' && row.original.role !== 'USER' ? (
-          <span className="control-muted text-xs">Owner managed</span>
-        ) : null,
+      id: 'actions',
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => {
+        const u = row.original;
+        const isSelf = member?.email === u.email;
+        const isTargetOwner = u.role === 'ADMIN' && member?.role !== 'SYSTEM_OWNER';
+        return (
+          <div className="table-action-group justify-end">
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => {
+                setSelectedUserForModal(u);
+                setUserModalOpen(true);
+              }}
+              title="View user details"
+            >
+              <Eye className="action-icon" /> View
+            </button>
+            <button
+              type="button"
+              className="table-action-btn table-action-btn-warn"
+              onClick={() => void toggleBanUser(u)}
+              disabled={isSelf || isTargetOwner || banningUserId === u.id}
+              title={u.isBanned ? 'Unban user' : 'Ban user'}
+            >
+              <Ban className="action-icon" />
+              {banningUserId === u.id ? '...' : u.isBanned ? 'Unban' : 'Ban'}
+            </button>
+            <button
+              type="button"
+              className="table-action-btn table-action-btn-danger"
+              onClick={() => void deleteUserItem(u)}
+              disabled={isSelf || isTargetOwner || deletingUserId === u.id}
+              title="Delete user"
+            >
+              <Trash2 className="action-icon" />
+              {deletingUserId === u.id ? '...' : 'Delete'}
+            </button>
+          </div>
+        );
+      },
     }),
-  ], [member]);
+  ], [member, banningUserId, deletingUserId]);
+
+  // TANSTACK TABLE COLUMNS FOR PAYMENTS
+  const paymentColumns = React.useMemo(() => [
+    paymentColHelper.accessor('orderId', {
+      header: 'Order ID',
+      cell: ({ row }) => (
+        <div>
+          <strong className="font-mono text-xs">{row.original.orderId}</strong>
+          <small className="block text-[var(--muted-fg)] uppercase text-[10px]">
+            {row.original.paymentMethod || 'QRIS'}
+          </small>
+        </div>
+      ),
+    }),
+    paymentColHelper.accessor('user', {
+      header: 'User',
+      cell: ({ row }) => {
+        const u = row.original.user;
+        if (!u) {
+          return <span className="text-[var(--muted-fg)] text-xs">Deleted User</span>;
+        }
+        const avatarSrc = u.image || getCartoonAvatarUrl(u.email || u.name || u.id);
+        const initial = (u.name || u.email || 'U').charAt(0).toUpperCase();
+        return (
+          <button
+            type="button"
+            className="flex items-center gap-2.5 text-left hover:opacity-80 transition-opacity"
+            onClick={() => {
+              setSelectedUserForModal(u);
+              setUserModalOpen(true);
+            }}
+            title="View user details"
+          >
+            <Avatar className="h-7 w-7 shrink-0 border border-[var(--border)]">
+              <AvatarImage src={avatarSrc} alt={u.name} />
+              <AvatarFallback className="bg-[var(--card-subtle)] text-[10px] font-bold">
+                {initial}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <strong className="text-xs font-semibold block truncate text-blue-400 hover:underline">
+                {u.name || 'User'}
+              </strong>
+              <small className="text-[var(--muted-fg)] block truncate text-[11px]">{u.email}</small>
+            </div>
+          </button>
+        );
+      },
+    }),
+    paymentColHelper.accessor('amount', {
+      header: 'Amount',
+      cell: ({ row }) => (
+        <div>
+          <strong className="font-semibold text-xs">{currency.format(row.original.amount)}</strong>
+          <small className="block text-[var(--muted-fg)] text-[11px]">
+            {row.original.tokenAmount} coins · {row.original.tokenPackage?.name || 'Package'}
+          </small>
+        </div>
+      ),
+    }),
+    paymentColHelper.accessor('status', {
+      header: 'Status',
+      cell: ({ getValue }) => {
+        const st = getValue();
+        let badgeClass = 'status-submitted';
+        let label = 'Waiting / Pending';
+        if (st === 'CONFIRMED') {
+          badgeClass = 'status-accepted';
+          label = 'Confirmed';
+        } else if (st === 'CANCELLED') {
+          badgeClass = 'status-rejected';
+          label = 'Cancelled';
+        } else if (st === 'DECLINED') {
+          badgeClass = 'status-rejected';
+          label = 'Declined';
+        }
+        return <span className={`control-status ${badgeClass}`}>{label}</span>;
+      },
+    }),
+    paymentColHelper.accessor('createdAt', {
+      header: 'Date & Time',
+      cell: ({ getValue }) => {
+        const d = new Date(getValue());
+        return (
+          <div>
+            <span className="text-xs">{dateLabel.format(d)}</span>
+            <small className="block text-[var(--muted-fg)] text-[11px]">
+              {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </small>
+          </div>
+        );
+      },
+    }),
+    paymentColHelper.display({
+      id: 'actions',
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => {
+        const u = row.original.user;
+        if (!u) return null;
+        return (
+          <div className="table-action-group justify-end">
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => {
+                setSelectedUserForModal(u);
+                setUserModalOpen(true);
+              }}
+              title="View user details"
+            >
+              <Eye className="action-icon" /> View User
+            </button>
+          </div>
+        );
+      },
+    }),
+  ], []);
 
   // TANSTACK TABLE COLUMNS FOR ARTICLES
   const articleColumns = React.useMemo(() => [
@@ -1244,7 +1538,7 @@ export default function ControlCenterPage() {
       {error && <div className="inline-message error" role="alert">{error}</div>}
       {notice && <div className="inline-message control-success" role="status">{notice}</div>}
 
-      {(section === 'users' || section === 'careers' || section === 'articles') && (
+      {(section === 'users' || section === 'careers' || section === 'articles' || section === 'payments') && (
         <form className="control-search" onSubmit={submitSearch}>
           <input
             className="field-input"
@@ -1255,6 +1549,8 @@ export default function ControlCenterPage() {
                 ? 'Search users by name or email...'
                 : section === 'careers'
                 ? 'Search applicants by name, email, university, or position...'
+                : section === 'payments'
+                ? 'Search payments by Order ID, user name, or email...'
                 : 'Search articles by title, category, or author...'
             }
             aria-label="Search"
@@ -2258,82 +2554,131 @@ export default function ControlCenterPage() {
         </section>
       )}
 
-      {/* SECTION 6: REVENUE */}
-      {section === 'revenue' && (
-        <section className="control-panel" aria-labelledby="revenue-heading">
+      {/* SECTION 6: PAYMENTS & REVENUE (LOGS, GRAPHS & FILTERS) */}
+      {section === 'payments' && (
+        <section className="control-panel" aria-labelledby="payments-heading">
           <div className="section-heading control-panel-heading">
             <div>
-              <h2 id="revenue-heading">Revenue overview</h2>
-              <p>Confirmed and pending payments recorded by Jitu.</p>
+              <h2 id="payments-heading">Payments & revenue overview</h2>
+              <p>Track real-time transaction logs, payment statuses, and revenue trends across Jitu.</p>
             </div>
+            <span>{payments.length} transactions shown</span>
           </div>
-          {!loading && summary && !summary.configured && (
-            <div className="inline-message revenue-source-notice" role="status">
-              <div>
-                <strong>Payment source is not connected</strong>
-                <p>Add a read-only PostgreSQL connection for Jitu to <code>JITU_PURCHASES_DATABASE_URL</code> in the backend environment.</p>
-              </div>
-            </div>
-          )}
-          {loading ? (
-            <div className="revenue-metrics" aria-label="Loading revenue summary">
-              {[1, 2, 3].map((item) => (
+
+          {loading && !paymentSummary ? (
+            <div className="revenue-metrics" aria-label="Loading payments summary">
+              {[1, 2, 3, 4].map((item) => (
                 <div className="loading-skeleton" key={item} />
               ))}
             </div>
           ) : (
-            summary && (
+            paymentSummary && (
               <>
-                <div className="revenue-metrics">
+                {/* 4 Summary Cards */}
+                <div className="revenue-metrics" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
                   <article className="revenue-metric">
                     <span>Total confirmed revenue</span>
-                    <strong>{summary.configured ? currency.format(summary.totalRevenue) : '—'}</strong>
-                    <small>Total payments with confirmed status</small>
+                    <strong style={{ color: '#34d399' }}>{currency.format(paymentSummary.totalRevenue)}</strong>
+                    <small>From settled transactions</small>
                   </article>
                   <article className="revenue-metric">
-                    <span>Successful payments</span>
-                    <strong>{summary.configured ? summary.confirmedPayments.toLocaleString('en-US') : '—'}</strong>
-                    <small>Transactions with confirmed status</small>
+                    <span>Confirmed payments</span>
+                    <strong style={{ color: '#34d399' }}>{paymentSummary.confirmedPayments.toLocaleString('en-US')}</strong>
+                    <small>Completed & coins credited</small>
                   </article>
                   <article className="revenue-metric">
-                    <span>Pending payments</span>
-                    <strong>{summary.configured ? summary.pendingPayments.toLocaleString('en-US') : '—'}</strong>
-                    <small>Transactions with pending status</small>
+                    <span>Waiting / pending</span>
+                    <strong style={{ color: '#fbbf24' }}>{paymentSummary.pendingPayments.toLocaleString('en-US')}</strong>
+                    <small>Awaiting QRIS completion</small>
+                  </article>
+                  <article className="revenue-metric">
+                    <span>Cancelled / expired</span>
+                    <strong style={{ color: '#f87171' }}>{paymentSummary.cancelledPayments.toLocaleString('en-US')}</strong>
+                    <small>Cancelled by user or expired</small>
                   </article>
                 </div>
+
+                {/* Monthly Revenue & Payment Trend Graph */}
                 <section className="revenue-panel">
                   <div className="section-heading">
                     <div>
-                      <h2>Monthly revenue</h2>
-                      <p>Last 12 months, based on the amount recorded at the time of payment.</p>
+                      <h2>12-Month Revenue & Activity Trend</h2>
+                      <p>Monthly confirmed revenue and transaction volume over the past year.</p>
                     </div>
                   </div>
-                  {!summary.configured ? (
-                    <div className="revenue-empty">The chart will appear once a payment source is connected.</div>
-                  ) : summary.confirmedPayments === 0 ? (
-                    <div className="revenue-empty">No confirmed payments yet.</div>
+
+                  {paymentSummary.confirmedPayments === 0 && paymentSummary.pendingPayments === 0 ? (
+                    <div className="revenue-empty">No payment transactions recorded yet.</div>
                   ) : (
-                    <div className="revenue-chart" role="img" aria-label="Confirmed revenue by month over the last 12 months">
-                      {summary.monthlyRevenue.map(({ month, revenue, confirmedPayments }) => (
-                        <div
-                          className="revenue-chart-month"
-                          key={month}
-                          title={`${formatMonth(month)} · ${currency.format(revenue)} · ${confirmedPayments} payments`}
-                        >
-                          <div className="revenue-chart-bar-area">
-                            <span
-                              className="revenue-chart-bar"
-                              style={{ height: `${revenue ? Math.max(5, (revenue / maxRevenue) * 100) : 0}%` }}
-                            />
+                    <div
+                      className="revenue-chart"
+                      role="img"
+                      aria-label="Payment revenue by month over the last 12 months"
+                    >
+                      {paymentSummary.monthlyRevenue.map((m) => {
+                        const maxRevenueVal = Math.max(1, ...(paymentSummary.monthlyRevenue.map((item) => item.revenue) || [1]));
+                        const barHeight = m.revenue ? Math.max(8, (m.revenue / maxRevenueVal) * 100) : 0;
+                        return (
+                          <div
+                            className="revenue-chart-month"
+                            key={m.month}
+                            title={`${formatMonth(m.month)} · ${currency.format(m.revenue)} · ${m.confirmedPayments} confirmed, ${m.pendingPayments} waiting, ${m.cancelledPayments} cancelled`}
+                          >
+                            <div className="revenue-chart-bar-area">
+                              <span
+                                className="revenue-chart-bar"
+                                style={{ height: `${barHeight}%` }}
+                              />
+                            </div>
+                            <span className="revenue-chart-label">{formatMonth(m.month)}</span>
                           </div>
-                          <span className="revenue-chart-label">{formatMonth(month)}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </section>
               </>
             )
+          )}
+
+          {/* Status Filters Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-6 mb-4">
+            <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[var(--card-subtle)] border border-[var(--border)]">
+              {[
+                { id: 'ALL', label: 'All Transactions' },
+                { id: 'CONFIRMED', label: 'Confirmed' },
+                { id: 'PENDING', label: 'Waiting / Pending' },
+                { id: 'CANCELLED', label: 'Cancelled' },
+                { id: 'DECLINED', label: 'Declined' },
+              ].map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => {
+                    setPaymentStatusFilter(st.id);
+                    void loadSection('payments', search, true, { status: st.id });
+                  }}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                    paymentStatusFilter === st.id
+                      ? 'bg-[var(--foreground)] text-[var(--background)] shadow-sm'
+                      : 'text-[var(--muted-fg)] hover:text-[var(--foreground)]'
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Payments DataTable */}
+          {loading ? (
+            <div className="control-empty">Loading payments log…</div>
+          ) : error ? null : (
+            <DataTable
+              columns={paymentColumns}
+              data={payments}
+              emptyMessage="No payments found matching the selected status or query."
+            />
           )}
         </section>
       )}
@@ -2736,6 +3081,116 @@ export default function ControlCenterPage() {
                 onClick={() => setPreviewQuestion(null)}
               >
                 Tutup Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* USER DETAILS MODAL */}
+      {userModalOpen && selectedUserForModal && (
+        <div className="modal-overlay" onClick={() => setUserModalOpen(false)}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12 border-2 border-[var(--border)]">
+                  <AvatarImage
+                    src={selectedUserForModal.image || getCartoonAvatarUrl(selectedUserForModal.email || selectedUserForModal.name || selectedUserForModal.id)}
+                    alt={selectedUserForModal.name}
+                  />
+                  <AvatarFallback className="bg-[var(--card-subtle)] text-sm font-bold">
+                    {(selectedUserForModal.name || selectedUserForModal.email || 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="m-0 text-base font-bold text-[var(--foreground)]">
+                      {selectedUserForModal.name || 'Anonymous User'}
+                    </h3>
+                    <span className={`control-status ${selectedUserForModal.isBanned ? 'status-rejected' : 'status-accepted'}`}>
+                      {selectedUserForModal.isBanned ? 'Banned' : 'Active'}
+                    </span>
+                  </div>
+                  <small className="text-[var(--muted-fg)] block mt-0.5">
+                    {selectedUserForModal.email}
+                  </small>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setUserModalOpen(false)}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-[var(--card-subtle)] border border-[var(--border)] text-xs">
+                <div>
+                  <span className="text-[var(--muted-fg)] block text-[11px]">Role</span>
+                  <strong className="text-[var(--foreground)]">{selectedUserForModal.role}</strong>
+                </div>
+                <div>
+                  <span className="text-[var(--muted-fg)] block text-[11px]">Coin Balance</span>
+                  <strong className="text-amber-400 font-bold">{selectedUserForModal.tokenBalance} coins</strong>
+                </div>
+                <div>
+                  <span className="text-[var(--muted-fg)] block text-[11px]">Target PTN / Prodi</span>
+                  <strong className="text-[var(--foreground)] truncate block">{selectedUserForModal.target || 'Not set'}</strong>
+                </div>
+                <div>
+                  <span className="text-[var(--muted-fg)] block text-[11px]">Daily Streak</span>
+                  <strong className="text-[var(--foreground)]">🔥 {selectedUserForModal.currentStreak ?? 0} hari</strong>
+                </div>
+                <div>
+                  <span className="text-[var(--muted-fg)] block text-[11px]">Joined Date</span>
+                  <span className="text-[var(--foreground)]">{formatDate(selectedUserForModal.createdAt)}</span>
+                </div>
+                <div>
+                  <span className="text-[var(--muted-fg)] block text-[11px]">Email Verification</span>
+                  <span className={selectedUserForModal.emailVerified ? 'text-emerald-400 font-semibold' : 'text-[var(--muted-fg)]'}>
+                    {selectedUserForModal.emailVerified ? 'Verified ✓' : 'Unverified'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-[var(--muted-fg)] font-mono break-all p-2 rounded bg-[var(--background)] border border-[var(--border)]">
+                ID: {selectedUserForModal.id}
+              </div>
+
+              {/* User Actions inside Modal */}
+              <div className="pt-2 flex items-center justify-between gap-2 border-t border-[var(--border)]">
+                <button
+                  type="button"
+                  className={`button ${selectedUserForModal.isBanned ? 'button-secondary' : 'button-secondary text-amber-400'}`}
+                  onClick={() => void toggleBanUser(selectedUserForModal)}
+                  disabled={banningUserId === selectedUserForModal.id || member?.email === selectedUserForModal.email}
+                >
+                  <Ban className="w-3.5 h-3.5 mr-1" />
+                  {selectedUserForModal.isBanned ? 'Unban Account' : 'Ban Account'}
+                </button>
+
+                <button
+                  type="button"
+                  className="button button-danger"
+                  onClick={() => void deleteUserItem(selectedUserForModal)}
+                  disabled={deletingUserId === selectedUserForModal.id || member?.email === selectedUserForModal.email}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  Delete Account
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => setUserModalOpen(false)}
+              >
+                Close
               </button>
             </div>
           </div>
