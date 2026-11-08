@@ -8,11 +8,120 @@ import { api, CurrentMember, RevenueSummary, signInUrl } from '@/lib/api';
 import { DataTable } from '@/components/ui/data-table';
 import { type DataTableFeatures } from '@/components/ui/data-table-features';
 import { ComboboxSelect } from '@/components/ui/combobox';
-import { ExternalLink, Eye, Edit, Trash2, Zap, Sparkles, ChevronLeft, ChevronRight, Search, X, Ban, CreditCard } from 'lucide-react';
+import {
+  ExternalLink,
+  Eye,
+  Edit,
+  Trash2,
+  Zap,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+  Ban,
+  CreditCard,
+  PenTool,
+  Sliders,
+  Copy,
+  Check,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
+  AlertCircle,
+  Percent,
+  Tag,
+  Flame,
+  Crown,
+  Coins,
+  Ticket,
+} from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
 
-export type Section = 'tryouts' | 'pricing' | 'users' | 'articles' | 'careers' | 'payments' | 'questions';
+export type Section = 'tryouts' | 'pricing' | 'vouchers' | 'discounts' | 'users' | 'articles' | 'careers' | 'payments' | 'questions';
+
+export type Voucher = {
+  id: string;
+  code: string;
+  discountPercent: number;
+  maxDiscount?: number | null;
+  minPurchase: number;
+  maxUsage?: number | null;
+  usedCount: number;
+  isActive: boolean;
+  expiresAt: string | null;
+  description: string | null;
+  referrerName: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type VoucherForm = {
+  code: string;
+  discountPercent: string;
+  maxDiscount: string;
+  minPurchase: string;
+  maxUsage: string;
+  expiresAt: string;
+  description: string;
+  referrerName: string;
+  isActive: boolean;
+};
+
+const initialVoucherForm: VoucherForm = {
+  code: '',
+  discountPercent: '20',
+  maxDiscount: '',
+  minPurchase: '0',
+  maxUsage: '',
+  expiresAt: '',
+  description: '',
+  referrerName: '',
+  isActive: true,
+};
+
+export type Discount = {
+  id: string;
+  name: string;
+  type: 'PERCENTAGE' | 'FIXED';
+  value: number;
+  startDate: string;
+  endDate: string;
+  packageId: string | null;
+  badgeText: string;
+  badgeStyle: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  packageName?: string | null;
+  packageTokens?: number | null;
+  packagePrice?: number | null;
+};
+
+export type DiscountForm = {
+  name: string;
+  type: 'PERCENTAGE' | 'FIXED';
+  value: string;
+  startDate: string;
+  endDate: string;
+  packageId: string;
+  badgeText: string;
+  badgeStyle: string;
+  isActive: boolean;
+};
+
+export const initialDiscountForm: DiscountForm = {
+  name: '',
+  type: 'PERCENTAGE',
+  value: '25',
+  startDate: '',
+  endDate: '',
+  packageId: '',
+  badgeText: 'DISKON 25%',
+  badgeStyle: 'RED_FIRE',
+  isActive: true,
+};
 
 export type Tryout = {
   id: string;
@@ -297,10 +406,21 @@ const sections: Array<{ id: Section; label: string }> = [
   { id: 'tryouts', label: 'Tryouts' },
   { id: 'questions', label: 'Bank Soal' },
   { id: 'pricing', label: 'Pricing' },
+  { id: 'discounts', label: 'Discounts' },
   { id: 'users', label: 'Users' },
   { id: 'articles', label: 'Articles' },
   { id: 'careers', label: 'Careers' },
   { id: 'payments', label: 'Payments' },
+];
+
+const ALL_SUBTESTS = [
+  { id: 'PENALARAN_UMUM', label: 'Penalaran Umum (PU)' },
+  { id: 'PENGETAHUAN_KUANTITATIF', label: 'Pengetahuan Kuantitatif (PK)' },
+  { id: 'PEMAHAMAN_BACAAN_MENULIS', label: 'Pemahaman Bacaan & Menulis (PBM)' },
+  { id: 'PENGETAHUAN_PEMAHAMAN_UMUM', label: 'Pengetahuan & Pemahaman Umum (PPU)' },
+  { id: 'LITERASI_INDONESIA', label: 'Literasi Bahasa Indonesia (LBI)' },
+  { id: 'LITERASI_INGGRIS', label: 'Literasi Bahasa Inggris (LBE)' },
+  { id: 'PENALARAN_MATEMATIKA', label: 'Penalaran Matematika (PM)' },
 ];
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
@@ -334,17 +454,36 @@ function autoSlug(str: string): string {
 // Column Helpers for Data Tables
 const tryoutColHelper = createColumnHelper<DataTableFeatures, Tryout>();
 const packageColHelper = createColumnHelper<DataTableFeatures, Package>();
+const discountColHelper = createColumnHelper<DataTableFeatures, Discount>();
 const userColHelper = createColumnHelper<DataTableFeatures, User>();
 const articleColHelper = createColumnHelper<DataTableFeatures, Article>();
 const careerColHelper = createColumnHelper<DataTableFeatures, CareerApplication>();
 const questionColHelper = createColumnHelper<DataTableFeatures, QuestionItem>();
 const paymentColHelper = createColumnHelper<DataTableFeatures, PaymentLog>();
 
+const BADGE_STYLES = [
+  { id: 'RED_FIRE', label: 'Flame Red', icon: Flame, className: 'discount-badge-red' },
+  { id: 'GOLD_PREMIUM', label: 'Luxury Gold', icon: Crown, className: 'discount-badge-gold' },
+  { id: 'EMERALD_SAVE', label: 'Emerald Save', icon: Sparkles, className: 'discount-badge-emerald' },
+  { id: 'CYAN_ELECTRIC', label: 'Neon Cyan', icon: Zap, className: 'discount-badge-cyan' },
+  { id: 'PURPLE_ROYAL', label: 'Royal Purple', icon: Tag, className: 'discount-badge-purple' },
+];
+
+function getBadgeClass(style: string) {
+  const match = BADGE_STYLES.find((s) => s.id === style);
+  return match ? match.className : 'discount-badge-red';
+}
+
+function getBadgeIcon(style: string) {
+  const match = BADGE_STYLES.find((s) => s.id === style);
+  return match ? match.icon : Flame;
+}
+
 function ControlCenterContent() {
   const searchParams = useSearchParams();
   const urlSec = searchParams?.get('section') as Section | null;
   const [section, setSection] = React.useState<Section>(() => {
-    if (urlSec && ['tryouts', 'pricing', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
+    if (urlSec && ['tryouts', 'pricing', 'vouchers', 'discounts', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
       return urlSec;
     }
     return 'tryouts';
@@ -352,6 +491,14 @@ function ControlCenterContent() {
   const [member, setMember] = React.useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
   const [tryouts, setTryouts] = React.useState<Tryout[]>(() => api.getCached<Tryout[]>('/team/control-center/tryouts') ?? []);
   const [packages, setPackages] = React.useState<Package[]>(() => api.getCached<Package[]>('/team/control-center/packages') ?? []);
+  const [vouchers, setVouchers] = React.useState<Voucher[]>(() => api.getCached<Voucher[]>('/team/control-center/vouchers') ?? []);
+  const [voucherForm, setVoucherForm] = React.useState<VoucherForm>(initialVoucherForm);
+  const [voucherFormOpen, setVoucherFormOpen] = React.useState(false);
+  const [editingVoucher, setEditingVoucher] = React.useState<string | null>(null);
+  const [discounts, setDiscounts] = React.useState<Discount[]>(() => api.getCached<Discount[]>('/team/control-center/discounts') ?? []);
+  const [discountForm, setDiscountForm] = React.useState<DiscountForm>(initialDiscountForm);
+  const [discountFormOpen, setDiscountFormOpen] = React.useState(false);
+  const [editingDiscount, setEditingDiscount] = React.useState<string | null>(null);
   const [users, setUsers] = React.useState<User[]>([]);
   const [articles, setArticles] = React.useState<Article[]>(() => api.getCached<Article[]>('/team/control-center/articles') ?? []);
   const [applications, setApplications] = React.useState<CareerApplication[]>([]);
@@ -380,6 +527,125 @@ function ControlCenterContent() {
   const [aiImportOpen, setAiImportOpen] = React.useState(false);
   const [aiJsonInput, setAiJsonInput] = React.useState('');
   const [previewSlideIdx, setPreviewSlideIdx] = React.useState(0);
+
+  // Question Creation Method & Prompt Engineering State
+  const [createMethodModalOpen, setCreateMethodModalOpen] = React.useState(false);
+  const [createMethodView, setCreateMethodView] = React.useState<'SELECT' | 'IMPORT_JSON'>('SELECT');
+  const [isPromptAdjusterOpen, setIsPromptAdjusterOpen] = React.useState(false);
+  const [importingBulk, setImportingBulk] = React.useState(false);
+  const [promptSubtests, setPromptSubtests] = React.useState<string[]>(['PENALARAN_MATEMATIKA']);
+  const [promptCount, setPromptCount] = React.useState<number>(5);
+  const [promptDifficulty, setPromptDifficulty] = React.useState<string>('MEDIUM');
+  const [promptTarget, setPromptTarget] = React.useState<string>('FOR_PRACTICE');
+  const [promptTopic, setPromptTopic] = React.useState<string>('');
+  const [promptIncludePassage, setPromptIncludePassage] = React.useState<boolean>(true);
+  const [promptIncludeTricks, setPromptIncludeTricks] = React.useState<boolean>(true);
+  const [copiedPrompt, setCopiedPrompt] = React.useState<boolean>(false);
+
+  const generatedPrompt = React.useMemo(() => {
+    const subtestLabels = promptSubtests.length > 0
+      ? promptSubtests.map((s) => ALL_SUBTESTS.find((item) => item.id === s)?.label || s).join(', ')
+      : 'Semua Subtes UTBK SNBT';
+
+    const diffText = promptDifficulty === 'EASY'
+      ? 'Mudah (Konseptual & Fundamental)'
+      : promptDifficulty === 'HARD'
+      ? 'Sulit (HOTS - High Order Thinking Skills & Analitis Tinggi)'
+      : promptDifficulty === 'MIXED'
+      ? 'Campuran Berimbang (20% Mudah, 50% Sedang, 30% Sulit HOTS)'
+      : 'Sedang (Standar Resmi UTBK SNBT BPPP)';
+
+    const passageInstruction = promptIncludePassage
+      ? '- Untuk subtes berbasis bahasa/literasi atau penalaran naratif, sertakan wacana/teks bacaan kontekstual yang berkualitas di field "narration".'
+      : '- Soal dibuat langsung tanpa wacana panjang (kosongkan "narration" jika tidak perlu).';
+
+    const trickInstruction = promptIncludeTricks
+      ? '- Pada bagian "solution", wajib cantumkan "keyFormula" (konsep dasar), "quickTrick" (tips eliminasi / cara cepat 30 detik), serta "steps" bertahap.'
+      : '- Pada bagian "solution", cantumkan langkah penjelasan yang jelas dan ringkas.';
+
+    const topicLine = promptTopic.trim()
+      ? `- Fokus Topik / Kisi-kisi Khusus: ${promptTopic.trim()}`
+      : '- Fokus Topik: Kisi-kisi resmi SNBT terbaru';
+
+    return `Kamu adalah spesialis pembuat soal seleksi masuk PTN (UTBK SNBT & Ujian Mandiri) nomor 1 di Indonesia dengan pemahaman mendalam tentang standar BPPP Kemendikbudristek.
+
+TUGAS UTAMA:
+Buatkan ${promptCount} soal pilihan ganda berkualitas tinggi, orisinal, dan terkalibrasi akurat dengan ketentuan berikut:
+
+SPESIFIKASI SOAL:
+- Target Subtes: ${subtestLabels}
+- Jumlah Soal: ${promptCount} butir soal
+- Tingkat Kesulitan: ${diffText}
+- Target Penggunaan: ${promptTarget === 'FOR_TRYOUT' ? 'Tryout Resmi SNBT (Ketat & Standar Waktu)' : promptTarget === 'FOR_PRACTICE' ? 'Bank Latihan Harian Mandiri' : 'Draft Kurasi'}
+${topicLine}
+- Opsi Jawaban: Tepat 5 pilihan ganda (A, B, C, D, E) dengan 1 kunci jawaban benar dan 4 distraktor pengecoh yang logis.
+- Notasi Matematika/Sains: Tulis rumus dan simbol matematika menggunakan notasi LaTeX standard (contoh: $f(x) = \\frac{-b \\pm \\sqrt{D}}{2a}$).
+${passageInstruction}
+${trickInstruction}
+
+FORMAT KELUARAN (STRICT JSON ONLY):
+Hasilkan HANYA output berupa JSON murni (array of objects jika > 1 soal, atau single object jika 1 soal) tanpa teks pengantar, tanpa penjelasan di luar JSON, dan tanpa code fence markdown.
+
+Struktur JSON yang WAJIB dipatuhi:
+${promptCount > 1 ? '[' : ''}
+  {
+    "subtest": "${promptSubtests[0] || 'PENALARAN_MATEMATIKA'}",
+    "difficulty": "${promptDifficulty === 'MIXED' ? 'MEDIUM' : promptDifficulty}",
+    "target": "${promptTarget}",
+    "narration": "Teks wacana atau konteks bacaan jika ada (kosongkan string jika tidak ada)",
+    "content": "Pertanyaan soal yang jelas dan tidak ambigu...",
+    "points": 1,
+    "options": [
+      { "content": "Pernyataan / opsi A", "isCorrect": false },
+      { "content": "Pernyataan / opsi B (Kunci Jawaban)", "isCorrect": true },
+      { "content": "Pernyataan / opsi C", "isCorrect": false },
+      { "content": "Pernyataan / opsi D", "isCorrect": false },
+      { "content": "Pernyataan / opsi E", "isCorrect": false }
+    ],
+    "solution": {
+      "keyFormula": "Konsep inti atau rumus pokok yang digunakan",
+      "quickTrick": "Trik eliminasi opsi atau cara cepat jika ada",
+      "staticExplanation": "Rangkuman kesimpulan jawaban",
+      "steps": [
+        { "stepNumber": 1, "category": "Identifikasi", "title": "Memahami Informasi", "content": "Uraian langkah 1..." },
+        { "stepNumber": 2, "category": "Kalkulasi", "title": "Penyelesaian", "content": "Uraian langkah 2..." }
+      ]
+    }
+  }
+${promptCount > 1 ? ']' : ''}`;
+  }, [promptSubtests, promptCount, promptDifficulty, promptTarget, promptTopic, promptIncludePassage, promptIncludeTricks]);
+
+  const jsonValidation = React.useMemo(() => {
+    if (!aiJsonInput.trim()) return null;
+    try {
+      const parsed = JSON.parse(aiJsonInput.trim());
+      if (Array.isArray(parsed)) {
+        return { valid: true, isArray: true, count: parsed.length, message: `${parsed.length} soal terdeteksi dalam format array` };
+      } else if (parsed && typeof parsed === 'object') {
+        return { valid: true, isArray: false, count: 1, message: '1 soal terdeteksi' };
+      }
+      return { valid: false, message: 'JSON harus berupa object atau array of objects' };
+    } catch (err: any) {
+      return { valid: false, message: err.message || 'Format JSON tidak valid' };
+    }
+  }, [aiJsonInput]);
+
+  const handleCopyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPrompt);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2500);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = generatedPrompt;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2500);
+    }
+  };
   const [filterSubtest, setFilterSubtest] = React.useState<string>('ALL');
   const [filterTarget, setFilterTarget] = React.useState<string>('ALL');
 
@@ -409,6 +675,8 @@ function ControlCenterContent() {
   ) => {
     const cachedUrl = target === 'tryouts' ? '/team/control-center/tryouts'
       : target === 'pricing' ? '/team/control-center/packages'
+      : target === 'vouchers' ? '/team/control-center/vouchers'
+      : target === 'discounts' ? '/team/control-center/discounts'
       : target === 'articles' ? '/team/control-center/articles'
       : target === 'payments' ? '/team/control-center/payments'
       : '';
@@ -419,6 +687,15 @@ function ControlCenterContent() {
     try {
       if (target === 'tryouts') setTryouts(await api.get<Tryout[]>('/team/control-center/tryouts', { force }));
       if (target === 'pricing') setPackages(await api.get<Package[]>('/team/control-center/packages', { force }));
+      if (target === 'vouchers') setVouchers(await api.get<Voucher[]>('/team/control-center/vouchers', { force }));
+      if (target === 'discounts') {
+        const [dRes, pRes] = await Promise.all([
+          api.get<Discount[]>('/team/control-center/discounts', { force }),
+          packages.length === 0 ? api.get<Package[]>('/team/control-center/packages', { force }) : Promise.resolve(packages),
+        ]);
+        setDiscounts(dRes);
+        if (packages.length === 0) setPackages(pRes);
+      }
       if (target === 'users') setUsers(await api.get<User[]>(`/team/control-center/users${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
       if (target === 'articles') setArticles(await api.get<Article[]>(`/team/control-center/articles${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
       if (target === 'careers') setApplications(await api.get<CareerApplication[]>(`/team/control-center/careers/applications${query ? `?search=${encodeURIComponent(query)}` : ''}`, { force }));
@@ -457,7 +734,7 @@ function ControlCenterContent() {
   }, [filterSubtest, filterTarget, paymentStatusFilter]);
 
   React.useEffect(() => {
-    if (urlSec && ['tryouts', 'pricing', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
+    if (urlSec && ['tryouts', 'pricing', 'vouchers', 'discounts', 'users', 'articles', 'careers', 'payments', 'questions'].includes(urlSec)) {
       setSection(urlSec);
     } else if (!urlSec) {
       setSection('tryouts');
@@ -539,6 +816,74 @@ function ControlCenterContent() {
     }
   }
 
+  function mapAiJsonToRequestBody(parsed: any) {
+    const subtestMap: Record<string, string> = {
+      PENALARAN_MATEMATIKA: 'PENALARAN_MATEMATIKA',
+      PENALARAN_UMUM: 'PENALARAN_UMUM',
+      PEMAHAMAN_BACAAN_MENULIS: 'PEMAHAMAN_BACAAN_MENULIS',
+      PENGETAHUAN_KUANTITATIF: 'PENGETAHUAN_KUANTITATIF',
+      PENGETAHUAN_PEMAHAMAN_UMUM: 'PENGETAHUAN_PEMAHAMAN_UMUM',
+      LITERASI_INDONESIA: 'LITERASI_INDONESIA',
+      LITERASI_BAHASA_INDONESIA: 'LITERASI_INDONESIA',
+      LITERASI_INGGRIS: 'LITERASI_INGGRIS',
+      LITERASI_BAHASA_INGGRIS: 'LITERASI_INGGRIS',
+    };
+    const rawSubtest = String(parsed.subtest || 'PENALARAN_MATEMATIKA').toUpperCase();
+    const mappedSubtest = subtestMap[rawSubtest] || rawSubtest;
+
+    let matchedSubtopicId: string | null = null;
+    if (parsed.subtopic) {
+      const needle = String(parsed.subtopic).toLowerCase();
+      const found = topics
+        .flatMap((t) => t.subtopics)
+        .find((s) => s.title.toLowerCase().includes(needle) || needle.includes(s.title.toLowerCase()));
+      if (found) matchedSubtopicId = found.id;
+    }
+
+    const rawOptions = Array.isArray(parsed.options) ? parsed.options : [];
+    const opts = [0, 1, 2, 3, 4].map((i) => {
+      const o = rawOptions[i];
+      return {
+        content: o ? String(o.content || '').trim() : '',
+        isCorrect: o ? Boolean(o.isCorrect) : i === 0,
+        order: i + 1,
+      };
+    });
+
+    const sol = parsed.solution || {};
+    const rawSteps = Array.isArray(sol.steps) ? sol.steps : [];
+    const solSteps = rawSteps.length > 0
+      ? rawSteps.map((s: any, i: number) => ({
+          stepNumber: i + 1,
+          category: s.category || `Langkah ${i + 1}`,
+          title: String(s.title || '').trim(),
+          content: String(s.content || '').trim(),
+        }))
+      : [];
+
+    const diff = String(parsed.difficulty || 'MEDIUM').toUpperCase();
+    const validDiff = (diff === 'EASY' || diff === 'HARD') ? diff : 'MEDIUM';
+
+    const tgt = String(parsed.target || 'FOR_PRACTICE').toUpperCase();
+    const validTarget = (tgt === 'DRAFT' || tgt === 'FOR_TRYOUT') ? tgt : 'FOR_PRACTICE';
+
+    return {
+      subtest: mappedSubtest,
+      subtopicId: matchedSubtopicId,
+      difficulty: validDiff,
+      target: validTarget,
+      narration: parsed.narration ? String(parsed.narration).trim() : null,
+      content: String(parsed.content || '').trim(),
+      imageUrl: parsed.imageUrl ? String(parsed.imageUrl).trim() : null,
+      points: Number(parsed.points) || 1,
+      options: opts,
+      keyFormula: sol.keyFormula ? String(sol.keyFormula).trim() : null,
+      quickTrick: sol.quickTrick ? String(sol.quickTrick).trim() : null,
+      staticExplanation: sol.staticExplanation ? String(sol.staticExplanation).trim() : null,
+      solutionSteps: solSteps,
+    };
+  }
+
   function applyAiJson() {
     try {
       let parsed = JSON.parse(aiJsonInput.trim());
@@ -546,78 +891,60 @@ function ControlCenterContent() {
       if (!parsed || typeof parsed !== 'object') {
         throw new Error('Format JSON tidak valid.');
       }
-      const subtestMap: Record<string, string> = {
-        PENALARAN_MATEMATIKA: 'PENALARAN_MATEMATIKA',
-        PENALARAN_UMUM: 'PENALARAN_UMUM',
-        PEMAHAMAN_BACAAN_MENULIS: 'PEMAHAMAN_BACAAN_MENULIS',
-        PENGETAHUAN_KUANTITATIF: 'PENGETAHUAN_KUANTITATIF',
-        PENGETAHUAN_PEMAHAMAN_UMUM: 'PENGETAHUAN_PEMAHAMAN_UMUM',
-        LITERASI_INDONESIA: 'LITERASI_INDONESIA',
-        LITERASI_BAHASA_INDONESIA: 'LITERASI_INDONESIA',
-        LITERASI_INGGRIS: 'LITERASI_INGGRIS',
-        LITERASI_BAHASA_INGGRIS: 'LITERASI_INGGRIS',
-      };
-      const rawSubtest = String(parsed.subtest || 'PENALARAN_MATEMATIKA').toUpperCase();
-      const mappedSubtest = subtestMap[rawSubtest] || rawSubtest;
 
-      let matchedSubtopicId = '';
-      if (parsed.subtopic) {
-        const needle = String(parsed.subtopic).toLowerCase();
-        const found = topics
-          .flatMap((t) => t.subtopics)
-          .find((s) => s.title.toLowerCase().includes(needle) || needle.includes(s.title.toLowerCase()));
-        if (found) matchedSubtopicId = found.id;
-      }
-
-      const rawOptions = Array.isArray(parsed.options) ? parsed.options : [];
-      const opts = [0, 1, 2, 3, 4].map((i) => {
-        const o = rawOptions[i];
-        return {
-          content: o ? String(o.content || '') : '',
-          isCorrect: o ? Boolean(o.isCorrect) : i === 0,
-          order: i + 1,
-        };
-      });
-
-      const sol = parsed.solution || {};
-      const rawSteps = Array.isArray(sol.steps) ? sol.steps : [];
-      const solSteps = rawSteps.length > 0
-        ? rawSteps.map((s: any, i: number) => ({
-            stepNumber: i + 1,
-            category: s.category || `Langkah ${i + 1}`,
-            title: s.title || '',
-            content: s.content || '',
-          }))
-        : initialQuestionForm.solutionSteps;
-
-      const diff = String(parsed.difficulty || 'MEDIUM').toUpperCase();
-      const validDiff = (diff === 'EASY' || diff === 'HARD') ? diff : 'MEDIUM';
-
-      const tgt = String(parsed.target || 'FOR_PRACTICE').toUpperCase();
-      const validTarget = (tgt === 'DRAFT' || tgt === 'FOR_TRYOUT') ? tgt : 'FOR_PRACTICE';
+      const body = mapAiJsonToRequestBody(parsed);
 
       setQuestionForm({
-        subtest: mappedSubtest,
-        subtopicId: matchedSubtopicId,
-        difficulty: validDiff,
-        target: validTarget,
-        narration: parsed.narration || '',
-        content: parsed.content || '',
-        imageUrl: parsed.imageUrl || '',
-        points: String(parsed.points || 1),
-        options: opts,
-        keyFormula: sol.keyFormula || '',
-        quickTrick: sol.quickTrick || '',
-        staticExplanation: sol.staticExplanation || '',
-        solutionSteps: solSteps,
+        subtest: body.subtest,
+        subtopicId: body.subtopicId || '',
+        difficulty: body.difficulty as any,
+        target: body.target as any,
+        narration: body.narration || '',
+        content: body.content,
+        imageUrl: body.imageUrl || '',
+        points: String(body.points || 1),
+        options: body.options,
+        keyFormula: body.keyFormula || '',
+        quickTrick: body.quickTrick || '',
+        staticExplanation: body.staticExplanation || '',
+        solutionSteps: body.solutionSteps.length > 0 ? body.solutionSteps : initialQuestionForm.solutionSteps,
       });
 
       setEditingQuestion(null);
       setAiImportOpen(false);
+      setCreateMethodModalOpen(false);
       setQuestionFormOpen(true);
       setNotice('Soal dari AI berhasil diterapkan ke form! Silakan periksa dan simpan.');
     } catch (err: any) {
       setError(`Gagal membaca JSON AI: ${err.message || 'Format tidak valid'}`);
+    }
+  }
+
+  async function bulkImportQuestions() {
+    try {
+      let parsed = JSON.parse(aiJsonInput.trim());
+      if (!Array.isArray(parsed)) {
+        parsed = [parsed];
+      }
+      if (parsed.length === 0) {
+        throw new Error('Array JSON kosong.');
+      }
+      setImportingBulk(true);
+      setError(''); setNotice('');
+      let successCount = 0;
+      for (const item of parsed) {
+        const body = mapAiJsonToRequestBody(item);
+        await api.post('/team/control-center/questions', body);
+        successCount++;
+      }
+      setAiJsonInput('');
+      setCreateMethodModalOpen(false);
+      await loadSection('questions', '', true);
+      setNotice(`Berhasil mengimpor ${successCount} soal ke Bank Soal!`);
+    } catch (err: any) {
+      setError(`Gagal mengimpor soal: ${err.message || 'Format tidak valid'}`);
+    } finally {
+      setImportingBulk(false);
     }
   }
 
@@ -687,6 +1014,136 @@ function ControlCenterContent() {
       setNotice(successMessage);
     } catch (cause) { setError(errorMessage(cause)); }
     finally { setSaving(false); }
+  }
+
+  async function saveDiscount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true); setError(''); setNotice('');
+    const body = {
+      name: discountForm.name.trim(),
+      type: discountForm.type,
+      value: Number(discountForm.value),
+      startDate: new Date(discountForm.startDate).toISOString(),
+      endDate: new Date(discountForm.endDate).toISOString(),
+      packageId: discountForm.packageId.trim() || null,
+      badgeText: discountForm.badgeText.trim() || 'DISKON SPESIAL',
+      badgeStyle: discountForm.badgeStyle || 'RED_FIRE',
+      isActive: discountForm.isActive,
+    };
+    try {
+      if (editingDiscount) await api.patch(`/team/control-center/discounts/${editingDiscount}`, body);
+      else await api.post('/team/control-center/discounts', body);
+      const successMessage = editingDiscount ? 'Discount updated.' : 'Discount created.';
+      setDiscountForm(initialDiscountForm);
+      setEditingDiscount(null);
+      setDiscountFormOpen(false);
+      await loadSection('discounts', '', true);
+      setNotice(successMessage);
+    } catch (cause) { setError(errorMessage(cause)); }
+    finally { setSaving(false); }
+  }
+
+  function editDiscountItem(item: Discount) {
+    setEditingDiscount(item.id);
+    setDiscountForm({
+      name: item.name,
+      type: item.type,
+      value: String(item.value),
+      startDate: dateInput(item.startDate),
+      endDate: dateInput(item.endDate),
+      packageId: item.packageId || '',
+      badgeText: item.badgeText || 'DISKON 25%',
+      badgeStyle: item.badgeStyle || 'RED_FIRE',
+      isActive: item.isActive,
+    });
+    setDiscountFormOpen(true);
+    setError(''); setNotice('');
+  }
+
+  async function toggleDiscountActive(item: Discount) {
+    setError(''); setNotice('');
+    try {
+      await api.patch(`/team/control-center/discounts/${item.id}`, { isActive: !item.isActive });
+      await loadSection('discounts', '', true);
+      setNotice(`Discount "${item.name}" ${!item.isActive ? 'activated' : 'paused'}.`);
+    } catch (cause) { setError(errorMessage(cause)); }
+  }
+
+  async function deleteDiscountItem(item: Discount) {
+    if (!window.confirm(`Are you sure you want to delete discount campaign "${item.name}"?`)) return;
+    setDeletingId(item.id);
+    setError(''); setNotice('');
+    try {
+      await api.delete(`/team/control-center/discounts/${item.id}`);
+      await loadSection('discounts', '', true);
+      setNotice(`Discount "${item.name}" deleted.`);
+    } catch (cause) { setError(errorMessage(cause)); }
+    finally { setDeletingId(null); }
+  }
+
+  async function saveVoucher(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true); setError(''); setNotice('');
+    const body = {
+      code: voucherForm.code.trim().toUpperCase(),
+      discountPercent: Number(voucherForm.discountPercent),
+      maxDiscount: voucherForm.maxDiscount.trim() ? Number(voucherForm.maxDiscount) : null,
+      minPurchase: Number(voucherForm.minPurchase || 0),
+      maxUsage: voucherForm.maxUsage.trim() ? Number(voucherForm.maxUsage) : null,
+      expiresAt: voucherForm.expiresAt ? new Date(voucherForm.expiresAt).toISOString() : null,
+      description: voucherForm.description.trim() || null,
+      referrerName: voucherForm.referrerName.trim() || null,
+      isActive: voucherForm.isActive,
+    };
+    try {
+      if (editingVoucher) await api.patch(`/team/control-center/vouchers/${editingVoucher}`, body);
+      else await api.post('/team/control-center/vouchers', body);
+      const successMessage = editingVoucher ? 'Voucher / Referal diperbarui.' : 'Voucher / Referal berhasil dibuat.';
+      setVoucherForm(initialVoucherForm);
+      setEditingVoucher(null);
+      setVoucherFormOpen(false);
+      await loadSection('vouchers', '', true);
+      setNotice(successMessage);
+    } catch (cause) { setError(errorMessage(cause)); }
+    finally { setSaving(false); }
+  }
+
+  function editVoucherItem(item: Voucher) {
+    setEditingVoucher(item.id);
+    setVoucherForm({
+      code: item.code,
+      discountPercent: String(item.discountPercent),
+      maxDiscount: item.maxDiscount ? String(item.maxDiscount) : '',
+      minPurchase: String(item.minPurchase || 0),
+      maxUsage: item.maxUsage ? String(item.maxUsage) : '',
+      expiresAt: item.expiresAt ? dateInput(item.expiresAt) : '',
+      description: item.description || '',
+      referrerName: item.referrerName || '',
+      isActive: item.isActive,
+    });
+    setVoucherFormOpen(true);
+    setError(''); setNotice('');
+  }
+
+  async function toggleVoucherActive(item: Voucher) {
+    setError(''); setNotice('');
+    try {
+      await api.patch(`/team/control-center/vouchers/${item.id}`, { isActive: !item.isActive });
+      await loadSection('vouchers', '', true);
+      setNotice(`Voucher "${item.code}" ${!item.isActive ? 'diaktifkan' : 'dinonaktifkan'}.`);
+    } catch (cause) { setError(errorMessage(cause)); }
+  }
+
+  async function deleteVoucherItem(item: Voucher) {
+    if (!window.confirm(`Hapus kode voucher/referal "${item.code}"?`)) return;
+    setDeletingId(item.id);
+    setError(''); setNotice('');
+    try {
+      await api.delete(`/team/control-center/vouchers/${item.id}`);
+      await loadSection('vouchers', '', true);
+      setNotice(`Voucher "${item.code}" berhasil dihapus.`);
+    } catch (cause) { setError(errorMessage(cause)); }
+    finally { setDeletingId(null); }
   }
 
   async function saveArticle(event: FormEvent<HTMLFormElement>) {
@@ -1009,6 +1466,113 @@ function ControlCenterContent() {
       ),
     }),
   ], [deletingId, editingPackage]);
+
+  // TANSTACK TABLE COLUMNS FOR DISCOUNTS
+  const discountColumns = React.useMemo(() => [
+    discountColHelper.accessor('name', {
+      header: 'Campaign & Badge',
+      cell: ({ row }) => {
+        const d = row.original;
+        const IconComp = getBadgeIcon(d.badgeStyle);
+        return (
+          <div className="flex items-center gap-3">
+            <span className={`discount-badge-base ${getBadgeClass(d.badgeStyle)} shrink-0`}>
+              <IconComp className="w-3 h-3" />
+              {d.badgeText}
+            </span>
+            <div>
+              <strong className="block font-semibold text-[13px]">{d.name}</strong>
+              <small className="block text-[var(--muted-fg)] text-xs">
+                {d.packageName ? `Package: ${d.packageName}` : 'All packages & Pass'}
+              </small>
+            </div>
+          </div>
+        );
+      },
+    }),
+    discountColHelper.accessor('value', {
+      header: 'Discount Value',
+      cell: ({ row }) => {
+        const d = row.original;
+        return (
+          <span className="font-bold text-[13px] text-blue-500">
+            {d.type === 'PERCENTAGE' ? `${d.value}% OFF` : `${currency.format(d.value)} OFF`}
+          </span>
+        );
+      },
+    }),
+    discountColHelper.accessor('startDate', {
+      header: 'Active Period',
+      cell: ({ row }) => {
+        const d = row.original;
+        const now = Date.now();
+        const start = new Date(d.startDate).getTime();
+        const end = new Date(d.endDate).getTime();
+        const isExpired = now > end;
+        const isScheduled = now < start;
+        return (
+          <div>
+            <span className="text-xs">{formatDate(d.startDate)} – {formatDate(d.endDate)}</span>
+            <small className={`block text-[11px] font-medium ${isExpired ? 'text-zinc-500' : isScheduled ? 'text-amber-500' : 'text-emerald-500'}`}>
+              {isExpired ? 'Expired' : isScheduled ? 'Scheduled (Starts soon)' : 'Active now'}
+            </small>
+          </div>
+        );
+      },
+    }),
+    discountColHelper.accessor('isActive', {
+      header: 'Status',
+      cell: ({ row }) => {
+        const d = row.original;
+        const now = Date.now();
+        const isExpired = now > new Date(d.endDate).getTime();
+        const isScheduled = now < new Date(d.startDate).getTime();
+        const statusLabel = !d.isActive ? 'Paused' : isExpired ? 'Expired' : isScheduled ? 'Scheduled' : 'Active';
+        const statusClass = !d.isActive ? 'status-submitted' : isExpired ? 'status-submitted' : isScheduled ? 'status-under-review' : 'status-accepted';
+        return (
+          <span className={`control-status ${statusClass}`}>
+            {statusLabel}
+          </span>
+        );
+      },
+    }),
+    discountColHelper.display({
+      id: 'actions',
+      header: () => <div className="text-right">Actions</div>,
+      cell: ({ row }) => {
+        const d = row.original;
+        return (
+          <div className="table-action-group">
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => void toggleDiscountActive(d)}
+              title={d.isActive ? 'Pause discount' : 'Activate discount'}
+            >
+              {d.isActive ? 'Pause' : 'Activate'}
+            </button>
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => editDiscountItem(d)}
+              title="Edit discount"
+            >
+              <Edit className="action-icon" /> Edit
+            </button>
+            <button
+              type="button"
+              className="table-action-btn table-action-btn-danger"
+              onClick={() => void deleteDiscountItem(d)}
+              disabled={deletingId === d.id}
+              aria-label={`Delete discount ${d.name}`}
+            >
+              <Trash2 className="action-icon" /> {deletingId === d.id ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
+        );
+      },
+    }),
+  ], [deletingId]);
 
   // TANSTACK TABLE COLUMNS FOR USERS
   const userColumns = React.useMemo(() => [
@@ -1686,19 +2250,12 @@ function ControlCenterContent() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="button button-secondary flex items-center gap-1.5"
-                onClick={() => setAiImportOpen(!aiImportOpen)}
-              >
-                <Zap className="w-4 h-4 text-amber-400" />
-                {aiImportOpen ? 'Tutup Import AI' : '⚡ Import JSON (AI)'}
-              </button>
-              <button
-                type="button"
                 className="button button-primary"
                 onClick={() => {
                   setEditingQuestion(null);
-                  setQuestionForm(initialQuestionForm);
-                  setQuestionFormOpen(true);
+                  setCreateMethodView('SELECT');
+                  setIsPromptAdjusterOpen(false);
+                  setCreateMethodModalOpen(true);
                   setError('');
                   setNotice('');
                 }}
@@ -1707,42 +2264,6 @@ function ControlCenterContent() {
               </button>
             </div>
           </div>
-
-          {/* AI JSON IMPORT BOX */}
-          {aiImportOpen && (
-            <div className="mb-5 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Import Soal Otomatis dari AI
-                </span>
-                <span className="text-[11px] text-[var(--muted-fg)]">Paste array atau single JSON soal</span>
-              </div>
-              <textarea
-                className="field-input font-mono text-xs w-full"
-                rows={6}
-                placeholder="Paste JSON dari AI di sini..."
-                value={aiJsonInput}
-                onChange={(e) => setAiJsonInput(e.target.value)}
-              />
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="button button-secondary text-xs h-8"
-                  onClick={() => setAiImportOpen(false)}
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  className="button button-primary text-xs h-8 flex items-center gap-1.5"
-                  onClick={applyAiJson}
-                  disabled={!aiJsonInput.trim()}
-                >
-                  <Zap className="w-3.5 h-3.5" /> Terapkan ke Form
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* QUESTION TOOLBAR & FILTERS */}
           <div className="control-filter-toolbar">
@@ -2298,6 +2819,815 @@ function ControlCenterContent() {
               columns={packageColumns}
               data={packages}
               emptyMessage="No packages found."
+            />
+          )}
+        </section>
+      )}
+
+      {/* SECTION: VOUCHERS & REFERRAL CODES */}
+      {section === 'vouchers' && (
+        <section className="control-panel" aria-labelledby="vouchers-heading">
+          <div className="section-heading control-panel-heading">
+            <div>
+              <h2 id="vouchers-heading">Voucher & Kode Referal</h2>
+              <p>Kelola kode voucher dan referal yang dapat dimasukkan siswa saat checkout pembayaran paket koin / Premium Pass.</p>
+            </div>
+            <button
+              className="button button-primary"
+              onClick={() => {
+                setEditingVoucher(null);
+                setVoucherForm(initialVoucherForm);
+                setVoucherFormOpen(true);
+                setError('');
+                setNotice('');
+              }}
+            >
+              + Buat Voucher / Referal
+            </button>
+          </div>
+
+          {voucherFormOpen && (
+            <form className="control-edit-form" onSubmit={saveVoucher} style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', marginBottom: '16px', borderBottom: '1px solid var(--border)' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
+                    {editingVoucher ? 'Edit Voucher / Referal' : 'Buat Voucher / Referal Baru'}
+                  </h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
+                    Potongan harga otomatis dihitung dalam persentase saat siswa memasukkan kode di halaman pembayaran.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="button button-secondary text-xs"
+                  onClick={() => {
+                    setVoucherForm(initialVoucherForm);
+                    setEditingVoucher(null);
+                    setVoucherFormOpen(false);
+                  }}
+                >
+                  <X className="w-3.5 h-3.5" /> Batal
+                </button>
+              </div>
+
+              <div className="control-form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+                <label className="field-label">
+                  Kode Voucher / Referal (Huruf Kapital)
+                  <input
+                    className="field-input font-mono font-bold"
+                    required
+                    minLength={2}
+                    placeholder="Contoh: JITU20, AMBIS50, BUDI10"
+                    value={voucherForm.code}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, code: e.target.value.toUpperCase() })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Persentase Diskon (%)
+                  <input
+                    className="field-input"
+                    type="number"
+                    required
+                    min="1"
+                    max="100"
+                    placeholder="Contoh: 20 (untuk diskon 20%)"
+                    value={voucherForm.discountPercent}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, discountPercent: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Maksimum Potongan (IDR) - Opsional
+                  <input
+                    className="field-input"
+                    type="number"
+                    min="0"
+                    placeholder="Kosongkan jika tanpa batas maksimal"
+                    value={voucherForm.maxDiscount}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, maxDiscount: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Minimal Pembelian (IDR)
+                  <input
+                    className="field-input"
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={voucherForm.minPurchase}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, minPurchase: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Batas Kuota Penggunaan - Opsional
+                  <input
+                    className="field-input"
+                    type="number"
+                    min="1"
+                    placeholder="Kosongkan jika kuota tak terbatas"
+                    value={voucherForm.maxUsage}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, maxUsage: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Tanggal Kedaluwarsa - Opsional
+                  <input
+                    className="field-input"
+                    type="datetime-local"
+                    value={voucherForm.expiresAt}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, expiresAt: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Nama Pemilik / Referal (Opsional)
+                  <input
+                    className="field-input"
+                    placeholder="Contoh: Kak Budi (Ambis PTN)"
+                    value={voucherForm.referrerName}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, referrerName: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Keterangan / Catatan Singkat
+                  <input
+                    className="field-input"
+                    placeholder="Contoh: Promo Launching 20% Off"
+                    value={voucherForm.description}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, description: e.target.value })}
+                  />
+                </label>
+              </div>
+
+              <div style={{ marginTop: '16px' }}>
+                <label className="control-check">
+                  <input
+                    type="checkbox"
+                    checked={voucherForm.isActive}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, isActive: e.target.checked })}
+                  />{' '}
+                  Status Aktif (dapat digunakan oleh siswa)
+                </label>
+              </div>
+
+              <div className="control-form-actions" style={{ marginTop: '20px' }}>
+                <button
+                  className="button button-secondary"
+                  type="button"
+                  onClick={() => {
+                    setVoucherForm(initialVoucherForm);
+                    setEditingVoucher(null);
+                    setVoucherFormOpen(false);
+                  }}
+                >
+                  Batal
+                </button>
+                <button className="button button-primary" type="submit" disabled={saving}>
+                  {saving ? 'Menyimpan...' : editingVoucher ? 'Simpan Perubahan' : 'Buat Voucher'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {loading ? (
+            <div className="control-empty">Memuat data voucher…</div>
+          ) : error ? null : vouchers.length === 0 ? (
+            <div className="control-empty">
+              Belum ada voucher atau kode referal. Klik tombol "+ Buat Voucher / Referal" di atas untuk menambahkan.
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="control-table">
+                <thead>
+                  <tr>
+                    <th>Kode</th>
+                    <th>Diskon</th>
+                    <th>Pemilik / Referal</th>
+                    <th>Kuota Pemakaian</th>
+                    <th>Min. Belanja</th>
+                    <th>Kedaluwarsa</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vouchers.map((v) => {
+                    const isExpired = v.expiresAt ? new Date(v.expiresAt) < new Date() : false;
+                    const isLimitReached = v.maxUsage ? v.usedCount >= v.maxUsage : false;
+                    return (
+                      <tr key={v.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span
+                              style={{
+                                fontFamily: 'monospace',
+                                fontWeight: 700,
+                                fontSize: '13px',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: 'rgba(59, 130, 246, 0.12)',
+                                color: '#60a5fa',
+                                border: '1px solid rgba(59, 130, 246, 0.25)',
+                              }}
+                            >
+                              {v.code}
+                            </span>
+                          </div>
+                          {v.description && (
+                            <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '3px', fontSize: '11px' }}>
+                              {v.description}
+                            </small>
+                          )}
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: '13px',
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              background: 'rgba(16, 185, 129, 0.15)',
+                              color: '#34d399',
+                            }}
+                          >
+                            {v.discountPercent}% OFF
+                          </span>
+                          {v.maxDiscount && (
+                            <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '2px', fontSize: '11px' }}>
+                              Maks. Rp {v.maxDiscount.toLocaleString('id-ID')}
+                            </small>
+                          )}
+                        </td>
+                        <td>
+                          {v.referrerName ? (
+                            <span style={{ fontWeight: 550, color: 'var(--foreground)' }}>{v.referrerName}</span>
+                          ) : (
+                            <span style={{ color: 'var(--muted-fg)', fontSize: '12px' }}>Umum / Promo</span>
+                          )}
+                        </td>
+                        <td>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                            {v.usedCount} / {v.maxUsage ? v.maxUsage : '∞'}
+                          </span>
+                          {isLimitReached && (
+                            <span style={{ display: 'block', fontSize: '10px', color: '#f87171', fontWeight: 600 }}>
+                              Kuota Habis
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {v.minPurchase > 0 ? `Rp ${v.minPurchase.toLocaleString('id-ID')}` : 'Rp 0'}
+                        </td>
+                        <td>
+                          {v.expiresAt ? (
+                            <span style={{ color: isExpired ? '#f87171' : 'var(--foreground)' }}>
+                              {new Date(v.expiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {isExpired && <span style={{ display: 'block', fontSize: '10px', color: '#f87171', fontWeight: 600 }}>Kedaluwarsa</span>}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--muted-fg)', fontSize: '12px' }}>Selamanya</span>
+                          )}
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className={`badge ${v.isActive ? 'badge-confirmed' : 'badge-cancelled'}`}
+                            style={{ cursor: 'pointer', border: 'none' }}
+                            onClick={() => toggleVoucherActive(v)}
+                            title="Klik untuk ubah status aktif"
+                          >
+                            {v.isActive ? 'Aktif' : 'Nonaktif'}
+                          </button>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="table-action-group">
+                            <button
+                              type="button"
+                              className="table-action-btn"
+                              onClick={() => editVoucherItem(v)}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="table-action-btn table-action-btn-danger"
+                              onClick={() => deleteVoucherItem(v)}
+                              disabled={deletingId === v.id}
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* SECTION: DISCOUNTS DATA TABLE & LIVE PREVIEW */}
+      {section === 'discounts' && (
+        <section className="control-panel" aria-labelledby="discounts-heading">
+          <div className="section-heading control-panel-heading">
+            <div>
+              <h2 id="discounts-heading">Discounts & Promo Badges</h2>
+              <p>Kelola event diskon, tentukan periode aktif, pasang badge visual khusus, dan pantau live preview tampilan kartu Shop.</p>
+            </div>
+            <button
+              className="button button-primary"
+              onClick={() => {
+                setEditingDiscount(null);
+                const now = new Date();
+                const oneWeekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+                setDiscountForm({
+                  ...initialDiscountForm,
+                  startDate: now.toISOString().slice(0, 16),
+                  endDate: oneWeekLater.toISOString().slice(0, 16),
+                });
+                setDiscountFormOpen(true);
+                setError('');
+                setNotice('');
+              }}
+            >
+              + Create discount
+            </button>
+          </div>
+
+          {discountFormOpen && (
+            <div className="control-edit-form" style={{ marginBottom: '24px' }}>
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--border)]">
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
+                    {editingDiscount ? 'Edit Discount Campaign' : 'Create New Discount Campaign'}
+                  </h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
+                    Atur detail diskon di kiri. Tampilan badge dan harga di kanan otomatis ter-update secara real-time.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="button button-secondary text-xs"
+                  onClick={() => {
+                    setDiscountForm(initialDiscountForm);
+                    setEditingDiscount(null);
+                    setDiscountFormOpen(false);
+                  }}
+                >
+                  <X className="w-3.5 h-3.5" /> Close Form
+                </button>
+              </div>
+
+              <div className="discount-form-layout">
+                {/* LEFT: FORM INPUTS */}
+                <form onSubmit={saveDiscount} className="space-y-4">
+                  {/* Campaign Name */}
+                  <label className="field-label">
+                    <span>Nama Kampanye Promo</span>
+                    <input
+                      className="field-input"
+                      required
+                      placeholder="e.g. Flash Sale UTBK 2026, Promo Ramadhan"
+                      value={discountForm.name}
+                      onChange={(e) => setDiscountForm({ ...discountForm, name: e.target.value })}
+                    />
+                  </label>
+
+                  {/* Type & Value */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="field-label">
+                      <span>Tipe Diskon</span>
+                      <select
+                        className="field-input"
+                        value={discountForm.type}
+                        onChange={(e) => {
+                          const newType = e.target.value as 'PERCENTAGE' | 'FIXED';
+                          const defaultVal = newType === 'PERCENTAGE' ? '25' : '15000';
+                          const defaultBadge = newType === 'PERCENTAGE' ? `DISKON ${defaultVal}%` : `HEMAT ${parseInt(defaultVal, 10)/1000}RB`;
+                          setDiscountForm({ ...discountForm, type: newType, value: defaultVal, badgeText: defaultBadge });
+                        }}
+                      >
+                        <option value="PERCENTAGE">Persentase (%)</option>
+                        <option value="FIXED">Nominal Tetap (Rp / IDR)</option>
+                      </select>
+                    </label>
+
+                    <label className="field-label">
+                      <span>{discountForm.type === 'PERCENTAGE' ? 'Besar Diskon (%)' : 'Besar Potongan (Rp)'}</span>
+                      <input
+                        className="field-input"
+                        type="number"
+                        required
+                        min="1"
+                        max={discountForm.type === 'PERCENTAGE' ? '99' : '1000000'}
+                        value={discountForm.value}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const autoBadge = discountForm.type === 'PERCENTAGE'
+                            ? `DISKON ${val}%`
+                            : `HEMAT ${Math.round((Number(val) || 0) / 1000)}RB`;
+                          setDiscountForm({ ...discountForm, value: val, badgeText: autoBadge });
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Target Package */}
+                  <label className="field-label">
+                    <span>Attach ke Paket / Produk</span>
+                    <select
+                      className="field-input"
+                      value={discountForm.packageId}
+                      onChange={(e) => setDiscountForm({ ...discountForm, packageId: e.target.value })}
+                    >
+                      <option value="">Semua Paket (All Packages &amp; PTN Premium Pass)</option>
+                      {packages.map((pkg) => (
+                        <option key={pkg.id} value={pkg.id}>
+                          {pkg.name} ({pkg.tokenAmount} coin) - Rp{pkg.price.toLocaleString('id-ID')}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[11px] text-[var(--muted-fg)] mt-1">
+                      Pilih &quot;Semua Paket&quot; agar promo berlaku global, atau pilih satu paket tertentu saja.
+                    </span>
+                  </label>
+
+                  {/* Period Dates */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-semibold text-[var(--foreground)]">Periode Promo (Start &amp; End Date)</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="field-label text-xs">
+                        <span>Waktu Mulai</span>
+                        <input
+                          className="field-input text-xs"
+                          type="datetime-local"
+                          required
+                          value={discountForm.startDate}
+                          onChange={(e) => setDiscountForm({ ...discountForm, startDate: e.target.value })}
+                        />
+                      </label>
+                      <label className="field-label text-xs">
+                        <span>Waktu Berakhir</span>
+                        <input
+                          className="field-input text-xs"
+                          type="datetime-local"
+                          required
+                          value={discountForm.endDate}
+                          onChange={(e) => setDiscountForm({ ...discountForm, endDate: e.target.value })}
+                        />
+                      </label>
+                    </div>
+
+                    {/* Quick duration buttons */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[11px] text-[var(--muted-fg)] mr-1">Preset Durasi:</span>
+                      {[
+                        { label: '+3 Hari', days: 3 },
+                        { label: '+7 Hari', days: 7 },
+                        { label: '+14 Hari', days: 14 },
+                        { label: '+30 Hari', days: 30 },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--muted-bg)] border border-[var(--border)] hover:bg-[var(--card)] transition-colors cursor-pointer"
+                          onClick={() => {
+                            const now = new Date();
+                            const future = new Date(now.getTime() + preset.days * 24 * 60 * 60 * 1000);
+                            setDiscountForm({
+                              ...discountForm,
+                              startDate: now.toISOString().slice(0, 16),
+                              endDate: future.toISOString().slice(0, 16),
+                            });
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Badge Text & Preset Chips */}
+                  <div className="space-y-1.5 pt-2 border-t border-[var(--border)]">
+                    <label className="field-label">
+                      <span>Badge Text (Teks Stiker Promo)</span>
+                      <input
+                        className="field-input font-bold"
+                        required
+                        maxLength={24}
+                        placeholder="e.g. DISKON 30%, FLASH SALE"
+                        value={discountForm.badgeText}
+                        onChange={(e) => setDiscountForm({ ...discountForm, badgeText: e.target.value })}
+                      />
+                    </label>
+
+                    {/* Quick Badge Text Chips */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[11px] text-[var(--muted-fg)] mr-1">Rekomendasi Teks:</span>
+                      {[
+                        'DISKON 25%',
+                        'DISKON 35%',
+                        'DISKON 50%',
+                        'HEMAT 20RB',
+                        'FLASH SALE',
+                        'BEST DEAL',
+                        'PROMO SPESIAL',
+                        'LIMITED TIME',
+                      ].map((badgeSuggestion) => (
+                        <button
+                          key={badgeSuggestion}
+                          type="button"
+                          className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[var(--muted-bg)] border border-[var(--border)] hover:border-blue-400 hover:text-blue-500 transition-colors cursor-pointer"
+                          onClick={() => setDiscountForm({ ...discountForm, badgeText: badgeSuggestion })}
+                        >
+                          {badgeSuggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Badge Design Style Selector */}
+                  <div className="space-y-1.5 pt-2 border-t border-[var(--border)]">
+                    <span className="text-xs font-semibold text-[var(--foreground)]">Badge Design Style</span>
+                    <p className="text-[11px] text-[var(--muted-fg)] m-0">Pilih palet visual badge yang siap dipasang langsung ke kartu Shop:</p>
+                    <div className="style-selector-grid pt-1">
+                      {BADGE_STYLES.map((style) => {
+                        const IconComponent = style.icon;
+                        const isSelected = discountForm.badgeStyle === style.id;
+                        return (
+                          <button
+                            key={style.id}
+                            type="button"
+                            className={`style-selector-btn ${isSelected ? 'is-active' : ''}`}
+                            onClick={() => setDiscountForm({ ...discountForm, badgeStyle: style.id })}
+                          >
+                            <span className={`discount-badge-base ${style.className}`}>
+                              <IconComponent className="w-3 h-3" />
+                              {style.label}
+                            </span>
+                            <span className="text-[10px] text-[var(--muted-fg)] font-medium">
+                              {isSelected ? '✓ Terpilih' : 'Pilih'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Available Status */}
+                  <label className="control-check pt-2">
+                    <input
+                      type="checkbox"
+                      checked={discountForm.isActive}
+                      onChange={(e) => setDiscountForm({ ...discountForm, isActive: e.target.checked })}
+                    />
+                    <span>Aktifkan promo ini langsung saat disimpan</span>
+                  </label>
+
+                  {/* Form Actions */}
+                  <div className="control-form-actions pt-2">
+                    <button
+                      className="button button-secondary"
+                      type="button"
+                      onClick={() => {
+                        setDiscountForm(initialDiscountForm);
+                        setEditingDiscount(null);
+                        setDiscountFormOpen(false);
+                      }}
+                    >
+                      Batal
+                    </button>
+                    <button className="button button-primary" type="submit" disabled={saving}>
+                      {saving ? 'Menyimpan…' : editingDiscount ? 'Simpan Perubahan' : 'Buat Promo & Pasang Badge'}
+                    </button>
+                  </div>
+                </form>
+
+                {/* RIGHT: INTERACTIVE LIVE PREVIEW PANE */}
+                <div className="discount-preview-pane">
+                  <div className="discount-preview-pane-header">
+                    <div className="discount-preview-pane-title">
+                      <Eye className="w-4 h-4 text-blue-500" />
+                      <span>Live Shop Card Preview</span>
+                    </div>
+                    <span className="text-[11px] text-[var(--muted-fg)]">
+                      Preview instan real-time
+                    </span>
+                  </div>
+
+                  {/* Calculations for Previews */}
+                  {(() => {
+                    const discountVal = Number(discountForm.value) || 0;
+                    const isPercentage = discountForm.type === 'PERCENTAGE';
+
+                    // Pass Card Calculations (Base: Rp 55.000)
+                    const passBasePrice = 55000;
+                    const passDiscountedPrice = isPercentage
+                      ? Math.max(1000, Math.round(passBasePrice * (1 - discountVal / 100)))
+                      : Math.max(1000, passBasePrice - discountVal);
+                    const passSavings = passBasePrice - passDiscountedPrice;
+                    const appliesToPass = !discountForm.packageId || packages.find(p => p.id === discountForm.packageId)?.name.toLowerCase().includes('pass');
+
+                    // Coin Card Calculations (Base: 3 coin = Rp 39.000)
+                    const coinPkgTarget = packages.find(p => p.id === discountForm.packageId && !p.name.toLowerCase().includes('pass'))
+                      || packages.find(p => p.tokenAmount === 3)
+                      || { id: 'fallback-3-coin', name: '3 coin', tokenAmount: 3, price: 39000, isActive: true };
+                    const coinBasePrice = coinPkgTarget.price;
+                    const coinDiscountedPrice = isPercentage
+                      ? Math.max(1000, Math.round(coinBasePrice * (1 - discountVal / 100)))
+                      : Math.max(1000, coinBasePrice - discountVal);
+                    const coinSavings = coinBasePrice - coinDiscountedPrice;
+                    const appliesToCoin = !discountForm.packageId || discountForm.packageId === coinPkgTarget.id;
+
+                    const ActiveIcon = getBadgeIcon(discountForm.badgeStyle);
+
+                    return (
+                      <div className="space-y-5">
+                        {/* 1. PTN PREMIUM PASS CARD PREVIEW */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                              Preview 1: Kartu PTN Premium Pass
+                            </span>
+                            {!appliesToPass && (
+                              <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
+                                (Hanya berlaku di paket terpilih)
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="pass-preview-card">
+                            <div className="relative z-10 flex flex-col justify-between gap-4">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                  {/* Attached Promo Badge with selected style & text */}
+                                  <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
+                                    <ActiveIcon className="w-3.5 h-3.5" />
+                                    {discountForm.badgeText || 'PROMO DISKON'}
+                                  </span>
+
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FFD13B] text-black text-[10px] font-black uppercase tracking-wider">
+                                    <Sparkles className="w-3 h-3 fill-black" />
+                                    Rekomendasi
+                                  </span>
+                                </div>
+
+                                <h3 className="text-[20px] font-black text-white tracking-tight leading-tight m-0">
+                                  PTN <span className="bg-[#FFD13B] text-black px-1.5 py-0.5 rounded-sm">PREMIUM PASS</span>
+                                </h3>
+                                <p className="text-[11px] text-blue-100 mt-1 max-w-[44ch] leading-relaxed">
+                                  Satu tiket langganan untuk bonus 4 coins, ribuan latihan soal tanpa limit, dan bebas pembahasan.
+                                </p>
+                              </div>
+
+                              {/* Price Block */}
+                              <div className="flex items-baseline justify-between pt-3 border-t border-blue-400/30">
+                                <div>
+                                  {appliesToPass && passSavings > 0 ? (
+                                    <div className="space-y-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs line-through text-blue-200/80 font-semibold tabular-nums">
+                                          Rp{passBasePrice.toLocaleString('id-ID')}
+                                        </span>
+                                        <span className="text-[10px] font-black text-yellow-300 bg-yellow-400/20 px-1.5 py-0.5 rounded">
+                                          Hemat Rp{passSavings.toLocaleString('id-ID')}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-[26px] font-black text-white leading-none tabular-nums">
+                                          Rp{passDiscountedPrice.toLocaleString('id-ID')}
+                                        </span>
+                                        <span className="text-xs font-bold text-blue-200">/bulan</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-baseline gap-1">
+                                      <span className="text-[26px] font-black text-white leading-none tabular-nums">
+                                        Rp{passBasePrice.toLocaleString('id-ID')}
+                                      </span>
+                                      <span className="text-xs font-bold text-blue-200">/bulan</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  className="px-4 py-2 rounded-lg bg-[#FFD13B] text-black font-black text-xs inline-flex items-center gap-1.5 shadow-md pointer-events-none"
+                                >
+                                  <span>Ambil Pass</span>
+                                  <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. CARD COIN BIASA PREVIEW */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                              Preview 2: Card Coin Biasa ({coinPkgTarget.tokenAmount} Coin)
+                            </span>
+                            {!appliesToCoin && (
+                              <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
+                                (Hanya berlaku di paket terpilih)
+                              </span>
+                            )}
+                          </div>
+
+                          <div className={`coin-preview-card ${appliesToCoin ? 'has-discount' : ''}`}>
+                            {/* Card Header with Coin count and Attached Badge */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-amber-400 text-zinc-950 font-black text-xs flex items-center justify-center shadow-xs">
+                                  🪙
+                                </div>
+                                <span className="font-extrabold text-[16px] text-[var(--foreground)]">
+                                  {coinPkgTarget.tokenAmount} coin
+                                </span>
+                              </div>
+
+                              {/* Attached Promo Badge with selected style & text */}
+                              <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
+                                <ActiveIcon className="w-3 h-3" />
+                                {discountForm.badgeText || 'DISKON'}
+                              </span>
+                            </div>
+
+                            {/* Price Block */}
+                            <div>
+                              {appliesToCoin && coinSavings > 0 ? (
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs line-through text-[var(--muted-fg)] font-semibold tabular-nums">
+                                      Rp{coinBasePrice.toLocaleString('id-ID')}
+                                    </span>
+                                    <span className="text-[10px] font-extrabold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                      Hemat Rp{coinSavings.toLocaleString('id-ID')}
+                                    </span>
+                                  </div>
+                                  <div className="font-black text-[24px] leading-tight text-[var(--foreground)] tabular-nums">
+                                    Rp{coinDiscountedPrice.toLocaleString('id-ID')}
+                                  </div>
+                                  <div className="text-[11px] text-[var(--muted-fg)] tabular-nums">
+                                    Rp{Math.round(coinDiscountedPrice / Math.max(1, coinPkgTarget.tokenAmount)).toLocaleString('id-ID')} / tryout
+                                  </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="font-black text-[24px] leading-tight text-[var(--foreground)] tabular-nums">
+                                    Rp{coinBasePrice.toLocaleString('id-ID')}
+                                  </div>
+                                  <div className="text-[11px] text-[var(--muted-fg)] tabular-nums">
+                                    Rp{Math.round(coinBasePrice / Math.max(1, coinPkgTarget.tokenAmount)).toLocaleString('id-ID')} / tryout
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Features */}
+                            <ul className="space-y-1.5 pt-3 border-t border-[var(--border)] text-xs text-[var(--muted-fg)]">
+                              <li className="flex items-center gap-1.5">
+                                <Check className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <span>Buka skor IRT &amp; pembahasan {coinPkgTarget.tokenAmount} tryout</span>
+                              </li>
+                              <li className="flex items-center gap-1.5">
+                                <Check className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                                <span>Berlaku sampai 21 Apr 2027</span>
+                              </li>
+                            </ul>
+
+                            {/* Buy Button */}
+                            <button
+                              type="button"
+                              className="w-full py-2 px-3 rounded-lg bg-[var(--muted-bg)] border border-[var(--border)] text-[var(--foreground)] font-bold text-xs pointer-events-none text-center"
+                            >
+                              Beli {coinPkgTarget.tokenAmount} coin
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="control-empty">Loading discounts…</div>
+          ) : error ? null : (
+            <DataTable
+              columns={discountColumns}
+              data={discounts}
+              emptyMessage="No discount campaigns created yet. Click '+ Create discount' above to start a promotion."
             />
           )}
         </section>
@@ -3223,6 +4553,440 @@ function ControlCenterContent() {
                 Close Preview
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PILIH METODE PEMBUATAN SOAL & IMPORT JSON (AI) */}
+      {createMethodModalOpen && (
+        <div className="modal-overlay" onClick={() => setCreateMethodModalOpen(false)}>
+          <div
+            className={`modal-dialog ${createMethodView === 'IMPORT_JSON' ? 'modal-wide' : ''}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: createMethodView === 'IMPORT_JSON' ? '900px' : '640px' }}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {createMethodView === 'IMPORT_JSON' && (
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    style={{ fontSize: '11px', height: '28px', padding: '0 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    onClick={() => setCreateMethodView('SELECT')}
+                  >
+                    <ArrowLeft style={{ width: 14, height: 14 }} />
+                    <span>Kembali</span>
+                  </button>
+                )}
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--foreground)' }}>
+                    {createMethodView === 'SELECT'
+                      ? 'Pilih Metode Pembuatan Soal'
+                      : 'Import Soal via JSON (AI)'}
+                  </h3>
+                  <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '2px' }}>
+                    {createMethodView === 'SELECT'
+                      ? 'Pilih apakah ingin input manual dari nol atau generate & import JSON via AI'
+                      : 'Paste format JSON atau sesuaikan prompt kisi-kisi sebelum generate'}
+                  </small>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {createMethodView === 'IMPORT_JSON' && (
+                  <button
+                    type="button"
+                    className={`button ${isPromptAdjusterOpen ? 'button-primary' : 'button-secondary'}`}
+                    style={{
+                      fontSize: '11px',
+                      height: '30px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      ...(isPromptAdjusterOpen
+                        ? { background: '#fbbf24', color: '#000', fontWeight: 700 }
+                        : { borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }),
+                    }}
+                    onClick={() => setIsPromptAdjusterOpen(!isPromptAdjusterOpen)}
+                  >
+                    <Sliders style={{ width: 14, height: 14 }} />
+                    <span>{isPromptAdjusterOpen ? 'Tutup Adjust Prompt' : '⚡ Adjust Prompt'}</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => setCreateMethodModalOpen(false)}
+                  aria-label="Close modal"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* STEP 1: SELECT METHOD (JEJER KANAN KIRI / 2 COLS) */}
+              {createMethodView === 'SELECT' && (
+                <div className="method-selection-grid">
+                  {/* CARD KIRI: MANUAL */}
+                  <div
+                    className="method-card method-card-manual"
+                    onClick={() => {
+                      setCreateMethodModalOpen(false);
+                      setEditingQuestion(null);
+                      setQuestionForm(initialQuestionForm);
+                      setQuestionFormOpen(true);
+                      setError('');
+                      setNotice('');
+                    }}
+                  >
+                    <div>
+                      <div className="method-card-icon-wrap method-icon-manual">
+                        <PenTool style={{ width: 22, height: 22 }} />
+                      </div>
+                      <div>
+                        <div className="method-card-header">
+                          <h4 className="method-card-title">Input Manual</h4>
+                          <span className="method-card-badge method-badge-manual">
+                            Editor
+                          </span>
+                        </div>
+                        <p className="method-card-desc">
+                          Tulis teks wacana, narasi, pertanyaan, 5 pilihan ganda (A-E), dan pembahasan langkah demi langkah secara manual di editor.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="method-card-action method-action-manual">
+                      <span>Buka Form Editor</span>
+                      <ArrowRight style={{ width: 16, height: 16 }} />
+                    </div>
+                  </div>
+
+                  {/* CARD KANAN: IMPORT JSON (AI) */}
+                  <div
+                    className="method-card method-card-ai"
+                    onClick={() => {
+                      setCreateMethodView('IMPORT_JSON');
+                    }}
+                  >
+                    <div>
+                      <div className="method-card-icon-wrap method-icon-ai">
+                        <Sparkles style={{ width: 22, height: 22 }} />
+                      </div>
+                      <div>
+                        <div className="method-card-header">
+                          <h4 className="method-card-title">Import JSON (AI)</h4>
+                          <span className="method-card-badge method-badge-ai">
+                            AI Generator
+                          </span>
+                        </div>
+                        <p className="method-card-desc">
+                          Paste data JSON hasil generate AI atau gunakan fitur Adjust Prompt untuk mengatur kisi-kisi soal sesuai kurikulum resmi.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="method-card-action method-action-ai">
+                      <span>Lanjut ke Import & Prompt</span>
+                      <ArrowRight style={{ width: 16, height: 16 }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: IMPORT JSON + ADJUST PROMPT PANEL */}
+              {createMethodView === 'IMPORT_JSON' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* ADJUST PROMPT ACCORDION / BUILDER */}
+                  {isPromptAdjusterOpen && (
+                    <div className="prompt-builder-box">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Sliders style={{ width: 16, height: 16 }} /> Prompt Engineering Builder
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
+                          Sesuaikan parameter kisi-kisi, salin prompt, lalu jalankan di AI pilihanmu
+                        </span>
+                      </div>
+
+                      {/* 1. Multi-Select Subtests */}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)' }}>
+                            1. Pilih Subtes (Bisa Multi-Select)
+                          </label>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              type="button"
+                              style={{ background: 'none', border: 'none', color: '#fbbf24', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
+                              onClick={() => setPromptSubtests(ALL_SUBTESTS.map((s) => s.id))}
+                            >
+                              Pilih Semua
+                            </button>
+                            <span style={{ color: 'var(--border)' }}>|</span>
+                            <button
+                              type="button"
+                              style={{ background: 'none', border: 'none', color: 'var(--muted-fg)', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
+                              onClick={() => setPromptSubtests(['PENALARAN_MATEMATIKA'])}
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        </div>
+                        <div className="subtest-chip-grid">
+                          {ALL_SUBTESTS.map((sub) => {
+                            const isSelected = promptSubtests.includes(sub.id);
+                            return (
+                              <button
+                                type="button"
+                                key={sub.id}
+                                className={`subtest-chip-btn ${isSelected ? 'is-active' : ''}`}
+                                onClick={() => {
+                                  if (isSelected) {
+                                    if (promptSubtests.length > 1) {
+                                      setPromptSubtests(promptSubtests.filter((s) => s !== sub.id));
+                                    }
+                                  } else {
+                                    setPromptSubtests([...promptSubtests, sub.id]);
+                                  }
+                                }}
+                              >
+                                {isSelected && <Check style={{ width: 13, height: 13, color: '#fbbf24' }} />}
+                                <span>{sub.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 2. Parameters: Count, Difficulty, Target */}
+                      <div className="prompt-field-row">
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
+                            2. Jumlah Soal
+                          </label>
+                          <select
+                            className="field-input"
+                            style={{ fontSize: '12px', width: '100%' }}
+                            value={promptCount}
+                            onChange={(e) => setPromptCount(Number(e.target.value))}
+                          >
+                            <option value={1}>1 Soal</option>
+                            <option value={3}>3 Soal</option>
+                            <option value={5}>5 Soal (Standar)</option>
+                            <option value={10}>10 Soal (Paket Latihan)</option>
+                            <option value={20}>20 Soal (Full Subtes)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
+                            3. Tingkat Kesulitan
+                          </label>
+                          <select
+                            className="field-input"
+                            style={{ fontSize: '12px', width: '100%' }}
+                            value={promptDifficulty}
+                            onChange={(e) => setPromptDifficulty(e.target.value)}
+                          >
+                            <option value="EASY">Mudah (Konseptual Dasar)</option>
+                            <option value="MEDIUM">Sedang (Standar UTBK)</option>
+                            <option value="HARD">Sulit (HOTS & Analisis Tinggi)</option>
+                            <option value="MIXED">Campuran Berimbang</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
+                            4. Target Penggunaan
+                          </label>
+                          <select
+                            className="field-input"
+                            style={{ fontSize: '12px', width: '100%' }}
+                            value={promptTarget}
+                            onChange={(e) => setPromptTarget(e.target.value)}
+                          >
+                            <option value="FOR_PRACTICE">Bank Latihan Harian</option>
+                            <option value="FOR_TRYOUT">Tryout Resmi SNBT</option>
+                            <option value="DRAFT">Draft Kurasi</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* 3. Topic Focus & Additional options */}
+                      <div className="prompt-field-row-2">
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
+                            5. Fokus Topik / Kisi-kisi Khusus (Opsional)
+                          </label>
+                          <input
+                            type="text"
+                            className="field-input"
+                            style={{ fontSize: '12px', width: '100%' }}
+                            placeholder="Contoh: Silogisme, Barisan Aritmetika, Analisis Opini..."
+                            value={promptTopic}
+                            onChange={(e) => setPromptTopic(e.target.value)}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '6px', paddingBottom: '2px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--foreground)', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={promptIncludePassage}
+                              onChange={(e) => setPromptIncludePassage(e.target.checked)}
+                            />
+                            <span>Sertakan wacana / narasi teks bacaan</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--foreground)', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={promptIncludeTricks}
+                              onChange={(e) => setPromptIncludeTricks(e.target.checked)}
+                            />
+                            <span>Sertakan rumus pokok & trik cepat (Quick Trick)</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* 4. Live Prompt Box & Copy Button */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '10px', borderTop: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            Prompt Siap Pakai:
+                          </span>
+                          <button
+                            type="button"
+                            className="button button-primary"
+                            style={{ fontSize: '12px', height: '28px', padding: '0 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#fbbf24', color: '#000', fontWeight: 700 }}
+                            onClick={handleCopyPrompt}
+                          >
+                            {copiedPrompt ? (
+                              <>
+                                <Check style={{ width: 14, height: 14, color: '#000' }} />
+                                <span>Prompt Berhasil Disalin!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy style={{ width: 14, height: 14 }} />
+                                <span>Salin Prompt (Copy)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <pre className="prompt-preview-pre">
+                          {generatedPrompt}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PASTE JSON FIELD */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>Paste JSON dari AI di Sini:</span>
+                        {jsonValidation && (
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 500,
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: jsonValidation.valid ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                              color: jsonValidation.valid ? '#34d399' : '#f87171',
+                              border: `1px solid ${jsonValidation.valid ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                            }}
+                          >
+                            {jsonValidation.valid ? (
+                              <CheckCircle2 style={{ width: 13, height: 13, color: '#34d399' }} />
+                            ) : (
+                              <AlertCircle style={{ width: 13, height: 13, color: '#f87171' }} />
+                            )}
+                            <span>{jsonValidation.message}</span>
+                          </span>
+                        )}
+                      </label>
+                      {!isPromptAdjusterOpen && (
+                        <button
+                          type="button"
+                          style={{ fontSize: '12px', color: '#fbbf24', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}
+                          onClick={() => setIsPromptAdjusterOpen(true)}
+                        >
+                          <Sliders style={{ width: 13, height: 13 }} />
+                          <span>Butuh Prompt untuk AI? Klik Adjust Prompt</span>
+                        </button>
+                      )}
+                    </div>
+                    <textarea
+                      className="field-input"
+                      style={{ fontFamily: 'monospace', fontSize: '12px', width: '100%' }}
+                      rows={8}
+                      placeholder={`Paste output JSON dari AI di sini...\nContoh format: [\n  { "subtest": "PENALARAN_MATEMATIKA", "content": "...", "options": [...] }\n]`}
+                      value={aiJsonInput}
+                      onChange={(e) => setAiJsonInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* MODAL FOOTER FOR IMPORT JSON */}
+            {createMethodView === 'IMPORT_JSON' && (
+              <div className="modal-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  style={{ fontSize: '12px' }}
+                  onClick={() => setCreateMethodView('SELECT')}
+                >
+                  Batal
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {jsonValidation?.isArray && jsonValidation.count > 1 ? (
+                    <>
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        onClick={applyAiJson}
+                        disabled={!aiJsonInput.trim() || !jsonValidation?.valid}
+                      >
+                        Buka Soal Pertama di Form
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-primary"
+                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px', background: '#fbbf24', color: '#000', fontWeight: 700 }}
+                        onClick={bulkImportQuestions}
+                        disabled={!aiJsonInput.trim() || !jsonValidation?.valid || importingBulk}
+                      >
+                        {importingBulk ? (
+                          <span>Mengimpor {jsonValidation.count} Soal...</span>
+                        ) : (
+                          <>
+                            <Zap style={{ width: 14, height: 14, fill: '#000' }} />
+                            <span>Impor Semua ({jsonValidation.count} Soal)</span>
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="button button-primary"
+                      style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      onClick={applyAiJson}
+                      disabled={!aiJsonInput.trim() || !jsonValidation?.valid}
+                    >
+                      <Zap style={{ width: 14, height: 14 }} />
+                      <span>Terapkan ke Form Editor</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

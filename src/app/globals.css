@@ -2200,6 +2200,76 @@ body {
   color: var(--background);
 }
 
+/* Sidebar Collapsible Sub-navigation */
+.nav-group-collapsible {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-expand-icon {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.sidebar-expand-icon.is-open {
+  transform: rotate(180deg);
+}
+
+.sidebar-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 14px;
+  margin: 3px 0 6px 14px;
+  border-left: 1.5px solid var(--sidebar-border, rgba(255, 255, 255, 0.12));
+}
+
+.sub-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 5px;
+  color: var(--sidebar-fg, #8f95a0);
+  font-size: 12.5px;
+  font-weight: 450;
+  text-decoration: none;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+.sub-nav-link:hover {
+  background: var(--sidebar-accent, rgba(255, 255, 255, 0.08));
+  color: var(--sidebar-accent-fg, #ffffff);
+}
+
+.sub-nav-link.is-active {
+  background: var(--sidebar-accent, rgba(255, 255, 255, 0.14)) !important;
+  color: var(--sidebar-accent-fg, #ffffff) !important;
+  font-weight: 600;
+}
+
+.sub-nav-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  opacity: 0.75;
+}
+
+.sub-nav-link.is-active .sub-nav-icon {
+  opacity: 1;
+}
+
+.sidebar.is-collapsed .sidebar-subnav,
+.sidebar.is-collapsed .sidebar-expand-icon {
+  display: none !important;
+}
+
 .archived-project-nav {
   margin: 4px 0 0;
   opacity: 0.85;
@@ -5483,3 +5553,391 @@ html.dark .department-chip {
   height: 13px;
   flex-shrink: 0;
 }
+
+/* ==========================================================================
+   Question Creation Method Selector Modal (Side-by-side cards) & Prompt Engineering
+   ========================================================================== */
+.method-selection-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 6px 0;
+}
+
+@media (max-width: 640px) {
+  .method-selection-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.method-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.method-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.method-card-manual:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.method-card-ai:hover {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.method-card-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.method-icon-manual {
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+}
+
+.method-icon-ai {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+
+.method-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.method-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.method-card-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.method-badge-manual {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.method-badge-ai {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.method-card-desc {
+  font-size: 12px;
+  color: var(--muted-fg);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.method-card-action {
+  padding-top: 14px;
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.method-action-manual {
+  color: #60a5fa;
+}
+
+.method-action-ai {
+  color: #fbbf24;
+}
+
+/* Prompt Engineering Builder Styles */
+.prompt-builder-box {
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.subtest-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.subtest-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted-fg);
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.subtest-chip-btn:hover {
+  border-color: var(--muted-fg);
+  color: var(--foreground);
+}
+
+.subtest-chip-btn.is-active {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: #f59e0b;
+  color: #fde68a;
+  font-weight: 600;
+}
+
+.prompt-field-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .prompt-field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.prompt-field-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .prompt-field-row-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.prompt-preview-pre {
+  margin: 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border);
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--foreground);
+  max-height: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  user-select: all;
+}
+
+/* ========================================================
+   DISCOUNT & BADGE DESIGN PREVIEW STYLES
+   ======================================================== */
+.discount-form-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1.2fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .discount-form-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.discount-preview-pane {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.discount-preview-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.discount-preview-pane-title {
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--foreground);
+}
+
+.discount-badge-base {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  line-height: 1;
+}
+
+.discount-badge-red {
+  background: linear-gradient(135deg, #ef4444 0%, #f43f5e 50%, #f59e0b 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.discount-badge-gold {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #d97706 100%);
+  color: #09090b;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.discount-badge-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #14b8a6 50%, #059669 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.discount-badge-cyan {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #6366f1 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.discount-badge-purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 50%, #ec4899 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.style-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.style-selector-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--muted-bg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 11px;
+}
+
+.style-selector-btn:hover {
+  border-color: var(--line-strong);
+}
+
+.style-selector-btn.is-active {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.12);
+  box-shadow: 0 0 0 1.5px #3b82f6;
+}
+
+/* PTN Premium Pass Preview Card in Team Admin */
+.pass-preview-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #1e40af 100%);
+  padding: 22px;
+  color: #ffffff;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  box-shadow: 0 12px 30px -8px rgba(29, 78, 216, 0.35);
+}
+
+.pass-preview-card::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 180px;
+  height: 180px;
+  background: rgba(96, 165, 250, 0.22);
+  border-radius: 50%;
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.pass-preview-card::after {
+  content: '';
+  position: absolute;
+  bottom: -60px;
+  left: -60px;
+  width: 160px;
+  height: 160px;
+  background: rgba(251, 191, 36, 0.18);
+  border-radius: 50%;
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+/* Card Coin Biasa Preview in Team Admin */
+.coin-preview-card {
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.coin-preview-card.has-discount {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.08);
+}
+

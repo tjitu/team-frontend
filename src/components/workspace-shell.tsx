@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -22,6 +22,14 @@ import {
   Bell,
   CheckCheck,
   Coins,
+  GraduationCap,
+  Layers,
+  FileText,
+  Briefcase,
+  CreditCard,
+  Percent,
+  Ticket,
+  BookOpen,
 } from 'lucide-react';
 import { api, clearSessionCache, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { useInactivityTracker, clearSessionTracking } from '@/lib/session';
@@ -40,6 +48,55 @@ import {
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
 
+const controlCenterItems = [
+  { id: 'tryouts', label: 'Tryouts', icon: GraduationCap },
+  { id: 'questions', label: 'Bank Soal', icon: Layers },
+  { id: 'curriculum', label: 'Materi & Kurikulum', icon: BookOpen },
+  { id: 'pricing', label: 'Pricing & Packages', icon: Coins },
+  { id: 'vouchers', label: 'Voucher & Referal', icon: Ticket },
+  { id: 'discounts', label: 'Discounts', icon: Percent },
+  { id: 'users', label: 'Users', icon: Users },
+  { id: 'articles', label: 'Articles', icon: FileText },
+  { id: 'careers', label: 'Careers', icon: Briefcase },
+  { id: 'payments', label: 'Payments', icon: CreditCard },
+];
+
+function ControlCenterSubNav({
+  isOpen,
+  pathname,
+}: {
+  isOpen: boolean;
+  pathname: string;
+}) {
+  const searchParams = useSearchParams();
+  const currentSection =
+    (pathname === '/control-center' ? searchParams.get('section') : null) ||
+    'tryouts';
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="sidebar-subnav" role="group" aria-label="Control Center Sections">
+      {controlCenterItems.map((item) => {
+        const Icon = item.icon;
+        const isActive =
+          pathname === '/control-center' && currentSection === item.id;
+        return (
+          <Link
+            key={item.id}
+            href={`/control-center?section=${item.id}`}
+            className={`sub-nav-link ${isActive ? 'is-active' : ''}`}
+            title={item.label}
+          >
+            <Icon className="sub-nav-icon" />
+            <span className="sub-nav-text">{item.label}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isInvitationRoute = pathname.startsWith('/invitations/accept');
@@ -57,6 +114,15 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const [signOutError, setSignOutError] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [isControlCenterOpen, setIsControlCenterOpen] = useState(
+    () => pathname === '/control-center',
+  );
+
+  useEffect(() => {
+    if (pathname === '/control-center') {
+      setIsControlCenterOpen(true);
+    }
+  }, [pathname]);
 
   // Notifications
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -412,25 +478,36 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           )}
 
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
-            <>
+            <div className="nav-group-collapsible">
               <Link
                 className={`nav-link ${pathname === '/control-center' ? 'is-active' : ''}`}
                 href="/control-center"
                 title="Control Center"
                 aria-current={pathname === '/control-center' ? 'page' : undefined}
+                onClick={(e) => {
+                  if (pathname === '/control-center') {
+                    e.preventDefault();
+                    setIsControlCenterOpen((prev) => !prev);
+                  } else {
+                    setIsControlCenterOpen(true);
+                  }
+                }}
               >
                 <SlidersHorizontal className="nav-icon" />
                 <span className="nav-link-text">Control Center</span>
+                <ChevronDown
+                  className={`sidebar-expand-icon ${isControlCenterOpen ? 'is-open' : ''}`}
+                  aria-hidden="true"
+                />
               </Link>
-              <Link
-                className="nav-link"
-                href="/control-center?section=pricing"
-                title="Pricing & Packages"
-              >
-                <Coins className="nav-icon" />
-                <span className="nav-link-text">Pricing & Packages</span>
-              </Link>
-            </>
+
+              <Suspense fallback={null}>
+                <ControlCenterSubNav
+                  isOpen={isControlCenterOpen && !isCollapsed}
+                  pathname={pathname}
+                />
+              </Suspense>
+            </div>
           )}
 
           <Link
