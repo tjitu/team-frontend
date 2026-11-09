@@ -1714,14 +1714,6 @@ ${totalPromptCount > 1 ? ']' : ''}`;
     });
   }
 
-  async function updateUserRole(item: User, role: User['role']) {
-    setError(''); setNotice('');
-    try {
-      await api.patch(`/team/control-center/users/${item.id}`, { role });
-      await loadSection('users', search); setNotice(`Access updated for ${item.email}.`);
-    } catch (cause) { setError(errorMessage(cause)); }
-  }
-
   async function toggleBanUser(targetUser: User) {
     const newBannedState = !targetUser.isBanned;
     const actionText = newBannedState ? 'Ban' : 'Unban';
@@ -2078,21 +2070,6 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         );
       },
     }),
-    userColHelper.accessor('role', {
-      header: 'Jitu Role',
-      cell: ({ row }) => (
-        <ComboboxSelect
-          value={row.original.role}
-          onValueChange={(newRole) => void updateUserRole(row.original, newRole as User['role'])}
-          disabled={member?.role !== 'SYSTEM_OWNER'}
-          options={[
-            { label: 'User', value: 'USER' },
-            { label: 'Admin', value: 'ADMIN' },
-          ]}
-          triggerClassName="h-7 text-xs w-[95px]"
-        />
-      ),
-    }),
     userColHelper.accessor('target', {
       header: 'Target PTN',
       cell: ({ getValue }) => <span className="text-xs">{getValue() || '—'}</span>,
@@ -2129,7 +2106,6 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       cell: ({ row }) => {
         const u = row.original;
         const isSelf = member?.email === u.email;
-        const isTargetOwner = u.role === 'ADMIN' && member?.role !== 'SYSTEM_OWNER';
         return (
           <div className="table-action-group justify-end">
             <button
@@ -2147,7 +2123,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               type="button"
               className="table-action-btn"
               onClick={() => void toggleBanUser(u)}
-              disabled={isSelf || isTargetOwner || banningUserId === u.id}
+              disabled={isSelf || banningUserId === u.id}
               title={u.isBanned ? 'Unban user' : 'Ban user'}
             >
               <Ban className="action-icon" />
@@ -2157,7 +2133,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               type="button"
               className="table-action-btn table-action-btn-danger"
               onClick={() => void deleteUserItem(u)}
-              disabled={isSelf || isTargetOwner || deletingUserId === u.id}
+              disabled={isSelf || deletingUserId === u.id}
               title="Delete user"
             >
               <Trash2 className="action-icon" />
@@ -4997,7 +4973,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
           <div className="section-heading control-panel-heading">
             <div>
               <h2 id="users-heading">User management</h2>
-              <p>Review Jitu accounts, roles, targets, and coin balances. Only System Owners can grant Jitu Admin access.</p>
+              <p>Kelola data akun siswa/pengguna Jitu PTN, target kampus impian, saldo koin, serta kontrol akses akun.</p>
             </div>
             <span>{users.length} shown</span>
           </div>
@@ -5229,91 +5205,43 @@ ${totalPromptCount > 1 ? ']' : ''}`;
             </div>
           ) : (
             paymentSummary && (
-              <>
-                {/* 4 Summary Cards */}
-                <div className="revenue-metrics" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-                  <article className="revenue-metric">
-                    <div className="revenue-metric-head">
-                      <span>Total confirmed revenue</span>
-                      <span className="revenue-metric-icon" aria-hidden="true">
-                        <Wallet />
-                      </span>
-                    </div>
-                    <strong>{currency.format(paymentSummary.totalRevenue)}</strong>
-                    <small>From settled transactions</small>
-                  </article>
-                  <article className="revenue-metric">
-                    <div className="revenue-metric-head">
-                      <span>Confirmed payments</span>
-                      <span className="revenue-metric-icon" aria-hidden="true">
-                        <CheckCircle2 />
-                      </span>
-                    </div>
-                    <strong>{paymentSummary.confirmedPayments.toLocaleString('en-US')}</strong>
-                    <small>Completed & coins credited</small>
-                  </article>
-                  <article className="revenue-metric">
-                    <div className="revenue-metric-head">
-                      <span>Waiting / pending</span>
-                      <span className="revenue-metric-icon" aria-hidden="true">
-                        <Clock />
-                      </span>
-                    </div>
-                    <strong>{paymentSummary.pendingPayments.toLocaleString('en-US')}</strong>
-                    <small>Awaiting QRIS completion</small>
-                  </article>
-                  <article className="revenue-metric">
-                    <div className="revenue-metric-head">
-                      <span>Cancelled / expired</span>
-                      <span className="revenue-metric-icon" aria-hidden="true">
-                        <XCircle />
-                      </span>
-                    </div>
-                    <strong>{paymentSummary.cancelledPayments.toLocaleString('en-US')}</strong>
-                    <small>Cancelled by user or expired</small>
-                  </article>
+              <div className="referral-metrics-card" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+                <div className="referral-metric-item">
+                  <div className="referral-metric-header">
+                    <span>Total confirmed revenue</span>
+                    <Wallet className="referral-metric-icon" />
+                  </div>
+                  <div className="referral-metric-value">{currency.format(paymentSummary.totalRevenue)}</div>
+                  <div className="referral-metric-sub">From settled transactions</div>
                 </div>
 
-                {/* Monthly Revenue & Payment Trend Graph */}
-                <section className="revenue-panel">
-                  <div className="section-heading">
-                    <div>
-                      <h2>12-Month Revenue & Activity Trend</h2>
-                      <p>Monthly confirmed revenue and transaction volume over the past year.</p>
-                    </div>
+                <div className="referral-metric-item">
+                  <div className="referral-metric-header">
+                    <span>Confirmed payments</span>
+                    <CheckCircle2 className="referral-metric-icon" />
                   </div>
+                  <div className="referral-metric-value">{paymentSummary.confirmedPayments.toLocaleString('en-US')}</div>
+                  <div className="referral-metric-sub">Completed &amp; coins credited</div>
+                </div>
 
-                  {paymentSummary.confirmedPayments === 0 && paymentSummary.pendingPayments === 0 ? (
-                    <div className="revenue-empty">No payment transactions recorded yet.</div>
-                  ) : (
-                    <div
-                      className="revenue-chart"
-                      role="img"
-                      aria-label="Payment revenue by month over the last 12 months"
-                    >
-                      {paymentSummary.monthlyRevenue.map((m) => {
-                        const maxRevenueVal = Math.max(1, ...(paymentSummary.monthlyRevenue.map((item) => item.revenue) || [1]));
-                        const barHeight = m.revenue ? Math.max(8, (m.revenue / maxRevenueVal) * 100) : 0;
-                        return (
-                          <div
-                            className="revenue-chart-month"
-                            key={m.month}
-                            title={`${formatMonth(m.month)} · ${currency.format(m.revenue)} · ${m.confirmedPayments} confirmed, ${m.pendingPayments} waiting, ${m.cancelledPayments} cancelled`}
-                          >
-                            <div className="revenue-chart-bar-area">
-                              <span
-                                className="revenue-chart-bar"
-                                style={{ height: `${barHeight}%` }}
-                              />
-                            </div>
-                            <span className="revenue-chart-label">{formatMonth(m.month)}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              </>
+                <div className="referral-metric-item">
+                  <div className="referral-metric-header">
+                    <span>Waiting / pending</span>
+                    <Clock className="referral-metric-icon" />
+                  </div>
+                  <div className="referral-metric-value">{paymentSummary.pendingPayments.toLocaleString('en-US')}</div>
+                  <div className="referral-metric-sub">Awaiting QRIS completion</div>
+                </div>
+
+                <div className="referral-metric-item">
+                  <div className="referral-metric-header">
+                    <span>Cancelled / expired</span>
+                    <XCircle className="referral-metric-icon" />
+                  </div>
+                  <div className="referral-metric-value">{paymentSummary.cancelledPayments.toLocaleString('en-US')}</div>
+                  <div className="referral-metric-sub">Cancelled by user or expired</div>
+                </div>
+              </div>
             )
           )}
 
@@ -6045,8 +5973,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
             <div className="modal-body space-y-3" style={{ paddingTop: '8px' }}>
               <div className="user-modal-grid">
                 <div className="user-modal-stat">
-                  <span className="user-modal-stat-label">Role</span>
-                  <strong className="user-modal-stat-value">{selectedUserForModal.role}</strong>
+                  <span className="user-modal-stat-label">Account Status</span>
+                  <span className="user-modal-stat-value">
+                    <span className={`control-status ${selectedUserForModal.isBanned ? 'status-rejected' : 'status-accepted'}`}>
+                      {selectedUserForModal.isBanned ? <XCircle /> : <CheckCircle2 />}
+                      {selectedUserForModal.isBanned ? 'Banned' : 'Active'}
+                    </span>
+                  </span>
                 </div>
                 <div className="user-modal-stat">
                   <span className="user-modal-stat-label">Coin Balance</span>
