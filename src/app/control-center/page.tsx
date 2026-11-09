@@ -43,7 +43,11 @@ import {
   Wallet,
   QrCode,
   Calendar,
+  Layers,
+  ListChecks,
+  ShoppingBag,
 } from 'lucide-react';
+import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
 
@@ -53,14 +57,28 @@ export type Voucher = {
   id: string;
   code: string;
   discountPercent: number;
+  commissionPercent: number;
   maxDiscount?: number | null;
   minPurchase: number;
   maxUsage?: number | null;
   usedCount: number;
+  totalUsed: number;
+  totalRevenue: number;
+  totalCommission: number;
+  netRevenue: number;
   isActive: boolean;
   expiresAt: string | null;
   description: string | null;
   referrerName: string | null;
+  issuedToUserId?: string | null;
+  issuedToName?: string | null;
+  issuedToEmail?: string | null;
+  issuedByUserId?: string | null;
+  issuedByName?: string | null;
+  issuedByEmail?: string | null;
+  resolvedIssuedToName?: string | null;
+  resolvedIssuedToEmail?: string | null;
+  resolvedIssuedToImage?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -68,6 +86,10 @@ export type Voucher = {
 export type VoucherForm = {
   code: string;
   discountPercent: string;
+  commissionPercent: string;
+  issuedToUserId: string;
+  issuedToName: string;
+  issuedToEmail: string;
   maxDiscount: string;
   minPurchase: string;
   maxUsage: string;
@@ -80,6 +102,10 @@ export type VoucherForm = {
 const initialVoucherForm: VoucherForm = {
   code: '',
   discountPercent: '20',
+  commissionPercent: '10',
+  issuedToUserId: '',
+  issuedToName: '',
+  issuedToEmail: '',
   maxDiscount: '',
   minPurchase: '0',
   maxUsage: '',
@@ -99,6 +125,9 @@ export type Discount = {
   packageId: string | null;
   badgeText: string;
   badgeStyle: string;
+  issuedByUserId?: string | null;
+  issuedByName?: string | null;
+  issuedByEmail?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -116,6 +145,9 @@ export type DiscountForm = {
   packageId: string;
   badgeText: string;
   badgeStyle: string;
+  issuedByUserId?: string | null;
+  issuedByName?: string | null;
+  issuedByEmail?: string | null;
   isActive: boolean;
 };
 
@@ -244,12 +276,13 @@ export type QuestionItem = {
   subtopicTitle?: string | null;
   topicTitle?: string | null;
   difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  type: 'MULTIPLE_CHOICE' | 'COMPLEX_MULTIPLE_CHOICE' | 'SHORT_ANSWER';
+  type: 'MULTIPLE_CHOICE' | 'COMPLEX_MULTIPLE_CHOICE' | 'SHORT_ANSWER' | 'PILIHAN_GANDA' | 'ISIAN_SINGKAT';
   target: 'DRAFT' | 'FOR_TRYOUT' | 'FOR_PRACTICE';
   narration?: string | null;
   content: string;
   imageUrl?: string | null;
   points: number;
+  correctAnswer?: string | null;
   createdAt: string;
   options: QuestionOption[];
   solution?: {
@@ -273,6 +306,7 @@ export type TopicItem = {
     title: string;
     slug: string;
     order: number;
+    patterns?: string[];
   }>;
 };
 
@@ -280,11 +314,14 @@ export type QuestionForm = {
   subtest: string;
   subtopicId: string;
   difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  type: 'MULTIPLE_CHOICE' | 'SHORT_ANSWER';
   target: 'DRAFT' | 'FOR_TRYOUT' | 'FOR_PRACTICE';
   narration: string;
   content: string;
   imageUrl: string;
   points: string;
+  correctAnswer: string;
+  answerFormatGuide: string;
   options: Array<{ content: string; isCorrect: boolean; order: number }>;
   keyFormula: string;
   quickTrick: string;
@@ -296,11 +333,14 @@ const initialQuestionForm: QuestionForm = {
   subtest: 'PENGETAHUAN_KUANTITATIF',
   subtopicId: '',
   difficulty: 'MEDIUM',
+  type: 'MULTIPLE_CHOICE',
   target: 'DRAFT', // 'DRAFT' (Unpublish dulu), 'FOR_TRYOUT', 'FOR_PRACTICE'
   narration: '',
   content: '',
   imageUrl: '',
   points: '1',
+  correctAnswer: '',
+  answerFormatGuide: 'Bilangan Bulat Non-Negatif (0-9999)',
   options: [
     { content: '', isCorrect: true, order: 1 },
     { content: '', isCorrect: false, order: 2 },
@@ -422,13 +462,13 @@ const sections: Array<{ id: Section; label: string }> = [
 ];
 
 const ALL_SUBTESTS = [
-  { id: 'PENALARAN_UMUM', label: 'Penalaran Umum (PU)' },
-  { id: 'PENGETAHUAN_KUANTITATIF', label: 'Pengetahuan Kuantitatif (PK)' },
-  { id: 'PEMAHAMAN_BACAAN_MENULIS', label: 'Pemahaman Bacaan & Menulis (PBM)' },
-  { id: 'PENGETAHUAN_PEMAHAMAN_UMUM', label: 'Pengetahuan & Pemahaman Umum (PPU)' },
-  { id: 'LITERASI_INDONESIA', label: 'Literasi Bahasa Indonesia (LBI)' },
-  { id: 'LITERASI_INGGRIS', label: 'Literasi Bahasa Inggris (LBE)' },
-  { id: 'PENALARAN_MATEMATIKA', label: 'Penalaran Matematika (PM)' },
+  { id: 'PENALARAN_UMUM', code: 'PU', shortLabel: 'Penalaran Umum', label: 'Penalaran Umum (PU)' },
+  { id: 'PENGETAHUAN_KUANTITATIF', code: 'PK', shortLabel: 'Pengetahuan Kuantitatif', label: 'Pengetahuan Kuantitatif (PK)' },
+  { id: 'PENALARAN_MATEMATIKA', code: 'PM', shortLabel: 'Penalaran Matematika', label: 'Penalaran Matematika (PM)' },
+  { id: 'PEMAHAMAN_BACAAN_MENULIS', code: 'PBM', shortLabel: 'Bacaan & Menulis', label: 'Pemahaman Bacaan & Menulis (PBM)' },
+  { id: 'PENGETAHUAN_PEMAHAMAN_UMUM', code: 'PPU', shortLabel: 'Pengetahuan Umum', label: 'Pengetahuan & Pemahaman Umum (PPU)' },
+  { id: 'LITERASI_INDONESIA', code: 'LBI', shortLabel: 'Literasi Indonesia', label: 'Literasi Bahasa Indonesia (LBI)' },
+  { id: 'LITERASI_INGGRIS', code: 'LBE', shortLabel: 'Literasi Inggris', label: 'Literasi Bahasa Inggris (LBE)' },
 ];
 
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
@@ -524,10 +564,29 @@ function ControlCenterContent() {
   const [error, setError] = React.useState('');
   const [notice, setNotice] = React.useState('');
   const [search, setSearch] = React.useState('');
+  const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
+  const [previewTab, setPreviewTab] = React.useState<'shop' | 'landing'>('shop');
+
+  const handleCopyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    }
+  };
 
   // Questions State
   const [questions, setQuestions] = React.useState<QuestionItem[]>([]);
-  const [topics, setTopics] = React.useState<TopicItem[]>([]);
+  const [topics, setTopics] = React.useState<TopicItem[]>(() => api.getCached<TopicItem[]>('/team/control-center/topics') ?? []);
   const [questionForm, setQuestionForm] = React.useState<QuestionForm>(initialQuestionForm);
   const [questionFormOpen, setQuestionFormOpen] = React.useState(false);
   const [editingQuestion, setEditingQuestion] = React.useState<string | null>(null);
@@ -547,6 +606,8 @@ function ControlCenterContent() {
     PENALARAN_MATEMATIKA: 5,
   });
   const [promptDifficulty, setPromptDifficulty] = React.useState<string>('MEDIUM');
+  const [promptQuestionType, setPromptQuestionType] = React.useState<'PILIHAN_GANDA' | 'ISIAN_SINGKAT' | 'CAMPURAN'>('PILIHAN_GANDA');
+  const [promptShortAnswerRule, setPromptShortAnswerRule] = React.useState<string>('INTEGER_BPPP');
   const [promptSelectedSubtopicId, setPromptSelectedSubtopicId] = React.useState<string>('');
   const [promptCustomTopic, setPromptCustomTopic] = React.useState<string>('');
   const [promptIncludePassage, setPromptIncludePassage] = React.useState<boolean>(true);
@@ -555,10 +616,12 @@ function ControlCenterContent() {
 
   // Curriculum State & Modal Forms
   const [curriculumSubtestFilter, setCurriculumSubtestFilter] = React.useState<string>('ALL');
+  const [curriculumSearch, setCurriculumSearch] = React.useState<string>('');
+  const [collapsedTopicIds, setCollapsedTopicIds] = React.useState<Record<string, boolean>>({});
   const [topicModalOpen, setTopicModalOpen] = React.useState<boolean>(false);
   const [subtopicModalOpen, setSubtopicModalOpen] = React.useState<boolean>(false);
   const [editingTopic, setEditingTopic] = React.useState<TopicItem | null>(null);
-  const [editingSubtopic, setEditingSubtopic] = React.useState<{ id: string; topicId: string; title: string; slug: string; order: number } | null>(null);
+  const [editingSubtopic, setEditingSubtopic] = React.useState<{ id: string; topicId: string; title: string; slug: string; order: number; patterns?: string[] } | null>(null);
   const [activeParentTopic, setActiveParentTopic] = React.useState<TopicItem | null>(null);
   const [topicForm, setTopicForm] = React.useState<{ subtest: string; title: string; slug: string; order: number }>({
     subtest: 'PENALARAN_MATEMATIKA',
@@ -566,11 +629,12 @@ function ControlCenterContent() {
     slug: '',
     order: 1,
   });
-  const [subtopicForm, setSubtopicForm] = React.useState<{ topicId: string; title: string; slug: string; order: number }>({
+  const [subtopicForm, setSubtopicForm] = React.useState<{ topicId: string; title: string; slug: string; order: number; patternsText: string }>({
     topicId: '',
     title: '',
     slug: '',
     order: 1,
+    patternsText: '',
   });
   const [topicSaving, setTopicSaving] = React.useState(false);
   const [subtopicSaving, setSubtopicSaving] = React.useState(false);
@@ -594,6 +658,7 @@ function ControlCenterContent() {
           subtopicTitle: s.title,
           subtestId: t.subtest,
           subtestLabel: subtestMeta?.label || t.subtest,
+          patterns: Array.isArray(s.patterns) ? s.patterns : [],
         };
       }
     }
@@ -601,16 +666,20 @@ function ControlCenterContent() {
   }, [promptSelectedSubtopicId, topics]);
 
   const handleOpenCreateTopic = (defaultSubtest?: string) => {
+    setError('');
+    setNotice('');
     setEditingTopic(null);
     const targetSub = defaultSubtest && defaultSubtest !== 'ALL'
       ? defaultSubtest
       : (curriculumSubtestFilter !== 'ALL' ? curriculumSubtestFilter : 'PENALARAN_MATEMATIKA');
-    const nextOrder = (topics.filter((t) => t.subtest === targetSub).length + 1) * 10;
+    const nextOrder = topics.filter((t) => t.subtest === targetSub).length + 1;
     setTopicForm({ subtest: targetSub, title: '', slug: '', order: nextOrder });
     setTopicModalOpen(true);
   };
 
   const handleOpenEditTopic = (top: TopicItem) => {
+    setError('');
+    setNotice('');
     setEditingTopic(top);
     setTopicForm({ subtest: top.subtest, title: top.title, slug: top.slug, order: top.order });
     setTopicModalOpen(true);
@@ -619,17 +688,19 @@ function ControlCenterContent() {
   const handleSaveTopic = async (e: FormEvent) => {
     e.preventDefault();
     if (!topicForm.title.trim()) {
-      alert('Judul Materi Utama wajib diisi');
+      setError('Judul Materi Utama wajib diisi.');
       return;
     }
     setTopicSaving(true);
+    setError('');
+    setNotice('');
     try {
       const slug = topicForm.slug.trim() || topicForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const payload = {
         subtest: topicForm.subtest,
         title: topicForm.title.trim(),
         slug,
-        order: Number(topicForm.order) || 0,
+        order: Number(topicForm.order) || 1,
       };
       if (editingTopic) {
         await api.patch(`/team/control-center/topics/${editingTopic.id}`, payload);
@@ -639,8 +710,9 @@ function ControlCenterContent() {
       const fresh = await api.get<TopicItem[]>('/team/control-center/topics', { force: true });
       setTopics(fresh);
       setTopicModalOpen(false);
+      setNotice(editingTopic ? `Materi "${payload.title}" berhasil diperbarui.` : `Materi "${payload.title}" berhasil ditambahkan.`);
     } catch (err) {
-      alert('Gagal menyimpan materi: ' + errorMessage(err));
+      setError('Gagal menyimpan materi: ' + errorMessage(err));
     } finally {
       setTopicSaving(false);
     }
@@ -652,48 +724,68 @@ function ControlCenterContent() {
       ? `Materi "${top.title}" memiliki ${subCount} submateri. Hapus materi ini beserta seluruh submaterinya?`
       : `Hapus materi "${top.title}"?`;
     if (!confirm(msg)) return;
+    setError('');
+    setNotice('');
     try {
       await api.delete(`/team/control-center/topics/${top.id}`);
       const fresh = await api.get<TopicItem[]>('/team/control-center/topics', { force: true });
       setTopics(fresh);
+      setNotice(`Materi "${top.title}" berhasil dihapus.`);
     } catch (err) {
-      alert('Gagal menghapus materi: ' + errorMessage(err));
+      setError('Gagal menghapus materi: ' + errorMessage(err));
     }
   };
 
   const handleOpenCreateSubtopic = (parent: TopicItem) => {
+    setError('');
+    setNotice('');
     setActiveParentTopic(parent);
     setEditingSubtopic(null);
-    const nextOrder = ((parent.subtopics?.length || 0) + 1) * 10;
-    setSubtopicForm({ topicId: parent.id, title: '', slug: '', order: nextOrder });
+    const nextOrder = (parent.subtopics?.length || 0) + 1;
+    setSubtopicForm({ topicId: parent.id, title: '', slug: '', order: nextOrder, patternsText: '' });
     setSubtopicModalOpen(true);
   };
 
-  const handleOpenEditSubtopic = (parent: TopicItem, sub: { id: string; title: string; slug: string; order: number }) => {
+  const handleOpenEditSubtopic = (parent: TopicItem, sub: { id: string; title: string; slug: string; order: number; patterns?: string[] }) => {
+    setError('');
+    setNotice('');
     setActiveParentTopic(parent);
     setEditingSubtopic({ ...sub, topicId: parent.id });
-    setSubtopicForm({ topicId: parent.id, title: sub.title, slug: sub.slug, order: sub.order });
+    setSubtopicForm({
+      topicId: parent.id,
+      title: sub.title,
+      slug: sub.slug,
+      order: sub.order,
+      patternsText: Array.isArray(sub.patterns) ? sub.patterns.join('\n') : '',
+    });
     setSubtopicModalOpen(true);
   };
 
   const handleSaveSubtopic = async (e: FormEvent) => {
     e.preventDefault();
     if (!subtopicForm.title.trim()) {
-      alert('Judul Submateri wajib diisi');
+      setError('Judul Submateri wajib diisi.');
       return;
     }
     if (!subtopicForm.topicId) {
-      alert('Materi Induk belum dipilih');
+      setError('Materi Induk belum dipilih.');
       return;
     }
     setSubtopicSaving(true);
+    setError('');
+    setNotice('');
     try {
       const slug = subtopicForm.slug.trim() || subtopicForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      const patterns = subtopicForm.patternsText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean);
       const payload = {
         topicId: subtopicForm.topicId,
         title: subtopicForm.title.trim(),
         slug,
-        order: Number(subtopicForm.order) || 0,
+        order: Number(subtopicForm.order) || 1,
+        patterns,
       };
       if (editingSubtopic) {
         await api.patch(`/team/control-center/subtopics/${editingSubtopic.id}`, payload);
@@ -703,8 +795,9 @@ function ControlCenterContent() {
       const fresh = await api.get<TopicItem[]>('/team/control-center/topics', { force: true });
       setTopics(fresh);
       setSubtopicModalOpen(false);
+      setNotice(editingSubtopic ? `Submateri "${payload.title}" berhasil diperbarui.` : `Submateri "${payload.title}" berhasil ditambahkan.`);
     } catch (err) {
-      alert('Gagal menyimpan submateri: ' + errorMessage(err));
+      setError('Gagal menyimpan submateri: ' + errorMessage(err));
     } finally {
       setSubtopicSaving(false);
     }
@@ -712,12 +805,15 @@ function ControlCenterContent() {
 
   const handleDeleteSubtopic = async (subId: string, title: string) => {
     if (!confirm(`Hapus submateri "${title}"?`)) return;
+    setError('');
+    setNotice('');
     try {
       await api.delete(`/team/control-center/subtopics/${subId}`);
       const fresh = await api.get<TopicItem[]>('/team/control-center/topics', { force: true });
       setTopics(fresh);
+      setNotice(`Submateri "${title}" berhasil dihapus.`);
     } catch (err) {
-      alert('Gagal menghapus submateri: ' + errorMessage(err));
+      setError('Gagal menghapus submateri: ' + errorMessage(err));
     }
   };
 
@@ -734,24 +830,27 @@ function ControlCenterContent() {
       : 'Penalaran Matematika (PM)';
 
     const diffText = promptDifficulty === 'EASY'
-      ? 'Mudah (Konseptual & Fundamental)'
+      ? 'Mudah (Konseptual & Fundamental Dasar)'
       : promptDifficulty === 'HARD'
-      ? 'Sulit (HOTS - High Order Thinking Skills & Analitis Tinggi)'
+      ? 'Sulit (HOTS - High Order Thinking Skills, Analitis & Multi-Tahap)'
       : promptDifficulty === 'MIXED'
-      ? 'Campuran Berimbang (20% Mudah, 50% Sedang, 30% Sulit HOTS)'
-      : 'Sedang (Standar Resmi UTBK SNBT BPPP)';
+      ? 'Campuran Berimbang Resmi (20% Mudah, 50% Sedang, 30% Sulit HOTS)'
+      : 'Sedang (Standar Resmi UTBK SNBT BPPP Kemendikbudristek)';
 
     const passageInstruction = promptIncludePassage
-      ? '- Untuk subtes berbasis bahasa/literasi atau penalaran naratif kontekstual, sertakan wacana/teks bacaan berkualitas di field "narration".'
-      : '- Soal dibuat langsung tanpa wacana panjang (kosongkan "narration" jika tidak perlu).';
+      ? '- Untuk subtes berbasis literasi/bahasa (PBM, PPU, LBI, LBE) atau soal kontekstual naratif, cantumkan wacana/stimulus bermutu pada field "narration".'
+      : '- Soal dibuat langsung fokus pertanyaan (kosongkan string "narration" jika tidak memerlukan teks wacana panjang).';
 
     const trickInstruction = promptIncludeTricks
-      ? '- Pada bagian "solution", wajib cantumkan "keyFormula" (konsep dasar), "quickTrick" (tips eliminasi / cara cepat 30 detik), serta "steps" bertahap.'
-      : '- Pada bagian "solution", cantumkan langkah penjelasan yang jelas dan ringkas.';
+      ? '- Pada bagian "solution", WAJIB cantumkan "keyFormula" (teorema/konsep inti), "quickTrick" (metode cepat / trik 30-45 detik yang taktis), serta 3 "steps" terstruktur (Identifikasi Variabel, Eksekusi Perhitungan, dan Kesimpulan Kunci).'
+      : '- Pada bagian "solution", sertakan langkah penjelasan bertahap yang sistematis dan mudah dipahami siswa.';
 
     let topicLine = '- Fokus Topik: Standar kisi-kisi resmi SNBT terbaru';
     if (selectedSubtopicMeta) {
       topicLine = `- Fokus Materi Kurikulum: ${selectedSubtopicMeta.topicTitle} › ${selectedSubtopicMeta.subtopicTitle} (${selectedSubtopicMeta.subtestLabel})`;
+      if (selectedSubtopicMeta.patterns.length > 0) {
+        topicLine += `\n- Pola Soal Kurikulum: ${selectedSubtopicMeta.patterns.join(' | ')}`;
+      }
       if (promptCustomTopic.trim()) {
         topicLine += `\n- Catatan Spesifik Materi: ${promptCustomTopic.trim()}`;
       }
@@ -760,15 +859,49 @@ function ControlCenterContent() {
     }
 
     const primarySubtestId = activeSubtestEntries[0]?.[0] || 'PENALARAN_MATEMATIKA';
-    const sampleSubtopicName = selectedSubtopicMeta?.subtopicTitle || 'Nama Submateri';
+    const sampleSubtopicName = selectedSubtopicMeta?.subtopicTitle || 'Aljabar & Persamaan';
 
-    return `Kamu adalah spesialis pembuat soal seleksi masuk PTN (UTBK SNBT & Ujian Mandiri) nomor 1 di Indonesia dengan pemahaman mendalam tentang standar BPPP Kemendikbudristek.
+    const questionTypeHeading = promptQuestionType === 'ISIAN_SINGKAT'
+      ? 'SOAL ISIAN SINGKAT (SHORT ANSWER - STANDAR BPPP UTBK SNBT)'
+      : promptQuestionType === 'CAMPURAN'
+      ? 'KOMBINASI PILIHAN GANDA (A-E) DAN ISIAN SINGKAT (STANDAR RESMI UTBK SNBT TERBARU)'
+      : 'SOAL PILIHAN GANDA 5 OPSI (A, B, C, D, E)';
+
+    const typeSpecificRules = promptQuestionType === 'ISIAN_SINGKAT'
+      ? `KETENTUAN KHUSUS PEMBUATAN SOAL ISIAN SINGKAT (STANDAR BPPP UTBK):
+1. Target Subtes Resmi: Soal isian singkat resmi UTBK SNBT BPPP ditujukan untuk subtes Pengetahuan Kuantitatif (PK) dan Penalaran Matematika (PM).
+2. Pertanyaan Menuntut Jawaban Pasti: Pertanyaan WAJIB dirumuskan secara eksplisit sehingga menghasilkan nilai akhir matematis tunggal dan pasti (tidak ambigu dan bukan berupa rentang jawaban).
+3. PETUNJUK FORMAT MENJAWAB WAJIB DICANTUMKAN PADA TEKS SOAL:
+   Pada akhir teks pertanyaan (field "content"), kamu WAJIB mencantumkan petunjuk format menjawab baku dalam tanda kurung siku berikut:
+   "\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]"
+4. Kunci Jawaban (field "correctAnswer"):
+   Field "correctAnswer" HARUS diisi string angka murni (contoh: "42" atau "1250"), BUKAN kalimat dan TANPA satuan (jangan tulis "42 cm" atau "x = 42").
+5. Field "options": Harus berupa array kosong [] (karena bertipe isian singkat).
+6. Field "type": Bernilai "ISIAN_SINGKAT".`
+      : promptQuestionType === 'CAMPURAN'
+      ? `KETENTUAN TIPE SOAL CAMPURAN (PILIHAN GANDA & ISIAN SINGKAT):
+1. Distribusi: Buat sekitar 70-80% butir bertipe "PILIHAN_GANDA" dan 20-30% butir bertipe "ISIAN_SINGKAT" (terutama pada subtes PK dan PM).
+2. Untuk butir "PILIHAN_GANDA":
+   - "type": "PILIHAN_GANDA"
+   - "options": 5 opsi (A, B, C, D, E) dengan tepat 1 "isCorrect": true dan 4 pengecoh logis yang mengeksploitasi miskonsepsi umum siswa.
+   - "correctAnswer": null
+3. Untuk butir "ISIAN_SINGKAT":
+   - "type": "ISIAN_SINGKAT"
+   - Pada akhir "content", WAJIB sertakan: "\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 25]"
+   - "correctAnswer": String angka bulat murni (contoh: "25") tanpa satuan dan tanpa desimal semu.
+   - "options": Array kosong [].`
+      : `KETENTUAN KHUSUS SOAL PILIHAN GANDA (A-E):
+1. Opsi Jawaban: Tepat 5 pilihan ganda (A, B, C, D, E) pada array "options".
+2. Tepat 1 opsi "isCorrect": true, dan 4 opsi lainnya "isCorrect": false.
+3. Kualitas Pengecoh (Distraktor): 4 distraktor harus berasal dari miskonsepsi atau kesalahan hitung umum siswa (contoh: tanda aljabar terbalik, lupa mengalikan skalar, salah subtitusi), BUKAN angka asal.
+4. "type": "PILIHAN_GANDA", dan "correctAnswer": null.`;
+
+    return `Kamu adalah Chief Assessment Specialist & Lead Author Tim Penyusun Soal Seleksi Masuk PTN (UTBK SNBT Kemendikbudristek BPPP) nomor 1 di Indonesia dengan reputasi perumusan soal HOTS yang presisi, valid, dan bebas multitafsir.
 
 TUGAS UTAMA:
-Buatkan ${totalPromptCount} soal pilihan ganda berkualitas tinggi, orisinal, dan terkalibrasi akurat dengan ketentuan berikut:
+Buatkan ${totalPromptCount} butir ${questionTypeHeading} yang 100% orisinal, terkalibrasi akurat, dan memenuhi standar kisi-kisi resmi BPPP SNBT 2024/2025/2026.
 
-SPESIFIKASI SOAL:
-DISTRIBUSI SUBTES & JUMLAH SOAL:
+SPESIFIKASI & DISTRIBUSI SOAL:
 ${subtestBreakdown}
 Total Keseluruhan: ${totalPromptCount} butir soal
 
@@ -776,10 +909,15 @@ PARAMETER SOAL:
 - Target Subtes: ${targetSubtestNames}
 - Tingkat Kesulitan: ${diffText}
 ${topicLine}
-- Opsi Jawaban: Tepat 5 pilihan ganda (A, B, C, D, E) dengan 1 kunci jawaban benar dan 4 distraktor pengecoh yang logis.
-- Notasi Matematika/Sains: Tulis rumus dan simbol matematika menggunakan notasi LaTeX standard (contoh: $f(x) = \\frac{-b \\pm \\sqrt{D}}{2a}$).
+- Notasi Matematika/Sains: Seluruh rumus, variabel matematika, pecahan, dan persamaan WAJIB ditulis dengan format LaTeX inline yang valid (contoh: $f(x) = ax^2 + bx + c$, $\\frac{a}{b}$, $\\sqrt{D}$, $x \\le 4$).
 ${passageInstruction}
 ${trickInstruction}
+
+${typeSpecificRules}
+
+PRINSIP KOGNITIF & FORMAT MENJAWAB:
+- Siswa tidak boleh dirugikan akibat format jawaban; format isian harus sangat jelas sehingga tidak ada kebingungan antara angka desimal vs bilangan bulat atau penggunaan satuan.
+- Soal harus menguji daya nalar dan pemecahan masalah (Problem Solving), bukan sekadar mengingat rumus tanpa pemahaman konsep.
 
 FORMAT KELUARAN (STRICT JSON ONLY):
 Hasilkan HANYA output berupa JSON murni (array of objects jika > 1 soal, atau single object jika 1 soal) tanpa teks pengantar, tanpa penjelasan di luar JSON, dan tanpa code fence markdown.
@@ -790,28 +928,31 @@ ${totalPromptCount > 1 ? '[' : ''}
     "subtest": "${primarySubtestId}",
     "subtopic": "${sampleSubtopicName}",
     "difficulty": "${promptDifficulty === 'MIXED' ? 'MEDIUM' : promptDifficulty}",
+    "type": "${promptQuestionType === 'ISIAN_SINGKAT' ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA'}",
     "narration": "Teks wacana atau konteks bacaan jika ada (kosongkan string jika tidak ada)",
-    "content": "Pertanyaan soal yang jelas dan tidak ambigu...",
+    "content": "${promptQuestionType === 'ISIAN_SINGKAT' ? 'Pertanyaan soal yang spesifik dan menuntut angka pasti...\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]' : 'Pertanyaan soal yang jelas, menuntut analisis nalar, dan tidak ambigu...'}",
     "points": 1,
-    "options": [
+    "correctAnswer": "${promptQuestionType === 'ISIAN_SINGKAT' ? '42' : null}",
+    "options": ${promptQuestionType === 'ISIAN_SINGKAT' ? '[]' : `[
       { "content": "Pernyataan / opsi A", "isCorrect": false },
       { "content": "Pernyataan / opsi B (Kunci Jawaban)", "isCorrect": true },
       { "content": "Pernyataan / opsi C", "isCorrect": false },
       { "content": "Pernyataan / opsi D", "isCorrect": false },
       { "content": "Pernyataan / opsi E", "isCorrect": false }
-    ],
+    ]`},
     "solution": {
       "keyFormula": "Konsep inti atau rumus pokok yang digunakan",
-      "quickTrick": "Trik eliminasi opsi atau cara cepat jika ada",
-      "staticExplanation": "Rangkuman kesimpulan jawaban",
+      "quickTrick": "Trik taktis eliminasi opsi atau cara cepat 30-45 detik",
+      "staticExplanation": "Rangkuman kesimpulan jawaban akhir",
       "steps": [
-        { "stepNumber": 1, "category": "Identifikasi", "title": "Memahami Informasi", "content": "Uraian langkah 1..." },
-        { "stepNumber": 2, "category": "Kalkulasi", "title": "Penyelesaian", "content": "Uraian langkah 2..." }
+        { "stepNumber": 1, "category": "Identifikasi", "title": "Memahami Informasi & Variabel", "content": "Uraian identifikasi variabel dan kondisi soal..." },
+        { "stepNumber": 2, "category": "Eksekusi", "title": "Langkah Perhitungan Sistematis", "content": "Uraian perhitungan step-by-step hingga solusi ditemukan..." },
+        { "stepNumber": 3, "category": "Kesimpulan", "title": "Kunci Jawaban Akhir", "content": "Pernyataan kesimpulan jawaban akhir secara tegas..." }
       ]
     }
   }
 ${totalPromptCount > 1 ? ']' : ''}`;
-  }, [activeSubtestEntries, totalPromptCount, promptDifficulty, selectedSubtopicMeta, promptCustomTopic, promptIncludePassage, promptIncludeTricks]);
+  }, [activeSubtestEntries, totalPromptCount, promptDifficulty, promptQuestionType, selectedSubtopicMeta, promptCustomTopic, promptIncludePassage, promptIncludeTricks]);
 
   const jsonValidation = React.useMemo(() => {
     if (!aiJsonInput.trim()) return null;
@@ -877,6 +1018,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       : target === 'discounts' ? '/team/control-center/discounts'
       : target === 'articles' ? '/team/control-center/articles'
       : target === 'payments' ? '/team/control-center/payments'
+      : target === 'curriculum' ? '/team/control-center/topics'
       : '';
     if (!cachedUrl || !api.getCached(cachedUrl)) {
       setLoading(true);
@@ -885,7 +1027,14 @@ ${totalPromptCount > 1 ? ']' : ''}`;
     try {
       if (target === 'tryouts') setTryouts(await api.get<Tryout[]>('/team/control-center/tryouts', { force }));
       if (target === 'pricing') setPackages(await api.get<Package[]>('/team/control-center/packages', { force }));
-      if (target === 'vouchers') setVouchers(await api.get<Voucher[]>('/team/control-center/vouchers', { force }));
+      if (target === 'vouchers') {
+        const [vRes, uRes] = await Promise.all([
+          api.get<Voucher[]>('/team/control-center/vouchers', { force }),
+          users.length === 0 ? api.get<User[]>('/team/control-center/users', { force }).catch(() => []) : Promise.resolve(users),
+        ]);
+        setVouchers(vRes);
+        if (users.length === 0 && uRes) setUsers(uRes);
+      }
       if (target === 'discounts') {
         const [dRes, pRes] = await Promise.all([
           api.get<Discount[]>('/team/control-center/discounts', { force }),
@@ -956,16 +1105,32 @@ ${totalPromptCount > 1 ? ']' : ''}`;
   async function saveQuestion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true); setError(''); setNotice('');
+    const isShort = questionForm.type === 'SHORT_ANSWER';
+
+    if (isShort && !questionForm.correctAnswer.trim()) {
+      alert('Kunci jawaban isian singkat wajib diisi!');
+      setSaving(false);
+      return;
+    }
+
+    // Auto-check if short answer question has format guidance
+    let finalContent = questionForm.content.trim();
+    if (isShort && !finalContent.includes('[PETUNJUK FORMAT')) {
+      finalContent += '\n\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]';
+    }
+
     const body = {
       subtest: questionForm.subtest,
       subtopicId: questionForm.subtopicId || null,
       difficulty: questionForm.difficulty,
+      type: isShort ? 'SHORT_ANSWER' : 'MULTIPLE_CHOICE',
       target: questionForm.target,
       narration: questionForm.narration.trim() || null,
-      content: questionForm.content.trim(),
+      content: finalContent,
       imageUrl: questionForm.imageUrl.trim() || null,
       points: Number(questionForm.points) || 1,
-      options: questionForm.options.map((opt, i) => ({
+      correctAnswer: isShort ? questionForm.correctAnswer.trim() : null,
+      options: isShort ? [] : questionForm.options.map((opt, i) => ({
         content: opt.content.trim(),
         isCorrect: opt.isCorrect,
         order: i + 1,
@@ -1042,8 +1207,12 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       if (found) matchedSubtopicId = found.id;
     }
 
-    const rawOptions = Array.isArray(parsed.options) ? parsed.options : [];
-    const opts = [0, 1, 2, 3, 4].map((i) => {
+    const rawType = String(parsed.type || '').toUpperCase();
+    const isShortAnswer = rawType.includes('ISIAN') || rawType.includes('SHORT') || (!parsed.options && Boolean(parsed.correctAnswer));
+    const questionType = isShortAnswer ? 'SHORT_ANSWER' : 'MULTIPLE_CHOICE';
+
+    let rawOptions = Array.isArray(parsed.options) ? parsed.options : [];
+    let opts = [0, 1, 2, 3, 4].map((i) => {
       const o = rawOptions[i];
       return {
         content: o ? String(o.content || '').trim() : '',
@@ -1051,6 +1220,10 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         order: i + 1,
       };
     });
+
+    if (!isShortAnswer && !opts.some((o) => o.isCorrect)) {
+      opts[0].isCorrect = true;
+    }
 
     const sol = parsed.solution || {};
     const rawSteps = Array.isArray(sol.steps) ? sol.steps : [];
@@ -1069,16 +1242,25 @@ ${totalPromptCount > 1 ? ']' : ''}`;
     const tgt = String(parsed.target || 'FOR_PRACTICE').toUpperCase();
     const validTarget = (tgt === 'DRAFT' || tgt === 'FOR_TRYOUT') ? tgt : 'FOR_PRACTICE';
 
+    let content = String(parsed.content || '').trim();
+    const correctAnswer = parsed.correctAnswer !== undefined && parsed.correctAnswer !== null ? String(parsed.correctAnswer).trim() : '';
+
+    if (isShortAnswer && !content.includes('[PETUNJUK FORMAT')) {
+      content += '\n\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]';
+    }
+
     return {
       subtest: mappedSubtest,
       subtopicId: matchedSubtopicId,
       difficulty: validDiff,
+      type: questionType,
       target: validTarget,
       narration: parsed.narration ? String(parsed.narration).trim() : null,
-      content: String(parsed.content || '').trim(),
+      content,
       imageUrl: parsed.imageUrl ? String(parsed.imageUrl).trim() : null,
       points: Number(parsed.points) || 1,
-      options: opts,
+      correctAnswer: isShortAnswer ? correctAnswer : null,
+      options: isShortAnswer ? [] : opts,
       keyFormula: sol.keyFormula ? String(sol.keyFormula).trim() : null,
       quickTrick: sol.quickTrick ? String(sol.quickTrick).trim() : null,
       staticExplanation: sol.staticExplanation ? String(sol.staticExplanation).trim() : null,
@@ -1100,12 +1282,15 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         subtest: body.subtest,
         subtopicId: body.subtopicId || '',
         difficulty: body.difficulty as any,
+        type: body.type as any,
         target: body.target as any,
         narration: body.narration || '',
         content: body.content,
         imageUrl: body.imageUrl || '',
         points: String(body.points || 1),
-        options: body.options,
+        correctAnswer: body.correctAnswer || '',
+        answerFormatGuide: 'Bilangan Bulat Non-Negatif (0-9999)',
+        options: body.options && body.options.length > 0 ? body.options : initialQuestionForm.options,
         keyFormula: body.keyFormula || '',
         quickTrick: body.quickTrick || '',
         staticExplanation: body.staticExplanation || '',
@@ -1154,6 +1339,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
     setEditingQuestion(item.id);
     setQuestionFormOpen(true);
     setError(''); setNotice('');
+    const isShort = item.type === 'ISIAN_SINGKAT' || item.type === 'SHORT_ANSWER';
     const formOptions = item.options.length > 0
       ? item.options.map((o) => ({ content: o.content, isCorrect: o.isCorrect, order: o.order }))
       : initialQuestionForm.options;
@@ -1165,11 +1351,14 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       subtest: item.subtest,
       subtopicId: item.subtopicId || '',
       difficulty: item.difficulty,
+      type: isShort ? 'SHORT_ANSWER' : 'MULTIPLE_CHOICE',
       target: item.target,
       narration: item.narration || '',
       content: item.content,
       imageUrl: item.imageUrl || '',
       points: String(item.points || 1),
+      correctAnswer: item.correctAnswer || '',
+      answerFormatGuide: 'Bilangan Bulat Non-Negatif (0-9999)',
       options: formOptions,
       keyFormula: item.solution?.keyFormula || '',
       quickTrick: item.solution?.quickTrick || '',
@@ -1289,18 +1478,22 @@ ${totalPromptCount > 1 ? ']' : ''}`;
     const body = {
       code: voucherForm.code.trim().toUpperCase(),
       discountPercent: Number(voucherForm.discountPercent),
+      commissionPercent: Number(voucherForm.commissionPercent || 0),
+      issuedToUserId: voucherForm.issuedToUserId.trim() || null,
+      issuedToName: voucherForm.issuedToName.trim() || null,
+      issuedToEmail: voucherForm.issuedToEmail.trim() || null,
       maxDiscount: voucherForm.maxDiscount.trim() ? Number(voucherForm.maxDiscount) : null,
       minPurchase: Number(voucherForm.minPurchase || 0),
       maxUsage: voucherForm.maxUsage.trim() ? Number(voucherForm.maxUsage) : null,
       expiresAt: voucherForm.expiresAt ? new Date(voucherForm.expiresAt).toISOString() : null,
       description: voucherForm.description.trim() || null,
-      referrerName: voucherForm.referrerName.trim() || null,
+      referrerName: voucherForm.referrerName.trim() || voucherForm.issuedToName.trim() || null,
       isActive: voucherForm.isActive,
     };
     try {
       if (editingVoucher) await api.patch(`/team/control-center/vouchers/${editingVoucher}`, body);
       else await api.post('/team/control-center/vouchers', body);
-      const successMessage = editingVoucher ? 'Voucher / Referal diperbarui.' : 'Voucher / Referal berhasil dibuat.';
+      const successMessage = editingVoucher ? 'Kode Referal diperbarui.' : 'Kode Referal berhasil dibuat.';
       setVoucherForm(initialVoucherForm);
       setEditingVoucher(null);
       setVoucherFormOpen(false);
@@ -1315,12 +1508,16 @@ ${totalPromptCount > 1 ? ']' : ''}`;
     setVoucherForm({
       code: item.code,
       discountPercent: String(item.discountPercent),
+      commissionPercent: String(item.commissionPercent ?? 0),
+      issuedToUserId: item.issuedToUserId || '',
+      issuedToName: item.issuedToName || item.resolvedIssuedToName || '',
+      issuedToEmail: item.issuedToEmail || item.resolvedIssuedToEmail || '',
       maxDiscount: item.maxDiscount ? String(item.maxDiscount) : '',
       minPurchase: String(item.minPurchase || 0),
       maxUsage: item.maxUsage ? String(item.maxUsage) : '',
       expiresAt: item.expiresAt ? dateInput(item.expiresAt) : '',
       description: item.description || '',
-      referrerName: item.referrerName || '',
+      referrerName: item.referrerName || item.resolvedIssuedToName || '',
       isActive: item.isActive,
     });
     setVoucherFormOpen(true);
@@ -1720,6 +1917,20 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               <Calendar className="cell-accessory-icon" />
               {isExpired ? 'Expired' : isScheduled ? 'Scheduled (Starts soon)' : 'Active now'}
             </small>
+          </div>
+        );
+      },
+    }),
+    discountColHelper.accessor('issuedByName', {
+      header: 'Issued By',
+      cell: ({ row }) => {
+        const d = row.original;
+        const issuedByName = d.issuedByName || 'Admin';
+        const issuedByEmail = d.issuedByEmail || '-';
+        return (
+          <div className="cell-stack">
+            <span className="cell-primary font-medium">{issuedByName}</span>
+            <span className="cell-meta-row">{issuedByEmail}</span>
           </div>
         );
       },
@@ -2177,6 +2388,31 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         return (
           <span className="question-status-badge question-target-practice">
             🎯 Latihan (Free)
+          </span>
+        );
+      },
+    }),
+    questionColHelper.accessor('type', {
+      header: 'Tipe Soal',
+      cell: ({ row }) => {
+        const isShort = row.original.type === 'ISIAN_SINGKAT' || row.original.type === 'SHORT_ANSWER';
+        if (isShort) {
+          return (
+            <div className="flex flex-col gap-0.5 items-start">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                ✍️ Isian Singkat
+              </span>
+              {row.original.correctAnswer && (
+                <span className="text-[10px] font-mono text-[var(--muted-fg)]">
+                  Kunci: <strong className="text-[var(--foreground)]">{row.original.correctAnswer}</strong>
+                </span>
+              )}
+            </div>
+          );
+        }
+        return (
+          <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-zinc-500/15 text-zinc-400 border border-zinc-500/30">
+            🔘 Pilihan Ganda (A-E)
           </span>
         );
       },
@@ -2708,6 +2944,82 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 </label>
               </div>
 
+              {/* 2.5 TIPE FORMAT SOAL (PILIHAN GANDA VS ISIAN SINGKAT) */}
+              <div className="mb-5 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)] block">
+                    Tipe Format Soal <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-[var(--muted-fg)]">
+                    Standar Resmi BPPP SNBT (Soal Isian Singkat khusus PM & PK)
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    className={`flex items-start gap-3 p-3.5 rounded-lg border text-left transition-all ${
+                      questionForm.type === 'MULTIPLE_CHOICE'
+                        ? 'border-blue-500 bg-blue-500/10 shadow-sm'
+                        : 'border-[var(--border)] bg-[var(--background)] hover:border-zinc-500'
+                    }`}
+                    onClick={() => setQuestionForm({ ...questionForm, type: 'MULTIPLE_CHOICE' })}
+                  >
+                    <div className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${
+                      questionForm.type === 'MULTIPLE_CHOICE' ? 'border-blue-500 bg-blue-500' : 'border-zinc-500'
+                    }`}>
+                      {questionForm.type === 'MULTIPLE_CHOICE' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[var(--foreground)] flex items-center gap-1.5">
+                        <span>🔘 Pilihan Ganda (A-E)</span>
+                      </div>
+                      <div className="text-[11px] text-[var(--muted-fg)] mt-0.5">
+                        5 opsi jawaban (A, B, C, D, E) dengan 1 kunci benar dan 4 distraktor miskonsepsi.
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`flex items-start gap-3 p-3.5 rounded-lg border text-left transition-all ${
+                      questionForm.type === 'SHORT_ANSWER'
+                        ? 'border-amber-500 bg-amber-500/10 shadow-sm'
+                        : 'border-[var(--border)] bg-[var(--background)] hover:border-zinc-500'
+                    }`}
+                    onClick={() => {
+                      let content = questionForm.content;
+                      if (!content.includes('[PETUNJUK FORMAT')) {
+                        content = content.trim()
+                          ? `${content.trim()}\n\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]`
+                          : '';
+                      }
+                      setQuestionForm({
+                        ...questionForm,
+                        type: 'SHORT_ANSWER',
+                        content,
+                        answerFormatGuide: questionForm.answerFormatGuide || 'Bilangan Bulat Non-Negatif (0-9999)',
+                      });
+                    }}
+                  >
+                    <div className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${
+                      questionForm.type === 'SHORT_ANSWER' ? 'border-amber-500 bg-amber-500' : 'border-zinc-500'
+                    }`}>
+                      {questionForm.type === 'SHORT_ANSWER' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-[var(--foreground)] flex items-center gap-1.5">
+                        <span>✍️ Isian Singkat (Standar BPPP SNBT)</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">Resmi BPPP</span>
+                      </div>
+                      <div className="text-[11px] text-[var(--muted-fg)] mt-0.5">
+                        Siswa mengisi nilai jawaban akhir langsung ke form tanpa opsi distraktor.
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               {/* 3. QUESTION CONTENT & STIMULUS */}
               <div className="space-y-3.5 mb-5 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)]">
                 <label className="field-label">
@@ -2725,7 +3037,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                   Pertanyaan Soal (Wajib, support LaTeX e.g. $2x + 1 = 5$)
                   <textarea
                     className="field-input text-xs font-sans"
-                    rows={3}
+                    rows={4}
                     required
                     placeholder="Tuliskan pertanyaan inti soal di sini..."
                     value={questionForm.content}
@@ -2744,62 +3056,165 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 </label>
               </div>
 
-              {/* 4. MULTIPLE CHOICE OPTIONS (A to E) */}
-              <div className="mb-5 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
-                    Pilihan Jawaban (Tandai Kunci Jawaban)
-                  </span>
-                  <span className="text-xs text-[var(--muted-fg)]">Pilih 1 opsi yang benar</span>
-                </div>
+              {/* 4. JAWABAN: PILIHAN GANDA VS ISIAN SINGKAT */}
+              {questionForm.type === 'SHORT_ANSWER' ? (
+                <div className="mb-5 p-4 rounded-xl bg-amber-500/5 border border-amber-500/25 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                      <span>✍️</span> Pengaturan Kunci & Format Soal Isian Singkat
+                    </span>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                      Standar Resmi BPPP SNBT
+                    </span>
+                  </div>
 
-                <div className="space-y-2">
-                  {questionForm.options.map((opt, idx) => {
-                    const letters = ['A', 'B', 'C', 'D', 'E'];
-                    const letter = letters[idx] || String(idx + 1);
-                    return (
-                      <div
-                        key={idx}
-                        className={`question-option-item ${opt.isCorrect ? 'is-correct' : ''}`}
+                  {/* Info Notice about Format Clarity */}
+                  <div className="p-3 rounded-lg bg-[var(--card)] border border-amber-500/30 text-xs text-[var(--foreground)] leading-relaxed space-y-1">
+                    <div className="font-bold text-amber-400 flex items-center gap-1.5">
+                      <span>💡</span> Format Menjawab Jelas Meminimalisir Kesalahan Penilaian Siswa:
+                    </div>
+                    <p className="text-[11px] text-[var(--muted-fg)] m-0">
+                      Berdasarkan regulasi resmi BPPP SNBT untuk Pengetahuan Kuantitatif dan Penalaran Matematika, jawaban siswa berupa angka definitif. Kunci jawaban di bawah wajib berupa angka murni tanpa satuan (misal tulis <code>42</code>, BUKAN <code>42 cm</code>). Gunakan tombol di bawah untuk menyisipkan instruksi format resmi ke teks pertanyaan soal.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="field-label text-xs">
+                        Kunci Jawaban Isian Singkat <span className="text-red-500">*</span>
+                        <input
+                          type="text"
+                          className="field-input font-mono text-sm font-bold tracking-wider"
+                          placeholder="Contoh: 42 atau 1500"
+                          required={questionForm.type === 'SHORT_ANSWER'}
+                          value={questionForm.correctAnswer}
+                          onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
+                        />
+                      </label>
+                      <span className="text-[11px] text-[var(--muted-fg)] block mt-1">
+                        Tuliskan hanya nilai angka akhir (tanpa satuan atau variabel).
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="field-label text-xs">
+                        Pilihan Standar Format Pengisian
+                        <select
+                          className="field-input text-xs"
+                          value={questionForm.answerFormatGuide}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setQuestionForm({ ...questionForm, answerFormatGuide: val });
+                          }}
+                        >
+                          <option value="Bilangan Bulat Non-Negatif (0-9999)">Bilangan Bulat Non-Negatif (0-9999) [Format Resmi BPPP SNBT]</option>
+                          <option value="Bilangan Bulat Bebas (Termasuk Negatif)">Bilangan Bulat Bebas (Termasuk Negatif)</option>
+                          <option value="Pecahan Sederhana (Contoh: 3/4)">Pecahan Sederhana (Contoh: 3/4)</option>
+                          <option value="Format Teks Bebas / Istilah Kata">Format Teks Bebas / Istilah Kata</option>
+                        </select>
+                      </label>
+
+                      <button
+                        type="button"
+                        className="mt-2 text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold underline cursor-pointer"
+                        onClick={() => {
+                          let content = questionForm.content.trim();
+                          const guideTag = `[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk ${questionForm.answerFormatGuide.toLowerCase()} tanpa satuan atau tanda baca. Contoh: ${questionForm.correctAnswer || '42'}]`;
+                          if (content.includes('[PETUNJUK FORMAT:')) {
+                            content = content.replace(/\[PETUNJUK FORMAT:[^\]]+\]/g, guideTag);
+                          } else {
+                            content = content ? `${content}\n\n${guideTag}` : guideTag;
+                          }
+                          setQuestionForm({ ...questionForm, content });
+                        }}
                       >
-                        <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                        ⚡ Sisipkan / Perbarui Petunjuk Format di Teks Soal
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Live Simulation of Student UI */}
+                  <div className="pt-2 border-t border-[var(--border)]">
+                    <span className="text-[11px] font-bold text-[var(--muted-fg)] uppercase tracking-wider block mb-2">
+                      Simulasi Tampilan di Layar Ujian CBT Siswa:
+                    </span>
+                    <div className="p-3.5 rounded-lg bg-[var(--background)] border border-[var(--border)] space-y-2 max-w-[500px]">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-[var(--foreground)]">Jawaban Isian Singkat</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
+                          Standar BPPP SNBT
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[var(--muted-fg)]">
+                        Format Pengisian: <strong>{questionForm.answerFormatGuide}</strong>
+                      </div>
+                      <input
+                        type="text"
+                        disabled
+                        className="w-full h-10 px-3 rounded bg-[var(--card)] border border-[var(--border)] font-mono text-sm text-[var(--foreground)] cursor-not-allowed opacity-80"
+                        placeholder={`Ketik angka jawaban akhir (kunci resmi: ${questionForm.correctAnswer || '...'})`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* MULTIPLE CHOICE OPTIONS (A to E) */
+                <div className="mb-5 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
+                      Pilihan Jawaban (Tandai Kunci Jawaban)
+                    </span>
+                    <span className="text-xs text-[var(--muted-fg)]">Pilih 1 opsi yang benar</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {questionForm.options.map((opt, idx) => {
+                      const letters = ['A', 'B', 'C', 'D', 'E'];
+                      const letter = letters[idx] || String(idx + 1);
+                      return (
+                        <div
+                          key={idx}
+                          className={`question-option-item ${opt.isCorrect ? 'is-correct' : ''}`}
+                        >
+                          <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                            <input
+                              type="radio"
+                              name="correctAnswerGroup"
+                              checked={opt.isCorrect}
+                              onChange={() => {
+                                const newOpts = questionForm.options.map((o, i) => ({
+                                  ...o,
+                                  isCorrect: i === idx,
+                                }));
+                                setQuestionForm({ ...questionForm, options: newOpts });
+                              }}
+                            />
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${opt.isCorrect ? 'bg-emerald-500 text-white' : 'border border-[var(--border)] text-[var(--muted-fg)]'}`}>
+                              {letter}
+                            </span>
+                          </label>
                           <input
-                            type="radio"
-                            name="correctAnswerGroup"
-                            checked={opt.isCorrect}
-                            onChange={() => {
-                              const newOpts = questionForm.options.map((o, i) => ({
-                                ...o,
-                                isCorrect: i === idx,
-                              }));
+                            className="field-input flex-1 text-xs"
+                            placeholder={`Pilihan ${letter}...`}
+                            required={questionForm.type === 'MULTIPLE_CHOICE'}
+                            value={opt.content}
+                            onChange={(e) => {
+                              const newOpts = [...questionForm.options];
+                              newOpts[idx] = { ...newOpts[idx], content: e.target.value };
                               setQuestionForm({ ...questionForm, options: newOpts });
                             }}
                           />
-                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${opt.isCorrect ? 'bg-emerald-500 text-white' : 'border border-[var(--border)] text-[var(--muted-fg)]'}`}>
-                            {letter}
-                          </span>
-                        </label>
-                        <input
-                          className="field-input flex-1 text-xs"
-                          placeholder={`Pilihan ${letter}...`}
-                          required
-                          value={opt.content}
-                          onChange={(e) => {
-                            const newOpts = [...questionForm.options];
-                            newOpts[idx] = { ...newOpts[idx], content: e.target.value };
-                            setQuestionForm({ ...questionForm, options: newOpts });
-                          }}
-                        />
-                        {opt.isCorrect && (
-                          <span className="text-[11px] font-bold text-emerald-400 shrink-0 pr-1">
-                            ✓ Kunci
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
+                          {opt.isCorrect && (
+                            <span className="text-[11px] font-bold text-emerald-400 shrink-0 pr-1">
+                              ✓ Kunci
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* 5. INTERACTIVE SOLUTION BUILDER (USP JITU) */}
               <div className="mb-5 p-4 rounded-xl bg-blue-500/5 border border-blue-500/20 space-y-4">
@@ -2959,69 +3374,223 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         </section>
       )}
 
-            {/* SECTION: CURRICULUM (MATERI & STRUKTUR KURIKULUM) */}
-      {section === 'curriculum' && (
-        <section className="control-panel" aria-labelledby="curriculum-heading">
-          <div className="section-heading control-panel-heading">
-            <div>
-              <h2 id="curriculum-heading">Materi & Struktur Kurikulum</h2>
-              <p>Kelola taksonomi kurikulum bertingkat (Subtes › Materi Utama › Submateri) untuk standarisasi bank soal dan pemetaan diagnostik siswa.</p>
-            </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                type="button"
-                className="button button-primary"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                onClick={() => handleOpenCreateTopic()}
-              >
-                <Plus style={{ width: 14, height: 14 }} />
-                <span>Tambah Materi Utama</span>
-              </button>
-            </div>
-          </div>
+      {/* SECTION: CURRICULUM (MATERI & STRUKTUR KURIKULUM) */}
+      {section === 'curriculum' && (() => {
+        const totalSubtopicsCount = topics.reduce((acc, t) => acc + (t.subtopics?.length || 0), 0);
+        const totalPatternsCount = topics.reduce(
+          (acc, t) => acc + (t.subtopics || []).reduce((sAcc, s) => sAcc + (Array.isArray(s.patterns) ? s.patterns.length : 0), 0),
+          0
+        );
+        const coveredSubtestsCount = ALL_SUBTESTS.filter((sub) => topics.some((t) => t.subtest === sub.id)).length;
+        const normalizedQuery = curriculumSearch.trim().toLowerCase();
 
-          {/* Subtest Filter Tabs */}
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
-            <button
-              type="button"
-              className={`filter-btn ${curriculumSubtestFilter === 'ALL' ? 'is-active' : ''}`}
-              onClick={() => setCurriculumSubtestFilter('ALL')}
-            >
-              Semua Subtes ({topics.length})
-            </button>
-            {ALL_SUBTESTS.map((sub) => {
-              const count = topics.filter((t) => t.subtest === sub.id).length;
-              return (
+        const filteredTopics = topics
+          .filter((t) => curriculumSubtestFilter === 'ALL' || t.subtest === curriculumSubtestFilter)
+          .filter((t) => {
+            if (!normalizedQuery) return true;
+            if (t.title.toLowerCase().includes(normalizedQuery) || t.slug.toLowerCase().includes(normalizedQuery)) {
+              return true;
+            }
+            return (t.subtopics || []).some((sub) =>
+              sub.title.toLowerCase().includes(normalizedQuery) ||
+              sub.slug.toLowerCase().includes(normalizedQuery) ||
+              (Array.isArray(sub.patterns) && sub.patterns.some((pat) => pat.toLowerCase().includes(normalizedQuery)))
+            );
+          });
+
+        const filteredSubtopicsCount = filteredTopics.reduce((acc, t) => acc + (t.subtopics?.length || 0), 0);
+        const allFilteredCollapsed = filteredTopics.length > 0 && filteredTopics.every((t) => Boolean(collapsedTopicIds[t.id]));
+
+        return (
+          <section className="control-panel" aria-labelledby="curriculum-heading">
+            <div className="section-heading control-panel-heading">
+              <div>
+                <h2 id="curriculum-heading">Materi &amp; Struktur Kurikulum</h2>
+                <p>
+                  Kelola taksonomi kurikulum bertingkat (Subtes › Materi Utama › Submateri › Pola Soal) untuk kalibrasi Bank Soal &amp; AI Generator.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  key={sub.id}
-                  className={`filter-btn ${curriculumSubtestFilter === sub.id ? 'is-active' : ''}`}
-                  onClick={() => setCurriculumSubtestFilter(sub.id)}
+                  className="button button-primary"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  onClick={() => handleOpenCreateTopic()}
                 >
-                  {sub.label.split(' ')[0]} ({count})
+                  <Plus style={{ width: 14, height: 14 }} />
+                  <span>Tambah Materi Utama</span>
                 </button>
-              );
-            })}
-          </div>
+              </div>
+            </div>
 
-          {/* Topics Grid */}
-          {(() => {
-            const filteredTopics = curriculumSubtestFilter === 'ALL'
-              ? topics
-              : topics.filter((t) => t.subtest === curriculumSubtestFilter);
+            {/* KPI Summary Cards */}
+            <div className="revenue-metric-grid" style={{ marginBottom: '16px' }}>
+              <div className="revenue-metric">
+                <div className="revenue-metric-head">
+                  <span>Total Materi Utama</span>
+                  <span className="revenue-metric-icon">
+                    <BookOpen />
+                  </span>
+                </div>
+                <strong>{topics.length}</strong>
+                <small>{coveredSubtestsCount} dari {ALL_SUBTESTS.length} subtes UTBK terisi</small>
+              </div>
 
-            if (filteredTopics.length === 0) {
-              return (
-                <div style={{ textAlign: 'center', padding: '48px 16px', background: 'var(--surface)', borderRadius: '12px', border: '1px dashed var(--border)' }}>
-                  <BookOpen style={{ width: 36, height: 36, color: 'var(--muted-fg)', margin: '0 auto 12px' }} />
-                  <h3 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--foreground)', marginBottom: '4px' }}>
-                    Belum Ada Materi Terdaftar
-                  </h3>
-                  <p style={{ fontSize: '13px', color: 'var(--muted-fg)', maxWidth: '420px', margin: '0 auto 16px' }}>
-                    {curriculumSubtestFilter === 'ALL'
-                      ? 'Belum ada materi kurikulum yang ditambahkan. Buat materi pertama untuk mulai membangun bank soal terstruktur.'
-                      : `Belum ada materi untuk subtes ${ALL_SUBTESTS.find((s) => s.id === curriculumSubtestFilter)?.label || curriculumSubtestFilter}.`}
-                  </p>
+              <div className="revenue-metric">
+                <div className="revenue-metric-head">
+                  <span>Total Submateri</span>
+                  <span className="revenue-metric-icon">
+                    <Layers />
+                  </span>
+                </div>
+                <strong>{totalSubtopicsCount}</strong>
+                <small>Rincian bab &amp; topik bahasan</small>
+              </div>
+
+              <div className="revenue-metric">
+                <div className="revenue-metric-head">
+                  <span>Total Pola Soal</span>
+                  <span className="revenue-metric-icon">
+                    <ListChecks />
+                  </span>
+                </div>
+                <strong>{totalPatternsCount}</strong>
+                <small>Indikator &amp; variasi kisi-kisi soal</small>
+              </div>
+
+              <div className="revenue-metric">
+                <div className="revenue-metric-head">
+                  <span>Filter Subtes Aktif</span>
+                  <span className="revenue-metric-icon">
+                    <Sliders />
+                  </span>
+                </div>
+                <strong style={{ fontSize: '18px' }}>
+                  {curriculumSubtestFilter === 'ALL'
+                    ? 'Semua Subtes'
+                    : ALL_SUBTESTS.find((s) => s.id === curriculumSubtestFilter)?.code || curriculumSubtestFilter}
+                </strong>
+                <small>
+                  {curriculumSubtestFilter === 'ALL'
+                    ? `${filteredTopics.length} materi ditampilkan`
+                    : ALL_SUBTESTS.find((s) => s.id === curriculumSubtestFilter)?.shortLabel || ''}
+                </small>
+              </div>
+            </div>
+
+            {/* Search & Action Toolbar */}
+            <div className="control-filter-toolbar">
+              <div className="control-filter-items">
+                <div className="control-filter-search">
+                  <Search className="control-filter-search-icon" />
+                  <input
+                    type="text"
+                    className="control-filter-search-input"
+                    placeholder="Cari materi utama, submateri, atau pola soal..."
+                    value={curriculumSearch}
+                    onChange={(e) => setCurriculumSearch(e.target.value)}
+                  />
+                </div>
+
+                {filteredTopics.length > 0 && (
+                  <button
+                    type="button"
+                    className="table-action-btn"
+                    style={{ height: '34px', padding: '0 12px' }}
+                    onClick={() => {
+                      if (allFilteredCollapsed) {
+                        setCollapsedTopicIds({});
+                      } else {
+                        const next: Record<string, boolean> = {};
+                        filteredTopics.forEach((t) => {
+                          next[t.id] = true;
+                        });
+                        setCollapsedTopicIds(next);
+                      }
+                    }}
+                  >
+                    <Layers className="action-icon" />
+                    <span>{allFilteredCollapsed ? 'Buka Semua Submateri' : 'Ringkas Semua Kartu'}</span>
+                  </button>
+                )}
+
+                {(curriculumSubtestFilter !== 'ALL' || curriculumSearch.trim() !== '') && (
+                  <button
+                    type="button"
+                    className="control-filter-reset"
+                    onClick={() => {
+                      setCurriculumSubtestFilter('ALL');
+                      setCurriculumSearch('');
+                    }}
+                    title="Reset filter"
+                  >
+                    <X className="action-icon" /> Reset
+                  </button>
+                )}
+              </div>
+
+              <div className="control-filter-count-badge">
+                <span>{filteredTopics.length}</span>
+                <span>materi utama ({filteredSubtopicsCount} submateri)</span>
+              </div>
+            </div>
+
+            {/* Subtest Filter Tabs */}
+            <div className="payment-filter-bar" style={{ marginTop: 0, marginBottom: '18px' }}>
+              <div className="payment-filter-tabs">
+                <button
+                  type="button"
+                  className={`payment-filter-tab ${curriculumSubtestFilter === 'ALL' ? 'is-active' : ''}`}
+                  onClick={() => setCurriculumSubtestFilter('ALL')}
+                >
+                  <BookOpen />
+                  <span>Semua Subtes ({topics.length})</span>
+                </button>
+                {ALL_SUBTESTS.map((sub) => {
+                  const count = topics.filter((t) => t.subtest === sub.id).length;
+                  return (
+                    <button
+                      type="button"
+                      key={sub.id}
+                      className={`payment-filter-tab ${curriculumSubtestFilter === sub.id ? 'is-active' : ''}`}
+                      onClick={() => setCurriculumSubtestFilter(sub.id)}
+                      title={sub.label}
+                    >
+                      <span>{sub.code} · {sub.shortLabel} ({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Topics Grid */}
+            {loading && topics.length === 0 ? (
+              <div className="control-empty">Memuat struktur materi &amp; kurikulum…</div>
+            ) : filteredTopics.length === 0 ? (
+              <div className="curriculum-empty-state">
+                <div className="curriculum-empty-icon">
+                  <BookOpen style={{ width: 24, height: 24 }} />
+                </div>
+                <h3>
+                  {normalizedQuery ? 'Materi Tidak Ditemukan' : 'Belum Ada Materi Terdaftar'}
+                </h3>
+                <p>
+                  {normalizedQuery
+                    ? `Tidak ada materi, submateri, atau pola soal yang cocok dengan kata kunci "${curriculumSearch}".`
+                    : curriculumSubtestFilter === 'ALL'
+                    ? 'Belum ada materi kurikulum yang ditambahkan. Buat materi pertama untuk mulai membangun bank soal terstruktur.'
+                    : `Belum ada materi untuk subtes ${ALL_SUBTESTS.find((s) => s.id === curriculumSubtestFilter)?.label || curriculumSubtestFilter}.`}
+                </p>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {normalizedQuery && (
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => setCurriculumSearch('')}
+                    >
+                      Hapus Pencarian
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="button button-primary"
@@ -3029,125 +3598,185 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     onClick={() => handleOpenCreateTopic(curriculumSubtestFilter)}
                   >
                     <Plus style={{ width: 14, height: 14 }} />
-                    <span>Tambah Materi Pertama</span>
+                    <span>Tambah Materi Utama</span>
                   </button>
                 </div>
-              );
-            }
-
-            return (
+              </div>
+            ) : (
               <div className="curriculum-grid">
                 {filteredTopics.map((top) => {
                   const subMeta = ALL_SUBTESTS.find((s) => s.id === top.subtest);
                   const subCount = top.subtopics ? top.subtopics.length : 0;
+                  const patternCount = (top.subtopics || []).reduce(
+                    (acc, s) => acc + (Array.isArray(s.patterns) ? s.patterns.length : 0),
+                    0
+                  );
+                  const isCollapsed = Boolean(collapsedTopicIds[top.id]) && !normalizedQuery;
+
                   return (
                     <div key={top.id} className="curriculum-topic-card">
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
-                              {subMeta?.label.split(' ')[0] || top.subtest}
+                      <div className="curriculum-topic-header">
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div className="curriculum-pill-row">
+                            <span className="curriculum-meta-pill">
+                              <BookOpen style={{ width: 11, height: 11, color: 'var(--muted-fg)' }} />
+                              <span>{subMeta ? `${subMeta.code} · ${subMeta.shortLabel}` : top.subtest}</span>
                             </span>
-                            <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
-                              #{top.order}
+                            <span className="curriculum-meta-pill-muted">
+                              Urutan #{top.order}
+                            </span>
+                            <span className="curriculum-meta-pill-muted">
+                              <Layers style={{ width: 11, height: 11 }} />
+                              <span>{subCount} submateri</span>
+                            </span>
+                            <span className="curriculum-meta-pill-muted">
+                              <ListChecks style={{ width: 11, height: 11 }} />
+                              <span>{patternCount} pola</span>
                             </span>
                           </div>
-                          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--foreground)', lineHeight: 1.3 }}>
+                          <h3 className="curriculum-topic-title">
                             {top.title}
                           </h3>
-                          <span style={{ fontSize: '11px', color: 'var(--muted-fg)', fontFamily: 'monospace' }}>
+                          <span className="curriculum-topic-slug">
                             slug: {top.slug}
                           </span>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '4px' }}>
+                        <div className="curriculum-card-actions">
                           <button
                             type="button"
                             className="button-icon-subtle"
                             title="Tambah Submateri"
                             onClick={() => handleOpenCreateSubtopic(top)}
                           >
-                            <Plus style={{ width: 14, height: 14, color: '#fbbf24' }} />
+                            <Plus style={{ width: 14, height: 14 }} />
                           </button>
                           <button
                             type="button"
                             className="button-icon-subtle"
-                            title="Edit Materi"
+                            title="Edit Materi Utama"
                             onClick={() => handleOpenEditTopic(top)}
                           >
                             <Edit style={{ width: 14, height: 14 }} />
                           </button>
                           <button
                             type="button"
-                            className="button-icon-subtle"
-                            title="Hapus Materi"
+                            className="button-icon-subtle button-icon-subtle-danger"
+                            title="Hapus Materi Utama"
                             onClick={() => handleDeleteTopic(top)}
                           >
-                            <Trash2 style={{ width: 14, height: 14, color: 'var(--destructive)' }} />
+                            <Trash2 style={{ width: 14, height: 14 }} />
                           </button>
                         </div>
                       </div>
 
-                      {/* Subtopics List */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontWeight: 600, color: 'var(--muted-fg)', textTransform: 'uppercase' }}>
-                          <span>Submateri ({subCount})</span>
+                      {/* Subtopics List Section */}
+                      <div className="curriculum-subtopics-section">
+                        <div className="curriculum-subtopics-toolbar">
                           <button
                             type="button"
-                            style={{ background: 'none', border: 'none', color: '#fbbf24', fontSize: '11px', cursor: 'pointer', padding: 0 }}
+                            className="curriculum-collapse-toggle"
+                            onClick={() =>
+                              setCollapsedTopicIds((prev) => ({
+                                ...prev,
+                                [top.id]: !prev[top.id],
+                              }))
+                            }
+                          >
+                            <Layers style={{ width: 12, height: 12 }} />
+                            <span>Daftar Submateri ({subCount})</span>
+                            <span className="curriculum-collapse-hint">
+                              {isCollapsed ? 'Tampilkan ▾' : 'Sembunyikan ▴'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className="table-action-btn"
+                            style={{ height: '26px', padding: '0 9px', fontSize: '11px' }}
                             onClick={() => handleOpenCreateSubtopic(top)}
                           >
-                            + Submateri
+                            <Plus style={{ width: 11, height: 11 }} />
+                            <span>Tambah Submateri</span>
                           </button>
                         </div>
 
-                        {subCount === 0 ? (
-                          <div style={{ padding: '8px 10px', fontSize: '12px', color: 'var(--muted-fg)', background: 'var(--surface-muted, rgba(255, 255, 255, 0.02))', borderRadius: '6px', textAlign: 'center' }}>
-                            Belum ada submateri terdaftar.
-                          </div>
-                        ) : (
-                          top.subtopics.map((sub) => (
-                            <div key={sub.id} className="curriculum-subtopic-row">
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden' }}>
-                                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>
-                                  {sub.title}
-                                </span>
-                                <span style={{ fontSize: '10px', color: 'var(--muted-fg)', fontFamily: 'monospace' }}>
-                                  #{sub.order} • {sub.slug}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                <button
-                                  type="button"
-                                  className="button-icon-subtle"
-                                  style={{ padding: '2px' }}
-                                  title="Edit Submateri"
-                                  onClick={() => handleOpenEditSubtopic(top, sub)}
-                                >
-                                  <Edit style={{ width: 12, height: 12 }} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="button-icon-subtle"
-                                  style={{ padding: '2px' }}
-                                  title="Hapus Submateri"
-                                  onClick={() => handleDeleteSubtopic(sub.id, sub.title)}
-                                >
-                                  <Trash2 style={{ width: 12, height: 12, color: 'var(--destructive)' }} />
-                                </button>
-                              </div>
+                        {!isCollapsed && (
+                          subCount === 0 ? (
+                            <div className="curriculum-subtopic-empty">
+                              <span>Belum ada submateri terdaftar pada materi ini.</span>
+                              <button
+                                type="button"
+                                className="table-action-btn"
+                                onClick={() => handleOpenCreateSubtopic(top)}
+                              >
+                                <Plus style={{ width: 11, height: 11 }} />
+                                <span>Buat Submateri Pertama</span>
+                              </button>
                             </div>
-                          ))
+                          ) : (
+                            <div className="curriculum-subtopics-list">
+                              {top.subtopics.map((sub) => {
+                                const subPatterns = Array.isArray(sub.patterns) ? sub.patterns : [];
+                                return (
+                                  <div key={sub.id} className="curriculum-subtopic-row">
+                                    <div className="curriculum-subtopic-head">
+                                      <div className="curriculum-subtopic-title-wrap">
+                                        <span className="curriculum-subtopic-order">{sub.order}</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                                          <span className="curriculum-subtopic-title">
+                                            {sub.title}
+                                          </span>
+                                          <span className="curriculum-subtopic-meta">
+                                            {sub.slug}
+                                            {subPatterns.length > 0 ? ` • ${subPatterns.length} pola soal` : ' • belum ada pola soal'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="curriculum-card-actions">
+                                        <button
+                                          type="button"
+                                          className="button-icon-subtle"
+                                          title="Edit Submateri & Pola Soal"
+                                          onClick={() => handleOpenEditSubtopic(top, sub)}
+                                        >
+                                          <Edit style={{ width: 12, height: 12 }} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="button-icon-subtle button-icon-subtle-danger"
+                                          title="Hapus Submateri"
+                                          onClick={() => handleDeleteSubtopic(sub.id, sub.title)}
+                                        >
+                                          <Trash2 style={{ width: 12, height: 12 }} />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {subPatterns.length > 0 && (
+                                      <div className="curriculum-pattern-list">
+                                        {subPatterns.map((pat, idx) => (
+                                          <span key={idx} className="curriculum-pattern-chip">
+                                            <ListChecks />
+                                            <span>{pat}</span>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )
                         )}
                       </div>
                     </div>
                   );
                 })}
               </div>
-            );
-          })()}
-        </section>
-      )}
+            )}
+          </section>
+        );
+      })()}
 
       {/* SECTION 2: PRICING DATA TABLE */}
       {section === 'pricing' && (
@@ -3252,11 +3881,12 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         <section className="control-panel" aria-labelledby="vouchers-heading">
           <div className="section-heading control-panel-heading">
             <div>
-              <h2 id="vouchers-heading">Voucher & Kode Referal</h2>
-              <p>Kelola kode voucher dan referal yang dapat dimasukkan siswa saat checkout pembayaran paket koin / Premium Pass.</p>
+              <h2 id="vouchers-heading">Kode Referal & Voucher</h2>
+              <p>Kelola program referal mitra, persentase komisi, potongan diskon pembeli, dan pantau omset serta komisi bersih secara real-time.</p>
             </div>
             <button
               className="button button-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               onClick={() => {
                 setEditingVoucher(null);
                 setVoucherForm(initialVoucherForm);
@@ -3265,8 +3895,73 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 setNotice('');
               }}
             >
-              + Buat Voucher / Referal
+              <Plus style={{ width: 14, height: 14 }} />
+              <span>Buat Kode Referal</span>
             </button>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div className="revenue-metric-grid" style={{ marginBottom: '20px' }}>
+            <div className="revenue-metric">
+              <div className="revenue-metric-head">
+                <span>Total Kode Referal</span>
+                <span className="revenue-metric-icon">
+                  <Ticket />
+                </span>
+              </div>
+              <strong>{vouchers.length}</strong>
+              <small>{vouchers.filter((v) => v.isActive).length} aktif digunakan</small>
+            </div>
+
+            <div className="revenue-metric">
+              <div className="revenue-metric-head">
+                <span>Total Digunakan</span>
+                <span className="revenue-metric-icon">
+                  <Coins />
+                </span>
+              </div>
+              <strong>{vouchers.reduce((acc, v) => acc + (v.totalUsed || 0), 0)}x</strong>
+              <small>Transaksi sukses terverifikasi</small>
+            </div>
+
+            <div className="revenue-metric">
+              <div className="revenue-metric-head">
+                <span>Total Omset (Revenue)</span>
+                <span className="revenue-metric-icon">
+                  <Wallet />
+                </span>
+              </div>
+              <strong>
+                Rp {vouchers.reduce((acc, v) => acc + (v.totalRevenue || 0), 0).toLocaleString('id-ID')}
+              </strong>
+              <small>Pendapatan bruto via referal</small>
+            </div>
+
+            <div className="revenue-metric">
+              <div className="revenue-metric-head">
+                <span>Total Komisi Mitra</span>
+                <span className="revenue-metric-icon">
+                  <Percent />
+                </span>
+              </div>
+              <strong>
+                Rp {vouchers.reduce((acc, v) => acc + (v.totalCommission || 0), 0).toLocaleString('id-ID')}
+              </strong>
+              <small>Hak komisi akun yang ditunjuk</small>
+            </div>
+
+            <div className="revenue-metric">
+              <div className="revenue-metric-head">
+                <span>Net Platform Revenue</span>
+                <span className="revenue-metric-icon">
+                  <CreditCard />
+                </span>
+              </div>
+              <strong>
+                Rp {vouchers.reduce((acc, v) => acc + (v.netRevenue || 0), 0).toLocaleString('id-ID')}
+              </strong>
+              <small>Pendapatan bersih setelah komisi</small>
+            </div>
           </div>
 
           {voucherFormOpen && (
@@ -3274,10 +3969,10 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', marginBottom: '16px', borderBottom: '1px solid var(--border)' }}>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
-                    {editingVoucher ? 'Edit Voucher / Referal' : 'Buat Voucher / Referal Baru'}
+                    {editingVoucher ? 'Edit Kode Referal' : 'Buat Kode Referal Baru'}
                   </h3>
                   <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
-                    Potongan harga otomatis dihitung dalam persentase saat siswa memasukkan kode di halaman pembayaran.
+                    Atur kode referal, persentase diskon pembeli, persentase komisi, dan tentukan akun pemilik referal.
                   </p>
                 </div>
                 <button
@@ -3295,38 +3990,99 @@ ${totalPromptCount > 1 ? ']' : ''}`;
 
               <div className="control-form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
                 <label className="field-label">
-                  Kode Voucher / Referal (Huruf Kapital)
+                  Kode Referal (Huruf Kapital)
                   <input
                     className="field-input font-mono font-bold"
                     required
                     minLength={2}
-                    placeholder="Contoh: JITU20, AMBIS50, BUDI10"
+                    placeholder="Contoh: JITU20, AMBIS50, PARTNER10"
                     value={voucherForm.code}
                     onChange={(e) => setVoucherForm({ ...voucherForm, code: e.target.value.toUpperCase() })}
                   />
                 </label>
 
                 <label className="field-label">
-                  Persentase Diskon (%)
+                  Persentase Diskon Pembeli (%)
                   <input
                     className="field-input"
                     type="number"
                     required
                     min="1"
                     max="100"
-                    placeholder="Contoh: 20 (untuk diskon 20%)"
+                    placeholder="Contoh: 20 (diskon 20% bagi pembeli)"
                     value={voucherForm.discountPercent}
                     onChange={(e) => setVoucherForm({ ...voucherForm, discountPercent: e.target.value })}
                   />
                 </label>
 
                 <label className="field-label">
-                  Maksimum Potongan (IDR) - Opsional
+                  Persentase Komisi Pemilik (%)
+                  <input
+                    className="field-input"
+                    type="number"
+                    required
+                    min="0"
+                    max="100"
+                    placeholder="Contoh: 15 (komisi 15% dari omset)"
+                    value={voucherForm.commissionPercent}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, commissionPercent: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Issued To: Pilih Akun Pemilik (Pengguna Terdaftar)
+                  <select
+                    className="field-input"
+                    value={voucherForm.issuedToUserId}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      const selectedUser = users.find((u) => u.id === selectedId);
+                      setVoucherForm({
+                        ...voucherForm,
+                        issuedToUserId: selectedId,
+                        issuedToName: selectedUser?.name || voucherForm.issuedToName,
+                        issuedToEmail: selectedUser?.email || voucherForm.issuedToEmail,
+                        referrerName: selectedUser?.name || voucherForm.referrerName,
+                      });
+                    }}
+                  >
+                    <option value="">-- Pilih Akun Siswa / Mitra Terdaftar --</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || 'Tanpa Nama'} ({u.email})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field-label">
+                  Issued To: Nama Pemilik (Manual / External)
+                  <input
+                    className="field-input"
+                    placeholder="Contoh: Kak Budi Ambis"
+                    value={voucherForm.issuedToName}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, issuedToName: e.target.value, referrerName: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Issued To: Email Pemilik (Opsional)
+                  <input
+                    className="field-input"
+                    type="email"
+                    placeholder="Contoh: budi@ambisptn.com"
+                    value={voucherForm.issuedToEmail}
+                    onChange={(e) => setVoucherForm({ ...voucherForm, issuedToEmail: e.target.value })}
+                  />
+                </label>
+
+                <label className="field-label">
+                  Maksimum Potongan Diskon (IDR) - Opsional
                   <input
                     className="field-input"
                     type="number"
                     min="0"
-                    placeholder="Kosongkan jika tanpa batas maksimal"
+                    placeholder="Kosongkan jika tanpa batas"
                     value={voucherForm.maxDiscount}
                     onChange={(e) => setVoucherForm({ ...voucherForm, maxDiscount: e.target.value })}
                   />
@@ -3350,7 +4106,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     className="field-input"
                     type="number"
                     min="1"
-                    placeholder="Kosongkan jika kuota tak terbatas"
+                    placeholder="Kosongkan jika tak terbatas"
                     value={voucherForm.maxUsage}
                     onChange={(e) => setVoucherForm({ ...voucherForm, maxUsage: e.target.value })}
                   />
@@ -3366,21 +4122,11 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                   />
                 </label>
 
-                <label className="field-label">
-                  Nama Pemilik / Referal (Opsional)
+                <label className="field-label" style={{ gridColumn: '1 / -1' }}>
+                  Keterangan / Deskripsi Program Referal
                   <input
                     className="field-input"
-                    placeholder="Contoh: Kak Budi (Ambis PTN)"
-                    value={voucherForm.referrerName}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, referrerName: e.target.value })}
-                  />
-                </label>
-
-                <label className="field-label">
-                  Keterangan / Catatan Singkat
-                  <input
-                    className="field-input"
-                    placeholder="Contoh: Promo Launching 20% Off"
+                    placeholder="Contoh: Program Referal Komisi Ambis UTBK 2026"
                     value={voucherForm.description}
                     onChange={(e) => setVoucherForm({ ...voucherForm, description: e.target.value })}
                   />
@@ -3394,7 +4140,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     checked={voucherForm.isActive}
                     onChange={(e) => setVoucherForm({ ...voucherForm, isActive: e.target.checked })}
                   />{' '}
-                  Status Aktif (dapat digunakan oleh siswa)
+                  Status Aktif (siap digunakan saat siswa checkout)
                 </label>
               </div>
 
@@ -3411,29 +4157,31 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                   Batal
                 </button>
                 <button className="button button-primary" type="submit" disabled={saving}>
-                  {saving ? 'Menyimpan...' : editingVoucher ? 'Simpan Perubahan' : 'Buat Voucher'}
+                  {saving ? 'Menyimpan...' : editingVoucher ? 'Simpan Perubahan' : 'Buat Kode Referal'}
                 </button>
               </div>
             </form>
           )}
 
           {loading ? (
-            <div className="control-empty">Memuat data voucher…</div>
+            <div className="control-empty">Memuat data kode referal…</div>
           ) : error ? null : vouchers.length === 0 ? (
             <div className="control-empty">
-              Belum ada voucher atau kode referal. Klik tombol "+ Buat Voucher / Referal" di atas untuk menambahkan.
+              Belum ada kode referal. Klik tombol "+ Buat Kode Referal" di atas untuk menambahkan.
             </div>
           ) : (
             <div className="table-wrap">
               <table className="control-table">
                 <thead>
                   <tr>
-                    <th>Kode</th>
-                    <th>Diskon</th>
-                    <th>Pemilik / Referal</th>
-                    <th>Kuota Pemakaian</th>
-                    <th>Min. Belanja</th>
-                    <th>Kedaluwarsa</th>
+                    <th>Kode Referal</th>
+                    <th>Diskon & Komisi</th>
+                    <th>Issued To (Pemilik)</th>
+                    <th>Issued By (Pembuat)</th>
+                    <th style={{ textAlign: 'center' }}>Total Used</th>
+                    <th style={{ textAlign: 'right' }}>Total Revenue</th>
+                    <th style={{ textAlign: 'right' }}>Total Komisi</th>
+                    <th style={{ textAlign: 'right' }}>Net Platform</th>
                     <th>Status</th>
                     <th style={{ textAlign: 'right' }}>Aksi</th>
                   </tr>
@@ -3441,94 +4189,158 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 <tbody>
                   {vouchers.map((v) => {
                     const isExpired = v.expiresAt ? new Date(v.expiresAt) < new Date() : false;
-                    const isLimitReached = v.maxUsage ? v.usedCount >= v.maxUsage : false;
+                    const isLimitReached = v.maxUsage ? v.totalUsed >= v.maxUsage : false;
+                    const issuedToName = v.resolvedIssuedToName || v.issuedToName || v.referrerName || 'Umum / Promo';
+                    const issuedToEmail = v.resolvedIssuedToEmail || v.issuedToEmail || '-';
+                    const issuedByName = v.issuedByName || 'Admin';
+                    const issuedByEmail = v.issuedByEmail || '-';
+
                     return (
                       <tr key={v.id}>
+                        {/* 1. Kode Referal */}
+                        <td>
+                          <div className="cell-stack">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span className="referral-code-badge">
+                                <Tag className="cell-accessory-icon" />
+                                <span>{v.code}</span>
+                              </span>
+                              <button
+                                type="button"
+                                className="copy-mini-btn"
+                                title="Salin kode"
+                                onClick={() => handleCopyCode(v.code)}
+                              >
+                                {copiedCode === v.code ? (
+                                  <Check style={{ width: 13, height: 13 }} />
+                                ) : (
+                                  <Copy style={{ width: 13, height: 13 }} />
+                                )}
+                              </button>
+                            </div>
+                            {v.description && (
+                              <span className="cell-meta-row" style={{ marginTop: '2px' }}>
+                                {v.description}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 2. Diskon & Komisi */}
+                        <td>
+                          <div className="cell-stack">
+                            <span className="cell-meta-row">
+                              <Percent className="cell-accessory-icon" />
+                              <span className="cell-primary">Diskon: {v.discountPercent}%</span>
+                            </span>
+                            <span className="cell-meta-row">
+                              <Coins className="cell-accessory-icon" />
+                              <span>Komisi: {v.commissionPercent}%</span>
+                            </span>
+                            {v.maxDiscount && (
+                              <span className="cell-meta-row" style={{ fontSize: '10.5px' }}>
+                                Maks. Rp {v.maxDiscount.toLocaleString('id-ID')}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* 3. Issued To */}
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span
-                              style={{
-                                fontFamily: 'monospace',
-                                fontWeight: 700,
-                                fontSize: '13px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                background: 'rgba(59, 130, 246, 0.12)',
-                                color: '#60a5fa',
-                                border: '1px solid rgba(59, 130, 246, 0.25)',
-                              }}
-                            >
-                              {v.code}
-                            </span>
+                            <Avatar className="h-7 w-7">
+                              <AvatarImage
+                                src={v.resolvedIssuedToImage || getCartoonAvatarUrl(issuedToName)}
+                                alt={issuedToName}
+                              />
+                              <AvatarFallback>
+                                {issuedToName.slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="cell-stack" style={{ gap: '1px' }}>
+                              <span className="cell-primary">{issuedToName}</span>
+                              <span className="cell-meta-row">{issuedToEmail}</span>
+                            </div>
                           </div>
-                          {v.description && (
-                            <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '3px', fontSize: '11px' }}>
-                              {v.description}
-                            </small>
-                          )}
                         </td>
+
+                        {/* 4. Issued By */}
                         <td>
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              fontSize: '13px',
-                              padding: '2px 8px',
-                              borderRadius: '999px',
-                              background: 'rgba(16, 185, 129, 0.15)',
-                              color: '#34d399',
-                            }}
-                          >
-                            {v.discountPercent}% OFF
-                          </span>
-                          {v.maxDiscount && (
-                            <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '2px', fontSize: '11px' }}>
-                              Maks. Rp {v.maxDiscount.toLocaleString('id-ID')}
-                            </small>
-                          )}
+                          <div className="cell-stack" style={{ gap: '1px' }}>
+                            <span className="cell-primary">{issuedByName}</span>
+                            <span className="cell-meta-row">{issuedByEmail}</span>
+                          </div>
                         </td>
-                        <td>
-                          {v.referrerName ? (
-                            <span style={{ fontWeight: 550, color: 'var(--foreground)' }}>{v.referrerName}</span>
-                          ) : (
-                            <span style={{ color: 'var(--muted-fg)', fontSize: '12px' }}>Umum / Promo</span>
-                          )}
-                        </td>
-                        <td>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                            {v.usedCount} / {v.maxUsage ? v.maxUsage : '∞'}
-                          </span>
-                          {isLimitReached && (
-                            <span style={{ display: 'block', fontSize: '10px', color: '#f87171', fontWeight: 600 }}>
-                              Kuota Habis
+
+                        {/* 5. Total Used */}
+                        <td style={{ textAlign: 'center' }}>
+                          <div className="cell-stack" style={{ alignItems: 'center' }}>
+                            <span className="cell-mono" style={{ fontSize: '13px' }}>
+                              {v.totalUsed}x
                             </span>
-                          )}
-                        </td>
-                        <td>
-                          {v.minPurchase > 0 ? `Rp ${v.minPurchase.toLocaleString('id-ID')}` : 'Rp 0'}
-                        </td>
-                        <td>
-                          {v.expiresAt ? (
-                            <span style={{ color: isExpired ? '#f87171' : 'var(--foreground)' }}>
-                              {new Date(v.expiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              {isExpired && <span style={{ display: 'block', fontSize: '10px', color: '#f87171', fontWeight: 600 }}>Kedaluwarsa</span>}
+                            <span className="cell-meta-row" style={{ fontSize: '10.5px' }}>
+                              kuota: {v.maxUsage ? `${v.maxUsage}x` : '∞'}
                             </span>
-                          ) : (
-                            <span style={{ color: 'var(--muted-fg)', fontSize: '12px' }}>Selamanya</span>
-                          )}
+                            {isLimitReached && (
+                              <span style={{ fontSize: '10px', color: '#f87171', fontWeight: 600 }}>
+                                Habis
+                              </span>
+                            )}
+                          </div>
                         </td>
-                        <td>
-                          <button
-                            type="button"
-                            className={`badge ${v.isActive ? 'badge-confirmed' : 'badge-cancelled'}`}
-                            style={{ cursor: 'pointer', border: 'none' }}
-                            onClick={() => toggleVoucherActive(v)}
-                            title="Klik untuk ubah status aktif"
-                          >
-                            {v.isActive ? 'Aktif' : 'Nonaktif'}
-                          </button>
-                        </td>
+
+                        {/* 6. Total Revenue */}
                         <td style={{ textAlign: 'right' }}>
-                          <div className="table-action-group">
+                          <span className="cell-mono">
+                            Rp {(v.totalRevenue || 0).toLocaleString('id-ID')}
+                          </span>
+                        </td>
+
+                        {/* 7. Total Commission */}
+                        <td style={{ textAlign: 'right' }}>
+                          <span className="cell-mono">
+                            Rp {(v.totalCommission || 0).toLocaleString('id-ID')}
+                          </span>
+                        </td>
+
+                        {/* 8. Net Platform */}
+                        <td style={{ textAlign: 'right' }}>
+                          <span className="cell-mono" style={{ fontWeight: 700 }}>
+                            Rp {(v.netRevenue || 0).toLocaleString('id-ID')}
+                          </span>
+                        </td>
+
+                        {/* 9. Status */}
+                        <td>
+                          {isExpired ? (
+                            <span className="control-status status-pending">
+                              <Clock />
+                              <span>Kedaluwarsa</span>
+                            </span>
+                          ) : !v.isActive ? (
+                            <span className="control-status status-rejected">
+                              <XCircle />
+                              <span>Nonaktif</span>
+                            </span>
+                          ) : (
+                            <span className="control-status status-accepted">
+                              <CheckCircle2 />
+                              <span>Aktif</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 10. Aksi */}
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="table-action-group" style={{ justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              className="table-action-btn"
+                              onClick={() => toggleVoucherActive(v)}
+                              title={v.isActive ? 'Nonaktifkan kode' : 'Aktifkan kode'}
+                            >
+                              {v.isActive ? 'Matikan' : 'Nyalakan'}
+                            </button>
                             <button
                               type="button"
                               className="table-action-btn"
@@ -3838,11 +4650,26 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                   <div className="discount-preview-pane-header">
                     <div className="discount-preview-pane-title">
                       <Eye className="w-4 h-4 text-blue-500" />
-                      <span>Live Shop Card Preview</span>
+                      <span>Live Card Preview</span>
                     </div>
-                    <span className="text-[11px] text-[var(--muted-fg)]">
-                      Preview instan real-time
-                    </span>
+                    <div className="preview-view-toggle">
+                      <button
+                        type="button"
+                        className={`preview-view-btn ${previewTab === 'shop' ? 'is-active' : ''}`}
+                        onClick={() => setPreviewTab('shop')}
+                      >
+                        <ShoppingBag className="w-3.5 h-3.5" />
+                        <span>Tampilan Shop</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`preview-view-btn ${previewTab === 'landing' ? 'is-active' : ''}`}
+                        onClick={() => setPreviewTab('landing')}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Tampilan Landing Page</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Calculations for Previews */}
@@ -3870,14 +4697,16 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     const appliesToCoin = !discountForm.packageId || discountForm.packageId === coinPkgTarget.id;
 
                     const ActiveIcon = getBadgeIcon(discountForm.badgeStyle);
+                    const campaignTitle = discountForm.name.trim() || 'Nama Campaign Promo';
 
                     return (
-                      <div className="space-y-5">
+                      <div className="space-y-6">
                         {/* 1. PTN PREMIUM PASS CARD PREVIEW */}
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
-                              Preview 1: Kartu PTN Premium Pass
+                            <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                              Preview 1: Kartu PTN Premium Pass ({previewTab === 'shop' ? 'Shop' : 'Landing Page'})
                             </span>
                             {!appliesToPass && (
                               <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
@@ -3887,36 +4716,182 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                           </div>
 
                           <div className="pass-preview-card">
-                            <div className="relative z-10 flex flex-col justify-between gap-4">
-                              <div>
-                                <div className="flex flex-wrap items-center gap-2 mb-2">
-                                  {/* Attached Promo Badge with selected style & text */}
-                                  <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
-                                    <ActiveIcon className="w-3.5 h-3.5" />
-                                    {discountForm.badgeText || 'PROMO DISKON'}
-                                  </span>
+                            {/* 1. Sweeping Ambient Shimmer Light Beam Animation */}
+                            <div
+                              aria-hidden="true"
+                              className="absolute -inset-full w-[200%] h-[200%] bg-gradient-to-r from-transparent via-white/[0.08] to-transparent pointer-events-none animate-pass-shimmer"
+                            />
 
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FFD13B] text-black text-[10px] font-black uppercase tracking-wider">
-                                    <Sparkles className="w-3 h-3 fill-black" />
-                                    Rekomendasi
-                                  </span>
+                            {/* 2. Pulsing Ambient Glowing Orbs */}
+                            <div
+                              aria-hidden="true"
+                              className="absolute -right-16 -bottom-16 w-80 h-80 rounded-full bg-blue-400/20 blur-3xl animate-pulse [animation-duration:4s] pointer-events-none"
+                            />
+                            <div
+                              aria-hidden="true"
+                              className="absolute top-0 right-1/3 w-64 h-64 rounded-full bg-yellow-400/10 blur-3xl animate-pulse [animation-duration:6s] pointer-events-none"
+                            />
+
+                            {/* 3. Hand-drawn Yellow & Light Blue Doodle Accessories (Animated, no collision) */}
+                            {/* Doodle 1: Light Blue Loop Swirl (Top-Left corner) */}
+                            <svg
+                              aria-hidden="true"
+                              className="hidden sm:block absolute top-2 left-[2.5%] w-13 h-11 text-blue-300/60 pointer-events-none drop-shadow-xs rotate-[-15deg] animate-doodle-2"
+                              viewBox="0 0 68 48"
+                              fill="none"
+                            >
+                              <path
+                                d="M6 34C18 18 24 8 14 6C4 4 8 22 24 24C40 26 48 12 62 10"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+
+                            {/* Doodle 2: Yellow Ribbon Loop Swirl */}
+                            <svg
+                              aria-hidden="true"
+                              className="hidden md:block absolute top-2 left-[57%] -translate-x-1/2 w-14 h-12 text-[#FFD13B]/80 pointer-events-none drop-shadow-xs rotate-[8deg] animate-doodle-1"
+                              viewBox="0 0 68 48"
+                              fill="none"
+                            >
+                              <path
+                                d="M8 38C22 34 38 18 30 8C22 -2 12 14 30 22C48 30 58 16 66 10"
+                                stroke="currentColor"
+                                strokeWidth="2.75"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+
+                            {/* Doodle 3: Light Blue Spring Curl */}
+                            <svg
+                              aria-hidden="true"
+                              className="hidden lg:block absolute -bottom-1.5 left-[42%] w-14 h-12 text-blue-200/50 pointer-events-none drop-shadow-xs rotate-[8deg] animate-doodle-1"
+                              viewBox="0 0 68 48"
+                              fill="none"
+                            >
+                              <path
+                                d="M6 26C16 12 24 14 26 22C28 30 20 32 18 24C16 14 32 16 44 26C54 34 60 26 64 18"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+
+                            {/* Doodle 4: Second Yellow Accessory */}
+                            <svg
+                              aria-hidden="true"
+                              className="hidden md:block absolute -bottom-2 right-[27%] w-15 h-13 text-[#FFD13B]/85 pointer-events-none drop-shadow-xs rotate-[16deg] animate-doodle-2"
+                              viewBox="0 0 68 48"
+                              fill="none"
+                            >
+                              <path
+                                d="M6 34C18 18 24 8 14 6C4 4 8 22 24 24C40 26 48 12 62 10"
+                                stroke="currentColor"
+                                strokeWidth="2.75"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+
+                            {/* Doodle 5: Yellow Sparkle Star */}
+                            <svg
+                              aria-hidden="true"
+                              className="absolute top-4 right-10 w-5 h-5 text-[#FFD13B]/75 pointer-events-none animate-pulse [animation-duration:3s]"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" />
+                            </svg>
+
+                            {/* Doodle 6: Light Blue Underline Swoop */}
+                            <svg
+                              aria-hidden="true"
+                              className="hidden lg:block absolute bottom-1 left-[3%] w-16 h-8 text-blue-300/40 pointer-events-none"
+                              viewBox="0 0 80 36"
+                              fill="none"
+                            >
+                              <path
+                                d="M6 18C20 22 34 24 46 16C54 10 52 2 44 6C36 10 42 22 56 20C68 18 72 12 76 10"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+
+                            <div className="relative z-10 flex flex-col gap-5">
+                              <div className="flex items-start gap-4">
+                                {/* Animated Floating Golden Ticket */}
+                                <div className="w-14 h-12 sm:w-16 sm:h-14 shrink-0 relative select-none animate-ticket-float transition-transform duration-300">
+                                  <Image
+                                    src="/icons/golden-pass-ticket.png"
+                                    alt="Tiket Golden Pass PTN Premium Pass"
+                                    fill
+                                    className="object-contain select-none pointer-events-none drop-shadow-md"
+                                    priority
+                                  />
                                 </div>
 
-                                <h3 className="text-[20px] font-black text-white tracking-tight leading-tight m-0">
-                                  PTN <span className="bg-[#FFD13B] text-black px-1.5 py-0.5 rounded-sm">PREMIUM PASS</span>
-                                </h3>
-                                <p className="text-[11px] text-blue-100 mt-1 max-w-[44ch] leading-relaxed">
-                                  Satu tiket langganan untuk bonus 4 coins, ribuan latihan soal tanpa limit, dan bebas pembahasan.
-                                </p>
+                                <div className="space-y-1.5 flex-1">
+                                  {/* Badges: Campaign Name + Selected Promo Badge */}
+                                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/15 text-yellow-300 border border-yellow-300/30 text-[11px] font-bold uppercase tracking-wider backdrop-blur-xs">
+                                      <Sparkles className="w-3 h-3 fill-yellow-300 text-yellow-300" />
+                                      {campaignTitle}
+                                    </span>
+
+                                    <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
+                                      <ActiveIcon className="w-3.5 h-3.5" />
+                                      {discountForm.badgeText || 'PROMO DISKON'}
+                                    </span>
+
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FFD13B] text-black text-[10px] font-black uppercase tracking-wider">
+                                      <Sparkles className="w-3 h-3 fill-black" />
+                                      Rekomendasi
+                                    </span>
+                                  </div>
+
+                                  <h3 className="text-[24px] sm:text-[28px] font-black text-white tracking-tight leading-tight m-0 flex flex-wrap items-center gap-2">
+                                    <span>PTN</span>
+                                    <span className="bg-[#FFD13B] text-black px-2 py-0.5 rounded-xs inline-block shadow-xs">
+                                      PREMIUM PASS
+                                    </span>
+                                  </h3>
+                                </div>
                               </div>
 
-                              {/* Price Block */}
-                              <div className="flex items-baseline justify-between pt-3 border-t border-blue-400/30">
+                              {/* 3 Checkmark Benefits */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-blue-400/25">
+                                <div className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
+                                  <div className="w-4 h-4 rounded-full bg-yellow-400/20 text-yellow-300 flex items-center justify-center shrink-0">
+                                    <Check className="w-3 h-3 stroke-[3]" />
+                                  </div>
+                                  <span>Bebas akses pembahasan tanpa coins</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
+                                  <div className="w-4 h-4 rounded-full bg-yellow-400/20 text-yellow-300 flex items-center justify-center shrink-0">
+                                    <Check className="w-3 h-3 stroke-[3]" />
+                                  </div>
+                                  <span>Materi & latihan soal unlimited</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
+                                  <div className="w-4 h-4 rounded-full bg-yellow-400/20 text-yellow-300 flex items-center justify-center shrink-0">
+                                    <Check className="w-3 h-3 stroke-[3]" />
+                                  </div>
+                                  <span>Analisis skor IRT & ranking nasional</span>
+                                </div>
+                              </div>
+
+                              {/* Price Block & CTA */}
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-3 border-t border-blue-400/30">
                                 <div>
                                   {appliesToPass && passSavings > 0 ? (
                                     <div className="space-y-0.5">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-xs line-through text-blue-200/80 font-semibold tabular-nums">
+                                        <span className="text-xs line-through text-blue-200/80 font-bold tabular-nums">
                                           Rp{passBasePrice.toLocaleString('id-ID')}
                                         </span>
                                         <span className="text-[10px] font-black text-yellow-300 bg-yellow-400/20 px-1.5 py-0.5 rounded">
@@ -3924,29 +4899,44 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                         </span>
                                       </div>
                                       <div className="flex items-baseline gap-1">
-                                        <span className="text-[26px] font-black text-white leading-none tabular-nums">
+                                        <span className="text-[28px] font-black text-white leading-none tabular-nums">
                                           Rp{passDiscountedPrice.toLocaleString('id-ID')}
                                         </span>
                                         <span className="text-xs font-bold text-blue-200">/bulan</span>
                                       </div>
+                                      <div className="text-[11px] text-blue-200/80 font-medium">
+                                        Akses penuh tanpa batas
+                                      </div>
                                     </div>
                                   ) : (
-                                    <div className="flex items-baseline gap-1">
-                                      <span className="text-[26px] font-black text-white leading-none tabular-nums">
-                                        Rp{passBasePrice.toLocaleString('id-ID')}
-                                      </span>
-                                      <span className="text-xs font-bold text-blue-200">/bulan</span>
+                                    <div>
+                                      <div className="flex items-baseline gap-1">
+                                        <span className="text-[28px] font-black text-white leading-none tabular-nums">
+                                          Rp{passBasePrice.toLocaleString('id-ID')}
+                                        </span>
+                                        <span className="text-xs font-bold text-blue-200">/bulan</span>
+                                      </div>
+                                      <div className="text-[11px] text-blue-200/80 font-medium">
+                                        Akses penuh tanpa batas
+                                      </div>
                                     </div>
                                   )}
                                 </div>
 
-                                <button
-                                  type="button"
-                                  className="px-4 py-2 rounded-lg bg-[#FFD13B] text-black font-black text-xs inline-flex items-center gap-1.5 shadow-md pointer-events-none"
-                                >
-                                  <span>Ambil Pass</span>
-                                  <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-                                </button>
+                                {/* Continuous Rotating Border Beam Button */}
+                                <div className="relative p-[2.5px] rounded-xl overflow-hidden shadow-lg">
+                                  <div
+                                    aria-hidden="true"
+                                    className="absolute inset-[-200%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_0deg_at_50%_50%,transparent_0%,transparent_60%,rgba(255,255,255,0.95)_80%,#FFD13B_92%,transparent_100%)] pointer-events-none"
+                                  />
+                                  <button
+                                    type="button"
+                                    className="relative px-6 py-2.5 rounded-[10px] bg-[#FFD13B] text-black font-extrabold text-xs inline-flex items-center justify-center gap-2 pointer-events-none shadow-md"
+                                  >
+                                    <span>Ambil Premium Pass</span>
+                                    <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -3955,8 +4945,9 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                         {/* 2. CARD COIN BIASA PREVIEW */}
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
-                              Preview 2: Card Coin Biasa ({coinPkgTarget.tokenAmount} Coin)
+                            <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider flex items-center gap-1.5">
+                              <Coins className="w-3.5 h-3.5 text-amber-500" />
+                              Preview 2: Card Coin Biasa ({coinPkgTarget.tokenAmount} Coin) ({previewTab === 'shop' ? 'Shop' : 'Landing Page'})
                             </span>
                             {!appliesToCoin && (
                               <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
@@ -3965,76 +4956,131 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                             )}
                           </div>
 
-                          <div className={`coin-preview-card ${appliesToCoin ? 'has-discount' : ''}`}>
-                            {/* Card Header with Coin count and Attached Badge */}
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-amber-400 text-zinc-950 font-black text-xs flex items-center justify-center shadow-xs">
-                                  🪙
+                          {previewTab === 'shop' ? (
+                            /* SHOP VIEW: Exact TokenCard layout */
+                            <div className={`coin-preview-card ${appliesToCoin ? 'has-discount border-2 border-primary' : ''}`}>
+                              {/* Header: Coin icon + Coin Count + Campaign chip + Attached Badge */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-amber-400 text-zinc-950 font-black text-xs flex items-center justify-center shadow-xs">
+                                    🪙
+                                  </div>
+                                  <span className="font-bold text-[18px] text-[var(--foreground)]">
+                                    {coinPkgTarget.tokenAmount} coin
+                                  </span>
                                 </div>
-                                <span className="font-extrabold text-[16px] text-[var(--foreground)]">
-                                  {coinPkgTarget.tokenAmount} coin
-                                </span>
+
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">
+                                    {campaignTitle}
+                                  </span>
+                                  <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
+                                    <ActiveIcon className="w-3 h-3" />
+                                    {discountForm.badgeText || 'DISKON'}
+                                  </span>
+                                </div>
                               </div>
 
-                              {/* Attached Promo Badge with selected style & text */}
-                              <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
-                                <ActiveIcon className="w-3 h-3" />
-                                {discountForm.badgeText || 'DISKON'}
-                              </span>
-                            </div>
-
-                            {/* Price Block */}
-                            <div>
-                              {appliesToCoin && coinSavings > 0 ? (
-                                <div className="space-y-0.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs line-through text-[var(--muted-fg)] font-semibold tabular-nums">
+                              {/* Price Block */}
+                              <div>
+                                {appliesToCoin && coinSavings > 0 ? (
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs line-through text-[var(--muted-fg)] font-semibold tabular-nums">
+                                        Rp{coinBasePrice.toLocaleString('id-ID')}
+                                      </span>
+                                      <span className="text-[10px] font-extrabold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                        Hemat Rp{coinSavings.toLocaleString('id-ID')}
+                                      </span>
+                                    </div>
+                                    <div className="font-bold text-[28px] leading-tight tracking-[-0.02em] text-[var(--foreground)] tabular-nums">
+                                      Rp{coinDiscountedPrice.toLocaleString('id-ID')}
+                                    </div>
+                                    <div className="text-[13px] text-[var(--muted-fg)] tabular-nums">
+                                      Rp{Math.round(coinDiscountedPrice / Math.max(1, coinPkgTarget.tokenAmount)).toLocaleString('id-ID')} / tryout
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="font-bold text-[28px] leading-tight tracking-[-0.02em] text-[var(--foreground)] tabular-nums">
                                       Rp{coinBasePrice.toLocaleString('id-ID')}
-                                    </span>
-                                    <span className="text-[10px] font-extrabold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                      Hemat Rp{coinSavings.toLocaleString('id-ID')}
-                                    </span>
+                                    </div>
+                                    <div className="text-[13px] text-[var(--muted-fg)] tabular-nums">
+                                      Rp{Math.round(coinBasePrice / Math.max(1, coinPkgTarget.tokenAmount)).toLocaleString('id-ID')} / tryout
+                                    </div>
                                   </div>
-                                  <div className="font-black text-[24px] leading-tight text-[var(--foreground)] tabular-nums">
-                                    Rp{coinDiscountedPrice.toLocaleString('id-ID')}
-                                  </div>
-                                  <div className="text-[11px] text-[var(--muted-fg)] tabular-nums">
-                                    Rp{Math.round(coinDiscountedPrice / Math.max(1, coinPkgTarget.tokenAmount)).toLocaleString('id-ID')} / tryout
-                                  </div>
-                                </div>
-                              ) : (
-                                <div>
-                                  <div className="font-black text-[24px] leading-tight text-[var(--foreground)] tabular-nums">
-                                    Rp{coinBasePrice.toLocaleString('id-ID')}
-                                  </div>
-                                  <div className="text-[11px] text-[var(--muted-fg)] tabular-nums">
-                                    Rp{Math.round(coinBasePrice / Math.max(1, coinPkgTarget.tokenAmount)).toLocaleString('id-ID')} / tryout
-                                  </div>
-                                </div>
-                              )}
+                                )}
+                              </div>
+
+                              {/* Features List */}
+                              <ul className="space-y-2 pt-3 border-t border-[var(--border)] text-[13px] text-[var(--muted-fg)]">
+                                <li className="flex items-start gap-2">
+                                  <Check className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                                  <span>Buka skor IRT &amp; pembahasan {coinPkgTarget.tokenAmount} tryout</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                  <Check className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                                  <span>Berlaku sampai 21 Apr 2027</span>
+                                </li>
+                              </ul>
+
+                              {/* Buy Button */}
+                              <button
+                                type="button"
+                                className="w-full py-2.5 px-3 rounded-lg bg-[var(--primary)] text-white font-bold text-xs pointer-events-none text-center shadow-xs"
+                              >
+                                Beli {coinPkgTarget.tokenAmount} coin
+                              </button>
                             </div>
+                          ) : (
+                            /* LANDING PAGE VIEW: Exact QuotaPack card layout */
+                            <div className="rounded-xl p-5 flex flex-col justify-between gap-5 bg-[var(--card)] border border-[var(--border)]">
+                              <div className="space-y-3">
+                                {/* Header: Coin Icon + Count + Campaign Badge */}
+                                <div className="flex items-center justify-between gap-2 min-h-[24px]">
+                                  <div className="inline-flex items-center gap-2">
+                                    <span className="text-xl">🪙</span>
+                                    <span className="text-[20px] font-bold text-[var(--foreground)] tabular-nums">
+                                      {coinPkgTarget.tokenAmount} coin
+                                    </span>
+                                  </div>
+                                  <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
+                                    <ActiveIcon className="w-3 h-3" />
+                                    {discountForm.badgeText || 'Paling hemat'}
+                                  </span>
+                                </div>
 
-                            {/* Features */}
-                            <ul className="space-y-1.5 pt-3 border-t border-[var(--border)] text-xs text-[var(--muted-fg)]">
-                              <li className="flex items-center gap-1.5">
-                                <Check className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                <span>Buka skor IRT &amp; pembahasan {coinPkgTarget.tokenAmount} tryout</span>
-                              </li>
-                              <li className="flex items-center gap-1.5">
-                                <Check className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                <span>Berlaku sampai 21 Apr 2027</span>
-                              </li>
-                            </ul>
+                                {/* Price */}
+                                <div className="pt-2 border-t border-[var(--border)]">
+                                  {appliesToCoin && coinSavings > 0 && (
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-xs line-through text-[var(--muted-fg)] font-medium tabular-nums">
+                                        Rp{coinBasePrice.toLocaleString('id-ID')}
+                                      </span>
+                                      <span className="text-[10px] font-extrabold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                        Hemat Rp{coinSavings.toLocaleString('id-ID')}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="text-[28px] font-bold text-[var(--foreground)] leading-tight tabular-nums">
+                                    Rp{(appliesToCoin ? coinDiscountedPrice : coinBasePrice).toLocaleString('id-ID')}
+                                  </div>
+                                </div>
 
-                            {/* Buy Button */}
-                            <button
-                              type="button"
-                              className="w-full py-2 px-3 rounded-lg bg-[var(--muted-bg)] border border-[var(--border)] text-[var(--foreground)] font-bold text-xs pointer-events-none text-center"
-                            >
-                              Beli {coinPkgTarget.tokenAmount} coin
-                            </button>
-                          </div>
+                                <p className="text-[13px] text-[var(--muted-fg)] leading-relaxed m-0">
+                                  Paket lengkap persiapan intensif agar makin percaya diri. Termasuk kampanye {campaignTitle}.
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                className="w-full min-h-[44px] px-4 py-2.5 rounded-md text-[14px] font-semibold inline-flex items-center justify-center gap-2 bg-[var(--primary)] text-white pointer-events-none"
+                              >
+                                <span>Pilih paket</span>
+                                <ArrowRight className="w-4 h-4 stroke-[2]" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -4659,6 +5705,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                   <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     {previewQuestion.difficulty}
                   </span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                    previewQuestion.type === 'ISIAN_SINGKAT' || previewQuestion.type === 'SHORT_ANSWER'
+                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                      : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+                  }`}>
+                    {previewQuestion.type === 'ISIAN_SINGKAT' || previewQuestion.type === 'SHORT_ANSWER' ? '✍️ Isian Singkat' : '🔘 Pilihan Ganda'}
+                  </span>
                   <span className="text-xs text-[var(--muted-fg)]">
                     {previewQuestion.subtest.replace(/_/g, ' ')}
                   </span>
@@ -4690,39 +5743,63 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                   {previewQuestion.content}
                 </div>
 
-                {/* Options A - E */}
-                <div className="space-y-2">
-                  {previewQuestion.options?.map((opt, i) => {
-                    const letters = ['A', 'B', 'C', 'D', 'E'];
-                    const letter = letters[i] || String(i + 1);
-                    return (
-                      <div
-                        key={i}
-                        className={`flex items-center gap-3 p-2.5 rounded-lg border text-xs transition-all ${
-                          opt.isCorrect
-                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 font-medium'
-                            : 'border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]'
-                        }`}
-                      >
-                        <span
-                          className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                {/* Options A - E or Short Answer Preview */}
+                {previewQuestion.type === 'ISIAN_SINGKAT' || previewQuestion.type === 'SHORT_ANSWER' || (!previewQuestion.options || previewQuestion.options.length === 0) ? (
+                  <div className="p-3.5 rounded-lg bg-amber-500/5 border border-amber-500/25 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>✍️</span> Kunci Jawaban Isian Singkat
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                        Standar Resmi BPPP SNBT
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 p-2.5 rounded bg-[var(--background)] border border-[var(--border)]">
+                      <span className="text-xs text-[var(--muted-fg)]">Kunci Jawaban Resmi:</span>
+                      <span className="text-sm font-mono font-bold text-emerald-400">
+                        {previewQuestion.correctAnswer || '(Belum diset)'}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-[var(--muted-fg)] leading-relaxed">
+                      💡 <em>Petunjuk format menjawab telah disematkan pada pertanyaan soal agar siswa memasukkan angka bulat secara akurat.</em>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {previewQuestion.options?.map((opt, i) => {
+                      const letters = ['A', 'B', 'C', 'D', 'E'];
+                      const letter = letters[i] || String(i + 1);
+                      return (
+                        <div
+                          key={i}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg border text-xs transition-all ${
                             opt.isCorrect
-                              ? 'bg-emerald-500 text-white'
-                              : 'border border-[var(--border)] text-[var(--muted-fg)]'
+                              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-300 font-medium'
+                              : 'border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]'
                           }`}
                         >
-                          {letter}
-                        </span>
-                        <span className="flex-1">{opt.content}</span>
-                        {opt.isCorrect && (
-                          <span className="text-[11px] font-bold text-emerald-400 shrink-0">
-                            ✓ Kunci Jawaban
+                          <span
+                            className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
+                              opt.isCorrect
+                                ? 'bg-emerald-500 text-white'
+                                : 'border border-[var(--border)] text-[var(--muted-fg)]'
+                            }`}
+                          >
+                            {letter}
                           </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                          <span className="flex-1">{opt.content}</span>
+                          {opt.isCorrect && (
+                            <span className="text-[11px] font-bold text-emerald-400 shrink-0">
+                              ✓ Kunci Jawaban
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Companion Tricks & Formulas */}
@@ -5021,17 +6098,22 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       {/* MODAL: CREATE / EDIT TOPIC */}
       {topicModalOpen && (
         <div className="modal-overlay" onClick={() => setTopicModalOpen(false)}>
-          <div className="modal-content" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-dialog" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingTopic ? 'Edit Materi Utama' : 'Tambah Materi Utama'}</h3>
+              <div>
+                <h3>{editingTopic ? 'Edit Materi Utama' : 'Tambah Materi Utama'}</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
+                  Materi utama mengelompokkan submateri pada masing-masing subtes SNBT.
+                </p>
+              </div>
               <button type="button" className="modal-close-btn" onClick={() => setTopicModalOpen(false)}>
                 <X style={{ width: 18, height: 18 }} />
               </button>
             </div>
             <form onSubmit={handleSaveTopic}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <label className="field-label">Subtes UTBK</label>
+                <label className="field-label">
+                  <span>Subtes UTBK-SNBT</span>
                   <select
                     className="field-input"
                     value={topicForm.subtest}
@@ -5041,9 +6123,9 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                       <option key={s.id} value={s.id}>{s.label}</option>
                     ))}
                   </select>
-                </div>
-                <div>
-                  <label className="field-label">Judul Materi Utama</label>
+                </label>
+                <label className="field-label">
+                  <span>Judul Materi Utama</span>
                   <input
                     type="text"
                     required
@@ -5052,33 +6134,38 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     value={topicForm.title}
                     onChange={(e) => {
                       const title = e.target.value;
-                      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                      const slug = editingTopic
+                        ? topicForm.slug
+                        : title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
                       setTopicForm({ ...topicForm, title, slug });
                     }}
                   />
-                </div>
-                <div>
-                  <label className="field-label">Slug URL / Identifier</label>
-                  <input
-                    type="text"
-                    className="field-input"
-                    placeholder="aljabar-dan-fungsi"
-                    value={topicForm.slug}
-                    onChange={(e) => setTopicForm({ ...topicForm, slug: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="field-label">Urutan Tampilan (Order)</label>
-                  <input
-                    type="number"
-                    className="field-input"
-                    value={topicForm.order}
-                    onChange={(e) => setTopicForm({ ...topicForm, order: Number(e.target.value) })}
-                  />
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+                  <label className="field-label">
+                    <span>Slug Identifier</span>
+                    <input
+                      type="text"
+                      className="field-input"
+                      placeholder="aljabar-dan-fungsi"
+                      value={topicForm.slug}
+                      onChange={(e) => setTopicForm({ ...topicForm, slug: e.target.value })}
+                    />
+                  </label>
+                  <label className="field-label">
+                    <span>Urutan (Order)</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className="field-input"
+                      value={topicForm.order}
+                      onChange={(e) => setTopicForm({ ...topicForm, order: Number(e.target.value) })}
+                    />
+                  </label>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="button button-outline" onClick={() => setTopicModalOpen(false)}>
+                <button type="button" className="button button-secondary" onClick={() => setTopicModalOpen(false)}>
                   Batal
                 </button>
                 <button type="submit" className="button button-primary" disabled={topicSaving}>
@@ -5093,32 +6180,40 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       {/* MODAL: CREATE / EDIT SUBTOPIC */}
       {subtopicModalOpen && (
         <div className="modal-overlay" onClick={() => setSubtopicModalOpen(false)}>
-          <div className="modal-content" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-dialog" style={{ maxWidth: '540px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editingSubtopic ? 'Edit Submateri' : 'Tambah Submateri'}</h3>
+              <div>
+                <h3>{editingSubtopic ? 'Edit Submateri & Pola Soal' : 'Tambah Submateri Baru'}</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
+                  {activeParentTopic ? `Materi Induk: ${activeParentTopic.title}` : 'Atur rincian submateri dan daftar indikator pola soal.'}
+                </p>
+              </div>
               <button type="button" className="modal-close-btn" onClick={() => setSubtopicModalOpen(false)}>
                 <X style={{ width: 18, height: 18 }} />
               </button>
             </div>
             <form onSubmit={handleSaveSubtopic}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <label className="field-label">Materi Utama Induk</label>
+                <label className="field-label">
+                  <span>Materi Utama Induk</span>
                   <select
                     className="field-input"
                     value={subtopicForm.topicId}
                     onChange={(e) => setSubtopicForm({ ...subtopicForm, topicId: e.target.value })}
                     disabled={Boolean(activeParentTopic && !editingSubtopic)}
                   >
-                    {topics.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        [{t.subtest.split('_')[0]}] {t.title}
-                      </option>
-                    ))}
+                    {topics.map((t) => {
+                      const subMeta = ALL_SUBTESTS.find((s) => s.id === t.subtest);
+                      return (
+                        <option key={t.id} value={t.id}>
+                          [{subMeta?.code || t.subtest.split('_')[0]}] {t.title}
+                        </option>
+                      );
+                    })}
                   </select>
-                </div>
-                <div>
-                  <label className="field-label">Judul Submateri</label>
+                </label>
+                <label className="field-label">
+                  <span>Judul Submateri</span>
                   <input
                     type="text"
                     required
@@ -5127,33 +6222,54 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     value={subtopicForm.title}
                     onChange={(e) => {
                       const title = e.target.value;
-                      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                      const slug = editingSubtopic
+                        ? subtopicForm.slug
+                        : title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
                       setSubtopicForm({ ...subtopicForm, title, slug });
                     }}
                   />
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+                  <label className="field-label">
+                    <span>Slug Identifier</span>
+                    <input
+                      type="text"
+                      className="field-input"
+                      placeholder="persamaan-dan-pertidaksamaan-kuadrat"
+                      value={subtopicForm.slug}
+                      onChange={(e) => setSubtopicForm({ ...subtopicForm, slug: e.target.value })}
+                    />
+                  </label>
+                  <label className="field-label">
+                    <span>Urutan (Order)</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className="field-input"
+                      value={subtopicForm.order}
+                      onChange={(e) => setSubtopicForm({ ...subtopicForm, order: Number(e.target.value) })}
+                    />
+                  </label>
                 </div>
-                <div>
-                  <label className="field-label">Slug URL / Identifier</label>
-                  <input
-                    type="text"
+                <label className="field-label">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Pola Soal / Indikator (Satu per baris)</span>
+                    <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--muted-fg)' }}>
+                      {subtopicForm.patternsText.split('\n').map((l) => l.trim()).filter(Boolean).length} pola terdaftar
+                    </span>
+                  </div>
+                  <textarea
                     className="field-input"
-                    placeholder="persamaan-dan-pertidaksamaan-kuadrat"
-                    value={subtopicForm.slug}
-                    onChange={(e) => setSubtopicForm({ ...subtopicForm, slug: e.target.value })}
+                    rows={5}
+                    style={{ width: '100%', padding: '8px 10px', fontSize: '12px', lineHeight: 1.5 }}
+                    placeholder={'Contoh:\nAkar-akar dan Hubungan Jumlah-Hasil Kali Akar\nDiskriminan dan Jenis Akar\nFungsi Kuadrat dan Titik Puncak'}
+                    value={subtopicForm.patternsText}
+                    onChange={(e) => setSubtopicForm({ ...subtopicForm, patternsText: e.target.value })}
                   />
-                </div>
-                <div>
-                  <label className="field-label">Urutan Tampilan (Order)</label>
-                  <input
-                    type="number"
-                    className="field-input"
-                    value={subtopicForm.order}
-                    onChange={(e) => setSubtopicForm({ ...subtopicForm, order: Number(e.target.value) })}
-                  />
-                </div>
+                </label>
               </div>
               <div className="modal-footer">
-                <button type="button" className="button button-outline" onClick={() => setSubtopicModalOpen(false)}>
+                <button type="button" className="button button-secondary" onClick={() => setSubtopicModalOpen(false)}>
                   Batal
                 </button>
                 <button type="submit" className="button button-primary" disabled={subtopicSaving}>
@@ -5433,11 +6549,53 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                         </div>
                       </div>
 
-                      {/* 2. Tingkat Kesulitan & Fokus Materi dari Halaman Materi */}
+                      {/* 2. Format Tipe Soal AI */}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)' }}>
+                            2. Tipe Format Soal AI
+                          </label>
+                          <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
+                            {promptQuestionType === 'ISIAN_SINGKAT'
+                              ? 'Format isian angka murni resmi BPPP SNBT'
+                              : promptQuestionType === 'CAMPURAN'
+                              ? 'Kombinasi resmi UTBK SNBT (PG & Isian)'
+                              : 'Format standar pilihan ganda 5 opsi'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className={`filter-btn ${promptQuestionType === 'PILIHAN_GANDA' ? 'is-active' : ''}`}
+                            style={{ height: '36px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                            onClick={() => setPromptQuestionType('PILIHAN_GANDA')}
+                          >
+                            <span>🔘 Pilihan Ganda (A-E)</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`filter-btn ${promptQuestionType === 'ISIAN_SINGKAT' ? 'is-active' : ''}`}
+                            style={{ height: '36px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                            onClick={() => setPromptQuestionType('ISIAN_SINGKAT')}
+                          >
+                            <span>✍️ Isian Singkat BPPP</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`filter-btn ${promptQuestionType === 'CAMPURAN' ? 'is-active' : ''}`}
+                            style={{ height: '36px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                            onClick={() => setPromptQuestionType('CAMPURAN')}
+                          >
+                            <span>⚖️ Campuran UTBK</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 3. Tingkat Kesulitan & Fokus Materi dari Halaman Materi */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
                         <div>
                           <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
-                            2. Tingkat Kesulitan
+                            3. Tingkat Kesulitan
                           </label>
                           <select
                             className="field-input"
@@ -5454,7 +6612,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
 
                         <div>
                           <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
-                            3. Fokus Materi Kurikulum (Pilih dari Page Materi)
+                            4. Fokus Materi Kurikulum (Pilih dari Page Materi)
                           </label>
                           <select
                             className="field-input"

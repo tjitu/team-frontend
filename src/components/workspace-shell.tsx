@@ -53,7 +53,7 @@ const controlCenterItems = [
   { id: 'questions', label: 'Bank Soal', icon: Layers },
   { id: 'curriculum', label: 'Materi & Kurikulum', icon: BookOpen },
   { id: 'pricing', label: 'Pricing & Packages', icon: Coins },
-  { id: 'vouchers', label: 'Voucher & Referal', icon: Ticket },
+  { id: 'vouchers', label: 'Kode Referal & Voucher', icon: Ticket },
   { id: 'discounts', label: 'Discounts', icon: Percent },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'articles', label: 'Articles', icon: FileText },
