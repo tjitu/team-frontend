@@ -2936,11 +2936,22 @@ h1 {
 }
 
 .button-primary,
-html.dark .button-primary {
+html.dark .button-primary,
+button.button-primary,
+html.dark button.button-primary {
   background: var(--primary) !important;
-  color: var(--primary-foreground) !important;
+  color: #000000 !important;
+  font-weight: 650 !important;
   border: 1px solid transparent !important;
   box-shadow: var(--shadow-xs);
+}
+
+.button-primary *,
+html.dark .button-primary *,
+button.button-primary *,
+html.dark button.button-primary * {
+  color: #000000 !important;
+  stroke: #000000 !important;
 }
 
 .button-primary:hover:not(:disabled),
@@ -6783,6 +6794,104 @@ html.dark .control-status.status-interview {
   border: 1px solid var(--border);
   padding: 2px 7px;
   border-radius: 6px;
+}
+
+/* Unified Compact Metrics Box for Referral Section */
+.referral-metrics-card {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-top: 10px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-xs);
+}
+
+.referral-metric-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 2px 14px;
+}
+
+.referral-metric-item + .referral-metric-item {
+  border-left: 1px solid var(--border);
+}
+
+.referral-metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--muted-fg);
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.2;
+}
+
+.referral-metric-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--muted-fg);
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+.referral-metric-value {
+  color: var(--foreground);
+  font-size: 17px;
+  font-weight: 700;
+  font-family: var(--font-mono, monospace);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+.referral-metric-sub {
+  color: var(--muted-fg);
+  font-size: 10.5px;
+  margin-top: 2px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1024px) {
+  .referral-metrics-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 12px;
+  }
+  .referral-metric-item {
+    padding: 6px 8px;
+  }
+  .referral-metric-item + .referral-metric-item {
+    border-left: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .referral-metrics-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Button Referral Create - Strict Black Text & Icon */
+.button-referral-create,
+html.dark .button-referral-create {
+  color: #000000 !important;
+  font-weight: 650 !important;
+}
+
+.button-referral-create svg,
+.button-referral-create span {
+  color: #000000 !important;
+  stroke: #000000 !important;
 }
 
 .control-status.status-submitted,

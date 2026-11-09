@@ -50,6 +50,7 @@ import {
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
+import { PixelCoin } from '@/components/pixel-coin';
 
 export type Section = 'tryouts' | 'pricing' | 'vouchers' | 'discounts' | 'users' | 'articles' | 'careers' | 'payments' | 'questions' | 'curriculum';
 
@@ -508,13 +509,14 @@ const articleColHelper = createColumnHelper<DataTableFeatures, Article>();
 const careerColHelper = createColumnHelper<DataTableFeatures, CareerApplication>();
 const questionColHelper = createColumnHelper<DataTableFeatures, QuestionItem>();
 const paymentColHelper = createColumnHelper<DataTableFeatures, PaymentLog>();
+const voucherColHelper = createColumnHelper<DataTableFeatures, Voucher>();
 
 const BADGE_STYLES = [
-  { id: 'RED_FIRE', label: 'Flame Red', icon: Flame, className: 'discount-badge-red' },
-  { id: 'GOLD_PREMIUM', label: 'Luxury Gold', icon: Crown, className: 'discount-badge-gold' },
-  { id: 'EMERALD_SAVE', label: 'Emerald Save', icon: Sparkles, className: 'discount-badge-emerald' },
-  { id: 'CYAN_ELECTRIC', label: 'Neon Cyan', icon: Zap, className: 'discount-badge-cyan' },
-  { id: 'PURPLE_ROYAL', label: 'Royal Purple', icon: Tag, className: 'discount-badge-purple' },
+  { id: 'RED_FIRE', label: 'Flame Red', icon: Flame, className: 'discount-badge-red', gradient: 'bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 text-white' },
+  { id: 'GOLD_PREMIUM', label: 'Luxury Gold', icon: Crown, className: 'discount-badge-gold', gradient: 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black font-black' },
+  { id: 'EMERALD_SAVE', label: 'Emerald Save', icon: Sparkles, className: 'discount-badge-emerald', gradient: 'bg-gradient-to-r from-emerald-500 via-teal-500 to-green-600 text-white' },
+  { id: 'CYAN_ELECTRIC', label: 'Neon Cyan', icon: Zap, className: 'discount-badge-cyan', gradient: 'bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 text-white' },
+  { id: 'PURPLE_ROYAL', label: 'Royal Purple', icon: Tag, className: 'discount-badge-purple', gradient: 'bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 text-white' },
 ];
 
 function getBadgeClass(style: string) {
@@ -522,10 +524,59 @@ function getBadgeClass(style: string) {
   return match ? match.className : 'discount-badge-red';
 }
 
+function getBadgeGradient(style?: string) {
+  switch (style) {
+    case 'RED_FIRE':
+      return 'bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 text-white';
+    case 'GOLD_PREMIUM':
+      return 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black font-black';
+    case 'EMERALD_SAVE':
+      return 'bg-gradient-to-r from-emerald-500 via-teal-500 to-green-600 text-white';
+    case 'CYAN_ELECTRIC':
+      return 'bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 text-white';
+    case 'PURPLE_ROYAL':
+      return 'bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 text-white';
+    default:
+      return 'bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 text-white';
+  }
+}
+
 function getBadgeIcon(style: string) {
   const match = BADGE_STYLES.find((s) => s.id === style);
   return match ? match.icon : Flame;
 }
+
+const LANDING_QUOTA_PACKS = [
+  {
+    id: 'pack-1',
+    quota: 1,
+    totalPrice: 15000,
+    perTryout: 15000,
+    note: 'Cocok untuk coba 1 sesi tryout, cek rincian jawabanmu, dan akses skor IRT.',
+  },
+  {
+    id: 'pack-3',
+    quota: 3,
+    totalPrice: 39000,
+    perTryout: 13000,
+    note: 'Mulai bangun ritme latihan mingguan dan evaluasi subtes yang butuh perbaikan.',
+  },
+  {
+    id: 'pack-5',
+    quota: 5,
+    totalPrice: 59000,
+    perTryout: 11800,
+    note: 'Paling pas untuk persiapan sebulan penuh dan pantau kenaikan skor konsisten.',
+  },
+  {
+    id: 'pack-10',
+    quota: 10,
+    totalPrice: 89000,
+    perTryout: 8900,
+    note: 'Paket lengkap persiapan intensif agar makin percaya diri.',
+    isBestValue: true,
+  },
+];
 
 function ControlCenterContent() {
   const searchParams = useSearchParams();
@@ -543,6 +594,7 @@ function ControlCenterContent() {
   const [voucherForm, setVoucherForm] = React.useState<VoucherForm>(initialVoucherForm);
   const [voucherFormOpen, setVoucherFormOpen] = React.useState(false);
   const [editingVoucher, setEditingVoucher] = React.useState<string | null>(null);
+  const [voucherFilter, setVoucherFilter] = React.useState('ALL');
   const [discounts, setDiscounts] = React.useState<Discount[]>(() => api.getCached<Discount[]>('/team/control-center/discounts') ?? []);
   const [discountForm, setDiscountForm] = React.useState<DiscountForm>(initialDiscountForm);
   const [discountFormOpen, setDiscountFormOpen] = React.useState(false);
@@ -565,7 +617,7 @@ function ControlCenterContent() {
   const [notice, setNotice] = React.useState('');
   const [search, setSearch] = React.useState('');
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
-  const [previewTab, setPreviewTab] = React.useState<'shop' | 'landing'>('shop');
+  const [previewMode, setPreviewMode] = React.useState<'all' | 'pass' | 'coins'>('all');
 
   const handleCopyCode = async (code: string) => {
     try {
@@ -2257,6 +2309,257 @@ ${totalPromptCount > 1 ? ']' : ''}`;
     }),
   ], []);
 
+  // TANSTACK TABLE COLUMNS FOR VOUCHERS & REFERRALS
+  const voucherColumns = React.useMemo(() => [
+    voucherColHelper.accessor('code', {
+      header: 'Kode Referal',
+      cell: ({ row }) => {
+        const v = row.original;
+        return (
+          <div className="cell-stack">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Tag className="cell-accessory-icon" />
+              <strong className="cell-mono font-bold tracking-wider">{v.code}</strong>
+              <button
+                type="button"
+                className="copy-mini-btn"
+                title="Salin kode"
+                onClick={() => void handleCopyCode(v.code)}
+              >
+                {copiedCode === v.code ? (
+                  <Check style={{ width: 12, height: 12 }} />
+                ) : (
+                  <Copy style={{ width: 12, height: 12 }} />
+                )}
+              </button>
+            </div>
+            {v.description && (
+              <small className="cell-meta-row truncate max-w-[220px]" title={v.description}>
+                {v.description}
+              </small>
+            )}
+          </div>
+        );
+      },
+    }),
+    voucherColHelper.accessor('discountPercent', {
+      header: 'Diskon & Komisi',
+      cell: ({ row }) => {
+        const v = row.original;
+        return (
+          <div className="cell-stack">
+            <div className="cell-meta-row">
+              <Percent className="cell-accessory-icon" />
+              <strong>Diskon: {v.discountPercent}%</strong>
+            </div>
+            <div className="cell-meta-row">
+              <Coins className="cell-accessory-icon" />
+              <span>Komisi: {v.commissionPercent}%</span>
+            </div>
+            {v.maxDiscount ? (
+              <small className="cell-meta-row text-[10.5px]">
+                Maks Rp {v.maxDiscount.toLocaleString('id-ID')}
+              </small>
+            ) : null}
+          </div>
+        );
+      },
+    }),
+    voucherColHelper.accessor('issuedToName', {
+      header: 'Issued To (Pemilik)',
+      cell: ({ row }) => {
+        const v = row.original;
+        const name = v.resolvedIssuedToName || v.issuedToName || v.referrerName || 'Umum / Promo';
+        const email = v.resolvedIssuedToEmail || v.issuedToEmail || '-';
+        const avatarSrc = v.resolvedIssuedToImage || getCartoonAvatarUrl(email !== '-' ? email : name);
+        return (
+          <div className="flex items-center gap-2.5">
+            <Avatar size="sm" src={avatarSrc} alt={name} />
+            <div className="user-cell-info">
+              <strong className="user-cell-name truncate max-w-[160px]" title={name}>
+                {name}
+              </strong>
+              <small className="user-cell-email truncate max-w-[160px]" title={email}>
+                {email}
+              </small>
+            </div>
+          </div>
+        );
+      },
+    }),
+    voucherColHelper.accessor('issuedByName', {
+      header: 'Issued By (Pembuat)',
+      cell: ({ row }) => {
+        const v = row.original;
+        const name = v.issuedByName || 'Admin';
+        const email = v.issuedByEmail || '-';
+        return (
+          <div className="cell-stack">
+            <strong className="text-xs truncate max-w-[140px]" title={name}>
+              {name}
+            </strong>
+            <small className="cell-meta-row truncate max-w-[140px]" title={email}>
+              {email}
+            </small>
+          </div>
+        );
+      },
+    }),
+    voucherColHelper.accessor('totalUsed', {
+      header: () => <div className="text-center">Total Used</div>,
+      cell: ({ row }) => {
+        const v = row.original;
+        return (
+          <div className="cell-stack items-center text-center">
+            <strong className="cell-mono text-xs">{v.totalUsed}x</strong>
+            <small className="cell-meta-row text-[10.5px]">
+              kuota: {v.maxUsage ? `${v.maxUsage}x` : '∞'}
+            </small>
+          </div>
+        );
+      },
+    }),
+    voucherColHelper.accessor('totalRevenue', {
+      header: () => <div className="text-right">Total Revenue</div>,
+      cell: ({ row }) => {
+        const v = row.original;
+        return (
+          <div className="cell-stack items-end text-right">
+            <strong className="cell-mono text-xs">
+              Rp {(v.totalRevenue || 0).toLocaleString('id-ID')}
+            </strong>
+            <small className="cell-meta-row text-[10px]">bruto</small>
+          </div>
+        );
+      },
+    }),
+    voucherColHelper.accessor('totalCommission', {
+      header: () => <div className="text-right">Total Komisi</div>,
+      cell: ({ row }) => {
+        const v = row.original;
+        return (
+          <div className="cell-stack items-end text-right">
+            <strong className="cell-mono text-xs">
+              Rp {(v.totalCommission || 0).toLocaleString('id-ID')}
+            </strong>
+            <small className="cell-meta-row text-[10px]">hak mitra</small>
+          </div>
+        );
+      },
+    }),
+    voucherColHelper.accessor('netRevenue', {
+      header: () => <div className="text-right">Net Platform</div>,
+      cell: ({ row }) => {
+        const v = row.original;
+        return (
+          <div className="cell-stack items-end text-right">
+            <strong className="cell-mono text-xs font-bold">
+              Rp {(v.netRevenue || 0).toLocaleString('id-ID')}
+            </strong>
+            <small className="cell-meta-row text-[10px]">bersih</small>
+          </div>
+        );
+      },
+    }),
+    voucherColHelper.accessor('isActive', {
+      header: 'Status',
+      cell: ({ row }) => {
+        const v = row.original;
+        const isExpired = v.expiresAt ? new Date(v.expiresAt) < new Date() : false;
+        const isLimitReached = v.maxUsage ? v.totalUsed >= v.maxUsage : false;
+        if (isExpired) {
+          return (
+            <span className="control-status status-pending">
+              <Clock />
+              <span>Kedaluwarsa</span>
+            </span>
+          );
+        }
+        if (!v.isActive) {
+          return (
+            <span className="control-status status-rejected">
+              <XCircle />
+              <span>Nonaktif</span>
+            </span>
+          );
+        }
+        if (isLimitReached) {
+          return (
+            <span className="control-status status-pending">
+              <AlertCircle />
+              <span>Habis</span>
+            </span>
+          );
+        }
+        return (
+          <span className="control-status status-accepted">
+            <CheckCircle2 />
+            <span>Aktif</span>
+          </span>
+        );
+      },
+    }),
+    voucherColHelper.display({
+      id: 'actions',
+      header: () => <div className="text-right">Aksi</div>,
+      cell: ({ row }) => {
+        const v = row.original;
+        return (
+          <div className="table-action-group justify-end">
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => void toggleVoucherActive(v)}
+              title={v.isActive ? 'Nonaktifkan kode' : 'Aktifkan kode'}
+            >
+              {v.isActive ? 'Matikan' : 'Nyalakan'}
+            </button>
+            <button
+              type="button"
+              className="table-action-btn"
+              onClick={() => editVoucherItem(v)}
+              title="Edit kode referal"
+            >
+              <Edit className="action-icon" /> Edit
+            </button>
+            <button
+              type="button"
+              className="table-action-btn table-action-btn-danger"
+              onClick={() => void deleteVoucherItem(v)}
+              disabled={deletingId === v.id}
+              title="Hapus kode referal"
+            >
+              <Trash2 className="action-icon" />
+            </button>
+          </div>
+        );
+      },
+    }),
+  ], [copiedCode, deletingId]);
+
+  const filteredVouchers = React.useMemo(() => {
+    let list = vouchers;
+    const now = new Date();
+    if (voucherFilter === 'ACTIVE') {
+      list = list.filter((v) => v.isActive && (!v.expiresAt || new Date(v.expiresAt) >= now));
+    } else if (voucherFilter === 'INACTIVE') {
+      list = list.filter((v) => !v.isActive);
+    } else if (voucherFilter === 'EXPIRED') {
+      list = list.filter((v) => v.expiresAt && new Date(v.expiresAt) < now);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((v) =>
+        v.code.toLowerCase().includes(q) ||
+        (v.description && v.description.toLowerCase().includes(q)) ||
+        (v.resolvedIssuedToName && v.resolvedIssuedToName.toLowerCase().includes(q)) ||
+        (v.issuedToName && v.issuedToName.toLowerCase().includes(q)) ||
+        (v.issuedToEmail && v.issuedToEmail.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [vouchers, voucherFilter, search]);
+
   // TANSTACK TABLE COLUMNS FOR ARTICLES
   const articleColumns = React.useMemo(() => [
     articleColHelper.accessor('title', {
@@ -2539,7 +2842,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       {error && <div className="inline-message error" role="alert">{error}</div>}
       {notice && <div className="inline-message control-success" role="status">{notice}</div>}
 
-      {(section === 'users' || section === 'careers' || section === 'articles' || section === 'payments') && (
+      {(section === 'users' || section === 'careers' || section === 'articles' || section === 'payments' || section === 'vouchers') && (
         <form className="control-search" onSubmit={submitSearch}>
           <input
             className="field-input"
@@ -2552,6 +2855,8 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 ? 'Search applicants by name, email, university, or position...'
                 : section === 'payments'
                 ? 'Search payments by Order ID, user name, or email...'
+                : section === 'vouchers'
+                ? 'Cari kode referal, pemilik, atau email...'
                 : 'Search articles by title, category, or author...'
             }
             aria-label="Search"
@@ -3376,12 +3681,6 @@ ${totalPromptCount > 1 ? ']' : ''}`;
 
       {/* SECTION: CURRICULUM (MATERI & STRUKTUR KURIKULUM) */}
       {section === 'curriculum' && (() => {
-        const totalSubtopicsCount = topics.reduce((acc, t) => acc + (t.subtopics?.length || 0), 0);
-        const totalPatternsCount = topics.reduce(
-          (acc, t) => acc + (t.subtopics || []).reduce((sAcc, s) => sAcc + (Array.isArray(s.patterns) ? s.patterns.length : 0), 0),
-          0
-        );
-        const coveredSubtestsCount = ALL_SUBTESTS.filter((sub) => topics.some((t) => t.subtest === sub.id)).length;
         const normalizedQuery = curriculumSearch.trim().toLowerCase();
 
         const filteredTopics = topics
@@ -3414,67 +3713,18 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 <button
                   type="button"
                   className="button button-primary"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    color: '#000000',
+                    fontWeight: 650,
+                  }}
                   onClick={() => handleOpenCreateTopic()}
                 >
-                  <Plus style={{ width: 14, height: 14 }} />
-                  <span>Tambah Materi Utama</span>
+                  <Plus style={{ width: 14, height: 14, color: '#000000', strokeWidth: 2.5 }} />
+                  <span style={{ color: '#000000', fontWeight: 650 }}>Tambah Materi Utama</span>
                 </button>
-              </div>
-            </div>
-
-            {/* KPI Summary Cards */}
-            <div className="revenue-metric-grid" style={{ marginBottom: '16px' }}>
-              <div className="revenue-metric">
-                <div className="revenue-metric-head">
-                  <span>Total Materi Utama</span>
-                  <span className="revenue-metric-icon">
-                    <BookOpen />
-                  </span>
-                </div>
-                <strong>{topics.length}</strong>
-                <small>{coveredSubtestsCount} dari {ALL_SUBTESTS.length} subtes UTBK terisi</small>
-              </div>
-
-              <div className="revenue-metric">
-                <div className="revenue-metric-head">
-                  <span>Total Submateri</span>
-                  <span className="revenue-metric-icon">
-                    <Layers />
-                  </span>
-                </div>
-                <strong>{totalSubtopicsCount}</strong>
-                <small>Rincian bab &amp; topik bahasan</small>
-              </div>
-
-              <div className="revenue-metric">
-                <div className="revenue-metric-head">
-                  <span>Total Pola Soal</span>
-                  <span className="revenue-metric-icon">
-                    <ListChecks />
-                  </span>
-                </div>
-                <strong>{totalPatternsCount}</strong>
-                <small>Indikator &amp; variasi kisi-kisi soal</small>
-              </div>
-
-              <div className="revenue-metric">
-                <div className="revenue-metric-head">
-                  <span>Filter Subtes Aktif</span>
-                  <span className="revenue-metric-icon">
-                    <Sliders />
-                  </span>
-                </div>
-                <strong style={{ fontSize: '18px' }}>
-                  {curriculumSubtestFilter === 'ALL'
-                    ? 'Semua Subtes'
-                    : ALL_SUBTESTS.find((s) => s.id === curriculumSubtestFilter)?.code || curriculumSubtestFilter}
-                </strong>
-                <small>
-                  {curriculumSubtestFilter === 'ALL'
-                    ? `${filteredTopics.length} materi ditampilkan`
-                    : ALL_SUBTESTS.find((s) => s.id === curriculumSubtestFilter)?.shortLabel || ''}
-                </small>
               </div>
             </div>
 
@@ -3594,11 +3844,17 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                   <button
                     type="button"
                     className="button button-primary"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: '#000000',
+                      fontWeight: 650,
+                    }}
                     onClick={() => handleOpenCreateTopic(curriculumSubtestFilter)}
                   >
-                    <Plus style={{ width: 14, height: 14 }} />
-                    <span>Tambah Materi Utama</span>
+                    <Plus style={{ width: 14, height: 14, color: '#000000', strokeWidth: 2.5 }} />
+                    <span style={{ color: '#000000', fontWeight: 650 }}>Tambah Materi Utama</span>
                   </button>
                 </div>
               </div>
@@ -3881,489 +4137,138 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         <section className="control-panel" aria-labelledby="vouchers-heading">
           <div className="section-heading control-panel-heading">
             <div>
-              <h2 id="vouchers-heading">Kode Referal & Voucher</h2>
-              <p>Kelola program referal mitra, persentase komisi, potongan diskon pembeli, dan pantau omset serta komisi bersih secara real-time.</p>
+              <h2 id="vouchers-heading">Kode Referal & Program Mitra</h2>
+              <p>Kelola program referal mitra, persentase komisi, potongan diskon pembeli, dan pantau performa omset secara real-time.</p>
             </div>
-            <button
-              className="button button-primary"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-              onClick={() => {
-                setEditingVoucher(null);
-                setVoucherForm(initialVoucherForm);
-                setVoucherFormOpen(true);
-                setError('');
-                setNotice('');
-              }}
-            >
-              <Plus style={{ width: 14, height: 14 }} />
-              <span>Buat Kode Referal</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span>{vouchers.length} kode terdaftar</span>
+              <button
+                className="button button-primary button-referral-create"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  color: '#000000',
+                  fontWeight: 650,
+                }}
+                onClick={() => {
+                  setEditingVoucher(null);
+                  setVoucherForm(initialVoucherForm);
+                  setVoucherFormOpen(true);
+                  setError('');
+                  setNotice('');
+                }}
+              >
+                <Plus style={{ width: 14, height: 14, color: '#000000', strokeWidth: 2.5 }} />
+                <span style={{ color: '#000000', fontWeight: 650 }}>Buat Kode Referal</span>
+              </button>
+            </div>
           </div>
 
-          {/* KPI Summary Cards */}
-          <div className="revenue-metric-grid" style={{ marginBottom: '20px' }}>
-            <div className="revenue-metric">
-              <div className="revenue-metric-head">
+          {/* Unified Compact Metrics Box */}
+          <div className="referral-metrics-card">
+            <div className="referral-metric-item">
+              <div className="referral-metric-header">
                 <span>Total Kode Referal</span>
-                <span className="revenue-metric-icon">
-                  <Ticket />
-                </span>
+                <Ticket className="referral-metric-icon" />
               </div>
-              <strong>{vouchers.length}</strong>
-              <small>{vouchers.filter((v) => v.isActive).length} aktif digunakan</small>
+              <div className="referral-metric-value">{vouchers.length}</div>
+              <div className="referral-metric-sub">{vouchers.filter((v) => v.isActive).length} aktif digunakan</div>
             </div>
 
-            <div className="revenue-metric">
-              <div className="revenue-metric-head">
+            <div className="referral-metric-item">
+              <div className="referral-metric-header">
                 <span>Total Digunakan</span>
-                <span className="revenue-metric-icon">
-                  <Coins />
-                </span>
+                <Coins className="referral-metric-icon" />
               </div>
-              <strong>{vouchers.reduce((acc, v) => acc + (v.totalUsed || 0), 0)}x</strong>
-              <small>Transaksi sukses terverifikasi</small>
+              <div className="referral-metric-value">
+                {vouchers.reduce((acc, v) => acc + (v.totalUsed || 0), 0)}x
+              </div>
+              <div className="referral-metric-sub">Transaksi sukses</div>
             </div>
 
-            <div className="revenue-metric">
-              <div className="revenue-metric-head">
+            <div className="referral-metric-item">
+              <div className="referral-metric-header">
                 <span>Total Omset (Revenue)</span>
-                <span className="revenue-metric-icon">
-                  <Wallet />
-                </span>
+                <Wallet className="referral-metric-icon" />
               </div>
-              <strong>
+              <div className="referral-metric-value">
                 Rp {vouchers.reduce((acc, v) => acc + (v.totalRevenue || 0), 0).toLocaleString('id-ID')}
-              </strong>
-              <small>Pendapatan bruto via referal</small>
+              </div>
+              <div className="referral-metric-sub">Bruto via referal</div>
             </div>
 
-            <div className="revenue-metric">
-              <div className="revenue-metric-head">
+            <div className="referral-metric-item">
+              <div className="referral-metric-header">
                 <span>Total Komisi Mitra</span>
-                <span className="revenue-metric-icon">
-                  <Percent />
-                </span>
+                <Percent className="referral-metric-icon" />
               </div>
-              <strong>
+              <div className="referral-metric-value">
                 Rp {vouchers.reduce((acc, v) => acc + (v.totalCommission || 0), 0).toLocaleString('id-ID')}
-              </strong>
-              <small>Hak komisi akun yang ditunjuk</small>
+              </div>
+              <div className="referral-metric-sub">Hak komisi akun pemilik</div>
             </div>
 
-            <div className="revenue-metric">
-              <div className="revenue-metric-head">
+            <div className="referral-metric-item">
+              <div className="referral-metric-header">
                 <span>Net Platform Revenue</span>
-                <span className="revenue-metric-icon">
-                  <CreditCard />
-                </span>
+                <CreditCard className="referral-metric-icon" />
               </div>
-              <strong>
+              <div className="referral-metric-value">
                 Rp {vouchers.reduce((acc, v) => acc + (v.netRevenue || 0), 0).toLocaleString('id-ID')}
-              </strong>
-              <small>Pendapatan bersih setelah komisi</small>
+              </div>
+              <div className="referral-metric-sub">Pendapatan bersih platform</div>
             </div>
           </div>
 
-          {voucherFormOpen && (
-            <form className="control-edit-form" onSubmit={saveVoucher} style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', marginBottom: '16px', borderBottom: '1px solid var(--border)' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
-                    {editingVoucher ? 'Edit Kode Referal' : 'Buat Kode Referal Baru'}
-                  </h3>
-                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
-                    Atur kode referal, persentase diskon pembeli, persentase komisi, dan tentukan akun pemilik referal.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="button button-secondary text-xs"
-                  onClick={() => {
-                    setVoucherForm(initialVoucherForm);
-                    setEditingVoucher(null);
-                    setVoucherFormOpen(false);
-                  }}
-                >
-                  <X className="w-3.5 h-3.5" /> Batal
-                </button>
-              </div>
-
-              <div className="control-form-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-                <label className="field-label">
-                  Kode Referal (Huruf Kapital)
-                  <input
-                    className="field-input font-mono font-bold"
-                    required
-                    minLength={2}
-                    placeholder="Contoh: JITU20, AMBIS50, PARTNER10"
-                    value={voucherForm.code}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, code: e.target.value.toUpperCase() })}
-                  />
-                </label>
-
-                <label className="field-label">
-                  Persentase Diskon Pembeli (%)
-                  <input
-                    className="field-input"
-                    type="number"
-                    required
-                    min="1"
-                    max="100"
-                    placeholder="Contoh: 20 (diskon 20% bagi pembeli)"
-                    value={voucherForm.discountPercent}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, discountPercent: e.target.value })}
-                  />
-                </label>
-
-                <label className="field-label">
-                  Persentase Komisi Pemilik (%)
-                  <input
-                    className="field-input"
-                    type="number"
-                    required
-                    min="0"
-                    max="100"
-                    placeholder="Contoh: 15 (komisi 15% dari omset)"
-                    value={voucherForm.commissionPercent}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, commissionPercent: e.target.value })}
-                  />
-                </label>
-
-                <label className="field-label">
-                  Issued To: Pilih Akun Pemilik (Pengguna Terdaftar)
-                  <select
-                    className="field-input"
-                    value={voucherForm.issuedToUserId}
-                    onChange={(e) => {
-                      const selectedId = e.target.value;
-                      const selectedUser = users.find((u) => u.id === selectedId);
-                      setVoucherForm({
-                        ...voucherForm,
-                        issuedToUserId: selectedId,
-                        issuedToName: selectedUser?.name || voucherForm.issuedToName,
-                        issuedToEmail: selectedUser?.email || voucherForm.issuedToEmail,
-                        referrerName: selectedUser?.name || voucherForm.referrerName,
-                      });
-                    }}
+          {/* Status Filters Bar */}
+          <div className="payment-filter-bar">
+            <div className="payment-filter-tabs" role="tablist" aria-label="Filter referal berdasarkan status">
+              {[
+                { id: 'ALL', label: 'Semua Kode', count: vouchers.length },
+                {
+                  id: 'ACTIVE',
+                  label: 'Aktif',
+                  count: vouchers.filter((v) => v.isActive && (!v.expiresAt || new Date(v.expiresAt) >= new Date())).length,
+                },
+                {
+                  id: 'INACTIVE',
+                  label: 'Nonaktif',
+                  count: vouchers.filter((v) => !v.isActive).length,
+                },
+                {
+                  id: 'EXPIRED',
+                  label: 'Kedaluwarsa',
+                  count: vouchers.filter((v) => v.expiresAt && new Date(v.expiresAt) < new Date()).length,
+                },
+              ].map((st) => {
+                const isActive = voucherFilter === st.id;
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setVoucherFilter(st.id)}
+                    className={`payment-filter-tab ${isActive ? 'is-active' : ''}`}
                   >
-                    <option value="">-- Pilih Akun Siswa / Mitra Terdaftar --</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name || 'Tanpa Nama'} ({u.email})
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <span>{st.label}</span>
+                    <span style={{ fontSize: '11px', opacity: 0.7 }}>({st.count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-                <label className="field-label">
-                  Issued To: Nama Pemilik (Manual / External)
-                  <input
-                    className="field-input"
-                    placeholder="Contoh: Kak Budi Ambis"
-                    value={voucherForm.issuedToName}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, issuedToName: e.target.value, referrerName: e.target.value })}
-                  />
-                </label>
-
-                <label className="field-label">
-                  Issued To: Email Pemilik (Opsional)
-                  <input
-                    className="field-input"
-                    type="email"
-                    placeholder="Contoh: budi@ambisptn.com"
-                    value={voucherForm.issuedToEmail}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, issuedToEmail: e.target.value })}
-                  />
-                </label>
-
-                <label className="field-label">
-                  Maksimum Potongan Diskon (IDR) - Opsional
-                  <input
-                    className="field-input"
-                    type="number"
-                    min="0"
-                    placeholder="Kosongkan jika tanpa batas"
-                    value={voucherForm.maxDiscount}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, maxDiscount: e.target.value })}
-                  />
-                </label>
-
-                <label className="field-label">
-                  Minimal Pembelian (IDR)
-                  <input
-                    className="field-input"
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={voucherForm.minPurchase}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, minPurchase: e.target.value })}
-                  />
-                </label>
-
-                <label className="field-label">
-                  Batas Kuota Penggunaan - Opsional
-                  <input
-                    className="field-input"
-                    type="number"
-                    min="1"
-                    placeholder="Kosongkan jika tak terbatas"
-                    value={voucherForm.maxUsage}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, maxUsage: e.target.value })}
-                  />
-                </label>
-
-                <label className="field-label">
-                  Tanggal Kedaluwarsa - Opsional
-                  <input
-                    className="field-input"
-                    type="datetime-local"
-                    value={voucherForm.expiresAt}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, expiresAt: e.target.value })}
-                  />
-                </label>
-
-                <label className="field-label" style={{ gridColumn: '1 / -1' }}>
-                  Keterangan / Deskripsi Program Referal
-                  <input
-                    className="field-input"
-                    placeholder="Contoh: Program Referal Komisi Ambis UTBK 2026"
-                    value={voucherForm.description}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, description: e.target.value })}
-                  />
-                </label>
-              </div>
-
-              <div style={{ marginTop: '16px' }}>
-                <label className="control-check">
-                  <input
-                    type="checkbox"
-                    checked={voucherForm.isActive}
-                    onChange={(e) => setVoucherForm({ ...voucherForm, isActive: e.target.checked })}
-                  />{' '}
-                  Status Aktif (siap digunakan saat siswa checkout)
-                </label>
-              </div>
-
-              <div className="control-form-actions" style={{ marginTop: '20px' }}>
-                <button
-                  className="button button-secondary"
-                  type="button"
-                  onClick={() => {
-                    setVoucherForm(initialVoucherForm);
-                    setEditingVoucher(null);
-                    setVoucherFormOpen(false);
-                  }}
-                >
-                  Batal
-                </button>
-                <button className="button button-primary" type="submit" disabled={saving}>
-                  {saving ? 'Menyimpan...' : editingVoucher ? 'Simpan Perubahan' : 'Buat Kode Referal'}
-                </button>
-              </div>
-            </form>
-          )}
-
+          {/* Vouchers DataTable */}
           {loading ? (
             <div className="control-empty">Memuat data kode referal…</div>
-          ) : error ? null : vouchers.length === 0 ? (
-            <div className="control-empty">
-              Belum ada kode referal. Klik tombol "+ Buat Kode Referal" di atas untuk menambahkan.
-            </div>
-          ) : (
-            <div className="table-wrap">
-              <table className="control-table">
-                <thead>
-                  <tr>
-                    <th>Kode Referal</th>
-                    <th>Diskon & Komisi</th>
-                    <th>Issued To (Pemilik)</th>
-                    <th>Issued By (Pembuat)</th>
-                    <th style={{ textAlign: 'center' }}>Total Used</th>
-                    <th style={{ textAlign: 'right' }}>Total Revenue</th>
-                    <th style={{ textAlign: 'right' }}>Total Komisi</th>
-                    <th style={{ textAlign: 'right' }}>Net Platform</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vouchers.map((v) => {
-                    const isExpired = v.expiresAt ? new Date(v.expiresAt) < new Date() : false;
-                    const isLimitReached = v.maxUsage ? v.totalUsed >= v.maxUsage : false;
-                    const issuedToName = v.resolvedIssuedToName || v.issuedToName || v.referrerName || 'Umum / Promo';
-                    const issuedToEmail = v.resolvedIssuedToEmail || v.issuedToEmail || '-';
-                    const issuedByName = v.issuedByName || 'Admin';
-                    const issuedByEmail = v.issuedByEmail || '-';
-
-                    return (
-                      <tr key={v.id}>
-                        {/* 1. Kode Referal */}
-                        <td>
-                          <div className="cell-stack">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span className="referral-code-badge">
-                                <Tag className="cell-accessory-icon" />
-                                <span>{v.code}</span>
-                              </span>
-                              <button
-                                type="button"
-                                className="copy-mini-btn"
-                                title="Salin kode"
-                                onClick={() => handleCopyCode(v.code)}
-                              >
-                                {copiedCode === v.code ? (
-                                  <Check style={{ width: 13, height: 13 }} />
-                                ) : (
-                                  <Copy style={{ width: 13, height: 13 }} />
-                                )}
-                              </button>
-                            </div>
-                            {v.description && (
-                              <span className="cell-meta-row" style={{ marginTop: '2px' }}>
-                                {v.description}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* 2. Diskon & Komisi */}
-                        <td>
-                          <div className="cell-stack">
-                            <span className="cell-meta-row">
-                              <Percent className="cell-accessory-icon" />
-                              <span className="cell-primary">Diskon: {v.discountPercent}%</span>
-                            </span>
-                            <span className="cell-meta-row">
-                              <Coins className="cell-accessory-icon" />
-                              <span>Komisi: {v.commissionPercent}%</span>
-                            </span>
-                            {v.maxDiscount && (
-                              <span className="cell-meta-row" style={{ fontSize: '10.5px' }}>
-                                Maks. Rp {v.maxDiscount.toLocaleString('id-ID')}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* 3. Issued To */}
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Avatar className="h-7 w-7">
-                              <AvatarImage
-                                src={v.resolvedIssuedToImage || getCartoonAvatarUrl(issuedToName)}
-                                alt={issuedToName}
-                              />
-                              <AvatarFallback>
-                                {issuedToName.slice(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="cell-stack" style={{ gap: '1px' }}>
-                              <span className="cell-primary">{issuedToName}</span>
-                              <span className="cell-meta-row">{issuedToEmail}</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* 4. Issued By */}
-                        <td>
-                          <div className="cell-stack" style={{ gap: '1px' }}>
-                            <span className="cell-primary">{issuedByName}</span>
-                            <span className="cell-meta-row">{issuedByEmail}</span>
-                          </div>
-                        </td>
-
-                        {/* 5. Total Used */}
-                        <td style={{ textAlign: 'center' }}>
-                          <div className="cell-stack" style={{ alignItems: 'center' }}>
-                            <span className="cell-mono" style={{ fontSize: '13px' }}>
-                              {v.totalUsed}x
-                            </span>
-                            <span className="cell-meta-row" style={{ fontSize: '10.5px' }}>
-                              kuota: {v.maxUsage ? `${v.maxUsage}x` : '∞'}
-                            </span>
-                            {isLimitReached && (
-                              <span style={{ fontSize: '10px', color: '#f87171', fontWeight: 600 }}>
-                                Habis
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* 6. Total Revenue */}
-                        <td style={{ textAlign: 'right' }}>
-                          <span className="cell-mono">
-                            Rp {(v.totalRevenue || 0).toLocaleString('id-ID')}
-                          </span>
-                        </td>
-
-                        {/* 7. Total Commission */}
-                        <td style={{ textAlign: 'right' }}>
-                          <span className="cell-mono">
-                            Rp {(v.totalCommission || 0).toLocaleString('id-ID')}
-                          </span>
-                        </td>
-
-                        {/* 8. Net Platform */}
-                        <td style={{ textAlign: 'right' }}>
-                          <span className="cell-mono" style={{ fontWeight: 700 }}>
-                            Rp {(v.netRevenue || 0).toLocaleString('id-ID')}
-                          </span>
-                        </td>
-
-                        {/* 9. Status */}
-                        <td>
-                          {isExpired ? (
-                            <span className="control-status status-pending">
-                              <Clock />
-                              <span>Kedaluwarsa</span>
-                            </span>
-                          ) : !v.isActive ? (
-                            <span className="control-status status-rejected">
-                              <XCircle />
-                              <span>Nonaktif</span>
-                            </span>
-                          ) : (
-                            <span className="control-status status-accepted">
-                              <CheckCircle2 />
-                              <span>Aktif</span>
-                            </span>
-                          )}
-                        </td>
-
-                        {/* 10. Aksi */}
-                        <td style={{ textAlign: 'right' }}>
-                          <div className="table-action-group" style={{ justifyContent: 'flex-end' }}>
-                            <button
-                              type="button"
-                              className="table-action-btn"
-                              onClick={() => toggleVoucherActive(v)}
-                              title={v.isActive ? 'Nonaktifkan kode' : 'Aktifkan kode'}
-                            >
-                              {v.isActive ? 'Matikan' : 'Nyalakan'}
-                            </button>
-                            <button
-                              type="button"
-                              className="table-action-btn"
-                              onClick={() => editVoucherItem(v)}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="table-action-btn table-action-btn-danger"
-                              onClick={() => deleteVoucherItem(v)}
-                              disabled={deletingId === v.id}
-                            >
-                              Hapus
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+          ) : error ? null : (
+            <DataTable
+              columns={voucherColumns}
+              data={filteredVouchers}
+              emptyMessage="Belum ada kode referal yang sesuai kriteria pencarian atau filter."
+            />
           )}
         </section>
       )}
@@ -4420,25 +4325,24 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 </button>
               </div>
 
-              <div className="discount-form-layout">
-                {/* LEFT: FORM INPUTS */}
-                <form onSubmit={saveDiscount} className="space-y-4">
-                  {/* Campaign Name */}
-                  <label className="field-label">
-                    <span>Nama Kampanye Promo</span>
-                    <input
-                      className="field-input"
-                      required
-                      placeholder="e.g. Flash Sale UTBK 2026, Promo Ramadhan"
-                      value={discountForm.name}
-                      onChange={(e) => setDiscountForm({ ...discountForm, name: e.target.value })}
-                    />
-                  </label>
+              <div className="space-y-8">
+                {/* FORM INPUTS */}
+                <form onSubmit={saveDiscount} className="space-y-5 bg-[var(--card)] p-5 sm:p-6 rounded-xl border border-[var(--border)]">
+                  {/* Campaign Name & Discount Value */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <label className="field-label sm:col-span-2">
+                      <span className="font-semibold text-xs text-[var(--foreground)]">Nama Kampanye Promo</span>
+                      <input
+                        className="field-input"
+                        required
+                        placeholder="e.g. Flash Sale UTBK 2026, Promo Ramadhan"
+                        value={discountForm.name}
+                        onChange={(e) => setDiscountForm({ ...discountForm, name: e.target.value })}
+                      />
+                    </label>
 
-                  {/* Type & Value */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <label className="field-label">
-                      <span>Tipe Diskon</span>
+                      <span className="font-semibold text-xs text-[var(--foreground)]">Tipe Diskon</span>
                       <select
                         className="field-input"
                         value={discountForm.type}
@@ -4455,7 +4359,9 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     </label>
 
                     <label className="field-label">
-                      <span>{discountForm.type === 'PERCENTAGE' ? 'Besar Diskon (%)' : 'Besar Potongan (Rp)'}</span>
+                      <span className="font-semibold text-xs text-[var(--foreground)]">
+                        {discountForm.type === 'PERCENTAGE' ? 'Besar Diskon (%)' : 'Besar Potongan (Rp)'}
+                      </span>
                       <input
                         className="field-input"
                         type="number"
@@ -4474,97 +4380,105 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     </label>
                   </div>
 
-                  {/* Target Package */}
-                  <label className="field-label">
-                    <span>Attach ke Paket / Produk</span>
-                    <select
-                      className="field-input"
-                      value={discountForm.packageId}
-                      onChange={(e) => setDiscountForm({ ...discountForm, packageId: e.target.value })}
-                    >
-                      <option value="">Semua Paket (All Packages &amp; PTN Premium Pass)</option>
-                      {packages.map((pkg) => (
-                        <option key={pkg.id} value={pkg.id}>
-                          {pkg.name} ({pkg.tokenAmount} coin) - Rp{pkg.price.toLocaleString('id-ID')}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-[11px] text-[var(--muted-fg)] mt-1">
-                      Pilih &quot;Semua Paket&quot; agar promo berlaku global, atau pilih satu paket tertentu saja.
-                    </span>
-                  </label>
+                  {/* Target Package & Period Dates */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 pt-1">
+                    <label className="field-label lg:col-span-4">
+                      <span className="font-semibold text-xs text-[var(--foreground)]">Attach ke Paket / Produk</span>
+                      <select
+                        className="field-input"
+                        value={discountForm.packageId}
+                        onChange={(e) => setDiscountForm({ ...discountForm, packageId: e.target.value })}
+                      >
+                        <option value="">Semua Paket (All Packages &amp; PTN Premium Pass)</option>
+                        <option value="pass">Khusus PTN Premium Pass</option>
+                        {packages.filter(p => !p.name.toLowerCase().includes('pass')).map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>
+                            {pkg.name} ({pkg.tokenAmount} coin) - Rp{pkg.price.toLocaleString('id-ID')}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-[11px] text-[var(--muted-fg)] mt-1">
+                        Pilih &quot;Semua Paket&quot; agar promo berlaku global, atau pilih target paket tertentu.
+                      </span>
+                    </label>
 
-                  {/* Period Dates */}
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-semibold text-[var(--foreground)]">Periode Promo (Start &amp; End Date)</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <label className="field-label text-xs">
-                        <span>Waktu Mulai</span>
-                        <input
-                          className="field-input text-xs"
-                          type="datetime-local"
-                          required
-                          value={discountForm.startDate}
-                          onChange={(e) => setDiscountForm({ ...discountForm, startDate: e.target.value })}
-                        />
-                      </label>
-                      <label className="field-label text-xs">
-                        <span>Waktu Berakhir</span>
-                        <input
-                          className="field-input text-xs"
-                          type="datetime-local"
-                          required
-                          value={discountForm.endDate}
-                          onChange={(e) => setDiscountForm({ ...discountForm, endDate: e.target.value })}
-                        />
-                      </label>
-                    </div>
-
-                    {/* Quick duration buttons */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="text-[11px] text-[var(--muted-fg)] mr-1">Preset Durasi:</span>
-                      {[
-                        { label: '+3 Hari', days: 3 },
-                        { label: '+7 Hari', days: 7 },
-                        { label: '+14 Hari', days: 14 },
-                        { label: '+30 Hari', days: 30 },
-                      ].map((preset) => (
-                        <button
-                          key={preset.label}
-                          type="button"
-                          className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--muted-bg)] border border-[var(--border)] hover:bg-[var(--card)] transition-colors cursor-pointer"
-                          onClick={() => {
-                            const now = new Date();
-                            const future = new Date(now.getTime() + preset.days * 24 * 60 * 60 * 1000);
-                            setDiscountForm({
-                              ...discountForm,
-                              startDate: now.toISOString().slice(0, 16),
-                              endDate: future.toISOString().slice(0, 16),
-                            });
-                          }}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Badge Text & Preset Chips */}
-                  <div className="space-y-1.5 pt-2 border-t border-[var(--border)]">
-                    <label className="field-label">
-                      <span>Badge Text (Teks Stiker Promo)</span>
+                    <label className="field-label lg:col-span-4">
+                      <span className="font-semibold text-xs text-[var(--foreground)]">Waktu Mulai</span>
                       <input
-                        className="field-input font-bold"
+                        className="field-input"
+                        type="datetime-local"
                         required
-                        maxLength={24}
-                        placeholder="e.g. DISKON 30%, FLASH SALE"
-                        value={discountForm.badgeText}
-                        onChange={(e) => setDiscountForm({ ...discountForm, badgeText: e.target.value })}
+                        value={discountForm.startDate}
+                        onChange={(e) => setDiscountForm({ ...discountForm, startDate: e.target.value })}
                       />
                     </label>
 
+                    <label className="field-label lg:col-span-4">
+                      <span className="font-semibold text-xs text-[var(--foreground)]">Waktu Berakhir</span>
+                      <input
+                        className="field-input"
+                        type="datetime-local"
+                        required
+                        value={discountForm.endDate}
+                        onChange={(e) => setDiscountForm({ ...discountForm, endDate: e.target.value })}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Quick duration presets */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[11px] text-[var(--muted-fg)] mr-1">Preset Durasi:</span>
+                    {[
+                      { label: '+3 Hari', days: 3 },
+                      { label: '+7 Hari', days: 7 },
+                      { label: '+14 Hari', days: 14 },
+                      { label: '+30 Hari', days: 30 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--muted-bg)] border border-[var(--border)] hover:bg-[var(--card)] transition-colors cursor-pointer"
+                        onClick={() => {
+                          const now = new Date();
+                          const future = new Date(now.getTime() + preset.days * 24 * 60 * 60 * 1000);
+                          setDiscountForm({
+                            ...discountForm,
+                            startDate: now.toISOString().slice(0, 16),
+                            endDate: future.toISOString().slice(0, 16),
+                          });
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Badge Design Section */}
+                  <div className="space-y-3 pt-3 border-t border-[var(--border)]">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="font-semibold text-xs text-[var(--foreground)] flex items-center gap-1.5">
+                          <Tag className="w-3.5 h-3.5 text-blue-500" />
+                          Desain Badge Promo (Warna &amp; Teks)
+                        </span>
+                        <p className="text-[11px] text-[var(--muted-fg)] m-0">
+                          Pilih gaya visual badge dan ketik teks stiker yang langsung terpasang di atas kartu landing page.
+                        </p>
+                      </div>
+
+                      <div className="w-full sm:w-72">
+                        <input
+                          className="field-input text-xs font-bold"
+                          placeholder="Teks Badge (e.g. FLASH SALE, DISKON 25%)"
+                          maxLength={24}
+                          value={discountForm.badgeText}
+                          onChange={(e) => setDiscountForm({ ...discountForm, badgeText: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
                     {/* Quick Badge Text Chips */}
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span className="text-[11px] text-[var(--muted-fg)] mr-1">Rekomendasi Teks:</span>
                       {[
                         'DISKON 25%',
@@ -4586,13 +4500,9 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                         </button>
                       ))}
                     </div>
-                  </div>
 
-                  {/* Badge Design Style Selector */}
-                  <div className="space-y-1.5 pt-2 border-t border-[var(--border)]">
-                    <span className="text-xs font-semibold text-[var(--foreground)]">Badge Design Style</span>
-                    <p className="text-[11px] text-[var(--muted-fg)] m-0">Pilih palet visual badge yang siap dipasang langsung ke kartu Shop:</p>
-                    <div className="style-selector-grid pt-1">
+                    {/* 5 Badge Styles */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
                       {BADGE_STYLES.map((style) => {
                         const IconComponent = style.icon;
                         const isSelected = discountForm.badgeStyle === style.id;
@@ -4600,15 +4510,20 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                           <button
                             key={style.id}
                             type="button"
-                            className={`style-selector-btn ${isSelected ? 'is-active' : ''}`}
+                            className={`p-2.5 rounded-lg border text-left flex flex-col gap-2 transition-all cursor-pointer ${
+                              isSelected
+                                ? 'border-blue-500 bg-blue-500/10 shadow-xs ring-1 ring-blue-500'
+                                : 'border-[var(--border)] bg-[var(--muted-bg)] hover:border-[var(--line-strong)]'
+                            }`}
                             onClick={() => setDiscountForm({ ...discountForm, badgeStyle: style.id })}
                           >
-                            <span className={`discount-badge-base ${style.className}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${style.gradient}`}>
                               <IconComponent className="w-3 h-3" />
                               {style.label}
                             </span>
-                            <span className="text-[10px] text-[var(--muted-fg)] font-medium">
-                              {isSelected ? '✓ Terpilih' : 'Pilih'}
+                            <span className="text-[10px] text-[var(--muted-fg)] font-medium flex items-center justify-between">
+                              <span>{style.label}</span>
+                              {isSelected && <span className="text-blue-500 font-bold">✓ Terpilih</span>}
                             </span>
                           </button>
                         );
@@ -4616,32 +4531,33 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     </div>
                   </div>
 
-                  {/* Available Status */}
-                  <label className="control-check pt-2">
-                    <input
-                      type="checkbox"
-                      checked={discountForm.isActive}
-                      onChange={(e) => setDiscountForm({ ...discountForm, isActive: e.target.checked })}
-                    />
-                    <span>Aktifkan promo ini langsung saat disimpan</span>
-                  </label>
+                  {/* Form Footer: Active status & Action Buttons */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-[var(--border)]">
+                    <label className="control-check">
+                      <input
+                        type="checkbox"
+                        checked={discountForm.isActive}
+                        onChange={(e) => setDiscountForm({ ...discountForm, isActive: e.target.checked })}
+                      />
+                      <span className="text-xs font-medium">Aktifkan promo ini langsung saat disimpan</span>
+                    </label>
 
-                  {/* Form Actions */}
-                  <div className="control-form-actions pt-2">
-                    <button
-                      className="button button-secondary"
-                      type="button"
-                      onClick={() => {
-                        setDiscountForm(initialDiscountForm);
-                        setEditingDiscount(null);
-                        setDiscountFormOpen(false);
-                      }}
-                    >
-                      Batal
-                    </button>
-                    <button className="button button-primary" type="submit" disabled={saving}>
-                      {saving ? 'Menyimpan…' : editingDiscount ? 'Simpan Perubahan' : 'Buat Promo & Pasang Badge'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="button button-secondary text-xs"
+                        type="button"
+                        onClick={() => {
+                          setDiscountForm(initialDiscountForm);
+                          setEditingDiscount(null);
+                          setDiscountFormOpen(false);
+                        }}
+                      >
+                        Batal
+                      </button>
+                      <button className="button button-primary text-xs" type="submit" disabled={saving}>
+                        {saving ? 'Menyimpan…' : editingDiscount ? 'Simpan Perubahan' : 'Buat Promo & Pasang Badge'}
+                      </button>
+                    </div>
                   </div>
                 </form>
 
@@ -4655,19 +4571,27 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     <div className="preview-view-toggle">
                       <button
                         type="button"
-                        className={`preview-view-btn ${previewTab === 'shop' ? 'is-active' : ''}`}
-                        onClick={() => setPreviewTab('shop')}
+                        className={`preview-view-btn ${previewMode === 'all' ? 'is-active' : ''}`}
+                        onClick={() => setPreviewMode('all')}
                       >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>Tampilan Shop</span>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Landing Page (Semua)</span>
                       </button>
                       <button
                         type="button"
-                        className={`preview-view-btn ${previewTab === 'landing' ? 'is-active' : ''}`}
-                        onClick={() => setPreviewTab('landing')}
+                        className={`preview-view-btn ${previewMode === 'pass' ? 'is-active' : ''}`}
+                        onClick={() => setPreviewMode('pass')}
                       >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Tampilan Landing Page</span>
+                        <Ticket className="w-3.5 h-3.5" />
+                        <span>PTN Premium Pass</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`preview-view-btn ${previewMode === 'coins' ? 'is-active' : ''}`}
+                        onClick={() => setPreviewMode('coins')}
+                      >
+                        <Coins className="w-3.5 h-3.5" />
+                        <span>Card Coin</span>
                       </button>
                     </div>
                   </div>
@@ -4700,22 +4624,23 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     const campaignTitle = discountForm.name.trim() || 'Nama Campaign Promo';
 
                     return (
-                      <div className="space-y-6">
+                      <div className="space-y-8">
                         {/* 1. PTN PREMIUM PASS CARD PREVIEW */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                              Preview 1: Kartu PTN Premium Pass ({previewTab === 'shop' ? 'Shop' : 'Landing Page'})
-                            </span>
-                            {!appliesToPass && (
-                              <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
-                                (Hanya berlaku di paket terpilih)
+                        {(previewMode === 'all' || previewMode === 'pass') && (
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                                Preview PTN Premium Pass (Sesuai Landing Page)
                               </span>
-                            )}
-                          </div>
+                              {!appliesToPass && (
+                                <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
+                                  (Hanya berlaku di paket terpilih)
+                                </span>
+                              )}
+                            </div>
 
-                          <div className="pass-preview-card">
+                          <div className="group relative w-full rounded-2xl bg-gradient-to-r from-[#143485] via-[#1D4ED8] to-[#163372] text-white p-6 sm:p-8 lg:p-9 border border-blue-400/40 shadow-xl shadow-blue-950/20 hover:border-blue-300/70 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 overflow-hidden">
                             {/* 1. Sweeping Ambient Shimmer Light Beam Animation */}
                             <div
                               aria-hidden="true"
@@ -4822,266 +4747,230 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                               />
                             </svg>
 
-                            <div className="relative z-10 flex flex-col gap-5">
-                              <div className="flex items-start gap-4">
-                                {/* Animated Floating Golden Ticket */}
-                                <div className="w-14 h-12 sm:w-16 sm:h-14 shrink-0 relative select-none animate-ticket-float transition-transform duration-300">
-                                  <Image
-                                    src="/icons/golden-pass-ticket.png"
-                                    alt="Tiket Golden Pass PTN Premium Pass"
-                                    fill
-                                    className="object-contain select-none pointer-events-none drop-shadow-md"
-                                    priority
-                                  />
-                                </div>
-
-                                <div className="space-y-1.5 flex-1">
-                                  {/* Badges: Campaign Name + Selected Promo Badge */}
-                                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/15 text-yellow-300 border border-yellow-300/30 text-[11px] font-bold uppercase tracking-wider backdrop-blur-xs">
-                                      <Sparkles className="w-3 h-3 fill-yellow-300 text-yellow-300" />
-                                      {campaignTitle}
-                                    </span>
-
-                                    <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
-                                      <ActiveIcon className="w-3.5 h-3.5" />
-                                      {discountForm.badgeText || 'PROMO DISKON'}
-                                    </span>
-
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FFD13B] text-black text-[10px] font-black uppercase tracking-wider">
-                                      <Sparkles className="w-3 h-3 fill-black" />
-                                      Rekomendasi
-                                    </span>
+                            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 sm:gap-8">
+                              {/* Left: Info, Floating Golden Pass Ticket & Benefits */}
+                              <div className="space-y-4 max-w-2xl">
+                                {/* Title with Golden Pass Ticket Icon */}
+                                <div className="flex items-center gap-3.5 sm:gap-4">
+                                  {/* Animated Floating Golden Ticket */}
+                                  <div className="w-14 h-12 sm:w-16 sm:h-14 lg:w-20 lg:h-16 shrink-0 relative select-none animate-ticket-float transition-transform duration-300 group-hover:scale-105">
+                                    <Image
+                                      src="/icons/golden-pass-ticket.png"
+                                      alt="Tiket Golden Pass PTN Premium Pass"
+                                      fill
+                                      className="object-contain select-none pointer-events-none drop-shadow-md"
+                                      priority
+                                    />
                                   </div>
 
-                                  <h3 className="text-[24px] sm:text-[28px] font-black text-white tracking-tight leading-tight m-0 flex flex-wrap items-center gap-2">
-                                    <span>PTN</span>
-                                    <span className="bg-[#FFD13B] text-black px-2 py-0.5 rounded-xs inline-block shadow-xs">
-                                      PREMIUM PASS
-                                    </span>
-                                  </h3>
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/15 text-yellow-300 border border-yellow-300/30 text-[11px] font-bold uppercase tracking-wider backdrop-blur-xs">
+                                        <Sparkles className="w-3 h-3 fill-yellow-300 text-yellow-300" />
+                                        {campaignTitle}
+                                      </span>
+                                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider shadow-xs ${getBadgeGradient(discountForm.badgeStyle)}`}>
+                                        <ActiveIcon className="w-3 h-3" />
+                                        {discountForm.badgeText || 'PROMO DISKON'}
+                                      </span>
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FFD13B] text-black text-[10px] font-black uppercase tracking-wider">
+                                        <Sparkles className="w-3 h-3 fill-black" />
+                                        Rekomendasi
+                                      </span>
+                                    </div>
+
+                                    <h3 className="text-[28px] sm:text-[34px] lg:text-[38px] xl:text-[42px] font-black text-white tracking-tight leading-tight flex flex-wrap items-center gap-2.5">
+                                      <span>PTN</span>
+                                      <span className="relative inline-block font-black select-none">
+                                        <span className="bg-[#FFD13B] text-black px-2.5 sm:px-3 py-0.5 rounded-xs inline-block shadow-sm">
+                                          PREMIUM PASS
+                                        </span>
+                                      </span>
+                                    </h3>
+                                  </div>
+                                </div>
+
+                                {/* 3 Checkmark Benefits */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 pt-1">
+                                  <div className="flex items-center gap-2 text-[13px] sm:text-[14px] text-blue-100 font-medium">
+                                    <div className="w-5 h-5 rounded-full bg-yellow-400/20 text-yellow-300 flex items-center justify-center shrink-0">
+                                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    </div>
+                                    <span>Bebas akses pembahasan tryout tanpa coins</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 text-[13px] sm:text-[14px] text-blue-100 font-medium">
+                                    <div className="w-5 h-5 rounded-full bg-yellow-400/20 text-yellow-300 flex items-center justify-center shrink-0">
+                                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    </div>
+                                    <span>Materi & latihan soal unlimited</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 text-[13px] sm:text-[14px] text-blue-100 font-medium">
+                                    <div className="w-5 h-5 rounded-full bg-yellow-400/20 text-yellow-300 flex items-center justify-center shrink-0">
+                                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    </div>
+                                    <span>Analisis skor IRT & ranking nasional</span>
+                                  </div>
                                 </div>
                               </div>
 
-                              {/* 3 Checkmark Benefits */}
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-blue-400/25">
-                                <div className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
-                                  <div className="w-4 h-4 rounded-full bg-yellow-400/20 text-yellow-300 flex items-center justify-center shrink-0">
-                                    <Check className="w-3 h-3 stroke-[3]" />
-                                  </div>
-                                  <span>Bebas akses pembahasan tanpa coins</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
-                                  <div className="w-4 h-4 rounded-full bg-yellow-400/20 text-yellow-300 flex items-center justify-center shrink-0">
-                                    <Check className="w-3 h-3 stroke-[3]" />
-                                  </div>
-                                  <span>Materi & latihan soal unlimited</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-[12px] text-blue-100 font-medium">
-                                  <div className="w-4 h-4 rounded-full bg-yellow-400/20 text-yellow-300 flex items-center justify-center shrink-0">
-                                    <Check className="w-3 h-3 stroke-[3]" />
-                                  </div>
-                                  <span>Analisis skor IRT & ranking nasional</span>
-                                </div>
-                              </div>
-
-                              {/* Price Block & CTA */}
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-3 border-t border-blue-400/30">
-                                <div>
+                              {/* Right: Price & CTA Button with Continuous Spinning Border Beam Animation */}
+                              <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end justify-between lg:justify-center gap-4 shrink-0 pt-4 lg:pt-0 border-t border-blue-400/30 lg:border-t-0">
+                                <div className="text-left lg:text-right">
                                   {appliesToPass && passSavings > 0 ? (
-                                    <div className="space-y-0.5">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs line-through text-blue-200/80 font-bold tabular-nums">
-                                          Rp{passBasePrice.toLocaleString('id-ID')}
-                                        </span>
-                                        <span className="text-[10px] font-black text-yellow-300 bg-yellow-400/20 px-1.5 py-0.5 rounded">
-                                          Hemat Rp{passSavings.toLocaleString('id-ID')}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-baseline gap-1">
-                                        <span className="text-[28px] font-black text-white leading-none tabular-nums">
-                                          Rp{passDiscountedPrice.toLocaleString('id-ID')}
-                                        </span>
-                                        <span className="text-xs font-bold text-blue-200">/bulan</span>
-                                      </div>
-                                      <div className="text-[11px] text-blue-200/80 font-medium">
-                                        Akses penuh tanpa batas
-                                      </div>
+                                    <div className="flex items-center lg:justify-end gap-2 mb-1">
+                                      <span className="text-sm line-through text-blue-200/80 font-bold tabular-nums">
+                                        Rp{passBasePrice.toLocaleString('id-ID')}
+                                      </span>
+                                      <span className="text-[11px] font-black text-yellow-300 bg-yellow-400/20 px-2 py-0.5 rounded">
+                                        Hemat Rp{passSavings.toLocaleString('id-ID')}
+                                      </span>
                                     </div>
-                                  ) : (
-                                    <div>
-                                      <div className="flex items-baseline gap-1">
-                                        <span className="text-[28px] font-black text-white leading-none tabular-nums">
-                                          Rp{passBasePrice.toLocaleString('id-ID')}
-                                        </span>
-                                        <span className="text-xs font-bold text-blue-200">/bulan</span>
-                                      </div>
-                                      <div className="text-[11px] text-blue-200/80 font-medium">
-                                        Akses penuh tanpa batas
-                                      </div>
-                                    </div>
-                                  )}
+                                  ) : null}
+                                  <div className="inline-flex items-baseline gap-1.5">
+                                    <span className="text-[32px] sm:text-[38px] lg:text-[40px] font-black text-white leading-none tracking-tight tabular-nums">
+                                      Rp{(appliesToPass ? passDiscountedPrice : passBasePrice).toLocaleString('id-ID')}
+                                    </span>
+                                    <span className="text-[14px] sm:text-[15px] font-bold text-blue-200">
+                                      /bulan
+                                    </span>
+                                  </div>
+                                  <div className="text-[12px] text-blue-200/80 font-medium mt-1">
+                                    Akses penuh tanpa batas
+                                  </div>
                                 </div>
 
                                 {/* Continuous Rotating Border Beam Button */}
-                                <div className="relative p-[2.5px] rounded-xl overflow-hidden shadow-lg">
+                                <div className="relative p-[2.5px] rounded-xl overflow-hidden shadow-lg group/btn hover:scale-[1.02] active:scale-[0.98] transition-transform duration-150">
                                   <div
                                     aria-hidden="true"
                                     className="absolute inset-[-200%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_0deg_at_50%_50%,transparent_0%,transparent_60%,rgba(255,255,255,0.95)_80%,#FFD13B_92%,transparent_100%)] pointer-events-none"
                                   />
                                   <button
                                     type="button"
-                                    className="relative px-6 py-2.5 rounded-[10px] bg-[#FFD13B] text-black font-extrabold text-xs inline-flex items-center justify-center gap-2 pointer-events-none shadow-md"
+                                    className="relative px-6 sm:px-8 py-3 rounded-[10px] bg-[#FFD13B] text-black font-extrabold text-sm sm:text-base inline-flex items-center justify-center gap-2 pointer-events-none shadow-md"
                                   >
                                     <span>Ambil Premium Pass</span>
-                                    <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
                                   </button>
                                 </div>
                               </div>
                             </div>
                           </div>
                         </div>
+                      )}
 
-                        {/* 2. CARD COIN BIASA PREVIEW */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider flex items-center gap-1.5">
-                              <Coins className="w-3.5 h-3.5 text-amber-500" />
-                              Preview 2: Card Coin Biasa ({coinPkgTarget.tokenAmount} Coin) ({previewTab === 'shop' ? 'Shop' : 'Landing Page'})
-                            </span>
-                            {!appliesToCoin && (
-                              <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
-                                (Hanya berlaku di paket terpilih)
-                              </span>
-                            )}
+                        {/* DIVIDER "ATAU" (Tampil saat previewMode === 'all') */}
+                        {previewMode === 'all' && (
+                          <div className="relative my-6 flex items-center justify-center">
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="w-full border-t border-[var(--border)]" />
+                            </div>
+                            <div className="relative bg-[var(--background)] px-4 text-xs font-bold text-[var(--muted-fg)] uppercase tracking-wider">
+                              Atau pilih paket koin satuan
+                            </div>
                           </div>
+                        )}
 
-                          {previewTab === 'shop' ? (
-                            /* SHOP VIEW: Exact TokenCard layout */
-                            <div className={`coin-preview-card ${appliesToCoin ? 'has-discount border-2 border-primary' : ''}`}>
-                              {/* Header: Coin icon + Coin Count + Campaign chip + Attached Badge */}
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-amber-400 text-zinc-950 font-black text-xs flex items-center justify-center shadow-xs">
-                                    🪙
-                                  </div>
-                                  <span className="font-bold text-[18px] text-[var(--foreground)]">
-                                    {coinPkgTarget.tokenAmount} coin
-                                  </span>
-                                </div>
-
-                                <div className="flex flex-col items-end gap-1">
-                                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">
-                                    {campaignTitle}
-                                  </span>
-                                  <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
-                                    <ActiveIcon className="w-3 h-3" />
-                                    {discountForm.badgeText || 'DISKON'}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Price Block */}
-                              <div>
-                                {appliesToCoin && coinSavings > 0 ? (
-                                  <div className="space-y-0.5">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs line-through text-[var(--muted-fg)] font-semibold tabular-nums">
-                                        Rp{coinBasePrice.toLocaleString('id-ID')}
-                                      </span>
-                                      <span className="text-[10px] font-extrabold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                        Hemat Rp{coinSavings.toLocaleString('id-ID')}
-                                      </span>
-                                    </div>
-                                    <div className="font-bold text-[28px] leading-tight tracking-[-0.02em] text-[var(--foreground)] tabular-nums">
-                                      Rp{coinDiscountedPrice.toLocaleString('id-ID')}
-                                    </div>
-                                    <div className="text-[13px] text-[var(--muted-fg)] tabular-nums">
-                                      Rp{Math.round(coinDiscountedPrice / Math.max(1, coinPkgTarget.tokenAmount)).toLocaleString('id-ID')} / tryout
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div>
-                                    <div className="font-bold text-[28px] leading-tight tracking-[-0.02em] text-[var(--foreground)] tabular-nums">
-                                      Rp{coinBasePrice.toLocaleString('id-ID')}
-                                    </div>
-                                    <div className="text-[13px] text-[var(--muted-fg)] tabular-nums">
-                                      Rp{Math.round(coinBasePrice / Math.max(1, coinPkgTarget.tokenAmount)).toLocaleString('id-ID')} / tryout
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Features List */}
-                              <ul className="space-y-2 pt-3 border-t border-[var(--border)] text-[13px] text-[var(--muted-fg)]">
-                                <li className="flex items-start gap-2">
-                                  <Check className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                                  <span>Buka skor IRT &amp; pembahasan {coinPkgTarget.tokenAmount} tryout</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                  <Check className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                                  <span>Berlaku sampai 21 Apr 2027</span>
-                                </li>
-                              </ul>
-
-                              {/* Buy Button */}
-                              <button
-                                type="button"
-                                className="w-full py-2.5 px-3 rounded-lg bg-[var(--primary)] text-white font-bold text-xs pointer-events-none text-center shadow-xs"
-                              >
-                                Beli {coinPkgTarget.tokenAmount} coin
-                              </button>
+                        {/* 2. CARD COIN BIASA PREVIEW (Landing Page Grid) */}
+                        {(previewMode === 'all' || previewMode === 'coins') && (
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider flex items-center gap-1.5">
+                                <Coins className="w-3.5 h-3.5 text-amber-500" />
+                                Paket Koin Satuan (Sesuai Landing Page)
+                              </span>
+                              {discountForm.packageId && !LANDING_QUOTA_PACKS.some(p => packages.find(pkg => pkg.id === discountForm.packageId)?.tokenAmount === p.quota) && (
+                                <span className="text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">
+                                  (Hanya berlaku di paket terpilih)
+                                </span>
+                              )}
                             </div>
-                          ) : (
-                            /* LANDING PAGE VIEW: Exact QuotaPack card layout */
-                            <div className="rounded-xl p-5 flex flex-col justify-between gap-5 bg-[var(--card)] border border-[var(--border)]">
-                              <div className="space-y-3">
-                                {/* Header: Coin Icon + Count + Campaign Badge */}
-                                <div className="flex items-center justify-between gap-2 min-h-[24px]">
-                                  <div className="inline-flex items-center gap-2">
-                                    <span className="text-xl">🪙</span>
-                                    <span className="text-[20px] font-bold text-[var(--foreground)] tabular-nums">
-                                      {coinPkgTarget.tokenAmount} coin
-                                    </span>
-                                  </div>
-                                  <span className={`discount-badge-base ${getBadgeClass(discountForm.badgeStyle)}`}>
-                                    <ActiveIcon className="w-3 h-3" />
-                                    {discountForm.badgeText || 'Paling hemat'}
-                                  </span>
-                                </div>
 
-                                {/* Price */}
-                                <div className="pt-2 border-t border-[var(--border)]">
-                                  {appliesToCoin && coinSavings > 0 && (
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className="text-xs line-through text-[var(--muted-fg)] font-medium tabular-nums">
-                                        Rp{coinBasePrice.toLocaleString('id-ID')}
-                                      </span>
-                                      <span className="text-[10px] font-extrabold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                        Hemat Rp{coinSavings.toLocaleString('id-ID')}
-                                      </span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+                              {LANDING_QUOTA_PACKS.map((pack) => {
+                                const isRecommended = Boolean(pack.isBestValue);
+                                const selectedPkg = packages.find(p => p.id === discountForm.packageId);
+                                const matchesPackage = !discountForm.packageId
+                                  || selectedPkg?.tokenAmount === pack.quota
+                                  || selectedPkg?.name.toLowerCase().includes(`${pack.quota} coin`);
+
+                                const discountedPackPrice = isPercentage
+                                  ? Math.max(1000, Math.round(pack.totalPrice * (1 - discountVal / 100)))
+                                  : Math.max(1000, pack.totalPrice - discountVal);
+                                const savingsPack = pack.totalPrice - discountedPackPrice;
+                                const hasDiscount = matchesPackage && savingsPack > 0;
+                                const finalPrice = hasDiscount ? discountedPackPrice : pack.totalPrice;
+
+                                return (
+                                  <div
+                                    key={pack.id}
+                                    className={`rounded-xl p-5 sm:p-6 flex flex-col justify-between gap-5 transition-all duration-200 ${
+                                      isRecommended
+                                        ? 'bg-blue-50/40 dark:bg-blue-950/20 border-2 border-[var(--primary)] shadow-sm'
+                                        : 'bg-[var(--card)] border border-[var(--border)] hover:border-blue-300 dark:hover:border-blue-700'
+                                    }`}
+                                  >
+                                    <div className="space-y-4">
+                                      {/* Top Header & Badge */}
+                                      <div className="flex items-center justify-between gap-2 min-h-[24px]">
+                                        <div className="inline-flex items-center gap-2">
+                                          <PixelCoin size={22} />
+                                          <span className="text-[20px] font-bold text-[var(--foreground)] tabular-nums">
+                                            {pack.quota} coin
+                                          </span>
+                                        </div>
+                                        {hasDiscount ? (
+                                          <span className={`h-6 px-2.5 rounded-full text-[11px] font-black uppercase tracking-wide inline-flex items-center shadow-xs ${getBadgeGradient(discountForm.badgeStyle)}`}>
+                                            <ActiveIcon className="w-3 h-3 mr-1" />
+                                            {discountForm.badgeText || 'PROMO'}
+                                          </span>
+                                        ) : isRecommended ? (
+                                          <span className="h-6 px-2.5 rounded-full bg-[#FFD13B] text-black text-[11px] font-black inline-flex items-center">
+                                            Paling hemat
+                                          </span>
+                                        ) : null}
+                                      </div>
+
+                                      {/* Price */}
+                                      <div className="pt-2 border-t border-[var(--border)]">
+                                        {hasDiscount && (
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xs line-through text-[var(--muted-fg)] font-medium tabular-nums">
+                                              Rp{pack.totalPrice.toLocaleString('id-ID')}
+                                            </span>
+                                            <span className="text-[10px] font-extrabold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                                              Hemat Rp{savingsPack.toLocaleString('id-ID')}
+                                            </span>
+                                          </div>
+                                        )}
+                                        <div className="text-[28px] font-bold text-[var(--foreground)] leading-tight tabular-nums">
+                                          Rp{finalPrice.toLocaleString('id-ID')}
+                                        </div>
+                                      </div>
+
+                                      <p className="text-[13px] text-[var(--muted-fg)] leading-relaxed m-0">
+                                        {pack.note}
+                                      </p>
                                     </div>
-                                  )}
-                                  <div className="text-[28px] font-bold text-[var(--foreground)] leading-tight tabular-nums">
-                                    Rp{(appliesToCoin ? coinDiscountedPrice : coinBasePrice).toLocaleString('id-ID')}
+
+                                    <div
+                                      className={`w-full min-h-[44px] px-4 py-2.5 rounded-md text-[14px] font-semibold inline-flex items-center justify-center gap-2 select-none pointer-events-none ${
+                                        isRecommended
+                                          ? 'bg-[var(--primary)] text-white shadow-xs'
+                                          : 'border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]'
+                                      }`}
+                                    >
+                                      <span>Pilih paket</span>
+                                      <ArrowRight className="w-4 h-4 stroke-[2]" aria-hidden="true" />
+                                    </div>
                                   </div>
-                                </div>
-
-                                <p className="text-[13px] text-[var(--muted-fg)] leading-relaxed m-0">
-                                  Paket lengkap persiapan intensif agar makin percaya diri. Termasuk kampanye {campaignTitle}.
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                className="w-full min-h-[44px] px-4 py-2.5 rounded-md text-[14px] font-semibold inline-flex items-center justify-center gap-2 bg-[var(--primary)] text-white pointer-events-none"
-                              >
-                                <span>Pilih paket</span>
-                                <ArrowRight className="w-4 h-4 stroke-[2]" />
-                              </button>
+                                );
+                              })}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -5471,6 +5360,215 @@ ${totalPromptCount > 1 ? ']' : ''}`;
             />
           )}
         </section>
+      )}
+
+      {/* VOUCHER / REFERRAL MODAL */}
+      {voucherFormOpen && (
+        <div className="modal-overlay" onClick={() => setVoucherFormOpen(false)}>
+          <div
+            className="modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '640px' }}
+          >
+            <div className="modal-header">
+              <div>
+                <h3>{editingVoucher ? 'Edit Kode Referal' : 'Buat Kode Referal Baru'}</h3>
+                <small style={{ color: 'var(--muted-fg)' }}>
+                  Atur kode referal, persentase diskon pembeli, persentase komisi mitra, dan akun pemilik.
+                </small>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setVoucherForm(initialVoucherForm);
+                  setEditingVoucher(null);
+                  setVoucherFormOpen(false);
+                }}
+                aria-label="Tutup modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={saveVoucher}>
+              <div className="modal-body" style={{ maxHeight: 'calc(80vh - 120px)', overflowY: 'auto' }}>
+                <div className="control-form-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+                  <label className="field-label" style={{ gridColumn: 'span 2' }}>
+                    Kode Referal (Huruf Kapital)
+                    <input
+                      className="field-input font-mono font-bold tracking-wider"
+                      required
+                      minLength={2}
+                      placeholder="Contoh: JITU20, AMBIS50, PARTNER10"
+                      value={voucherForm.code}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, code: e.target.value.toUpperCase() })}
+                    />
+                  </label>
+
+                  <label className="field-label">
+                    Persentase Diskon Pembeli (%)
+                    <input
+                      className="field-input font-mono"
+                      type="number"
+                      required
+                      min="1"
+                      max="100"
+                      placeholder="20"
+                      value={voucherForm.discountPercent}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, discountPercent: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="field-label">
+                    Persentase Komisi Pemilik (%)
+                    <input
+                      className="field-input font-mono"
+                      type="number"
+                      required
+                      min="0"
+                      max="100"
+                      placeholder="10"
+                      value={voucherForm.commissionPercent}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, commissionPercent: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="field-label" style={{ gridColumn: 'span 2' }}>
+                    Issued To: Pilih Akun Terdaftar (Siswa / Mitra)
+                    <select
+                      className="field-input"
+                      value={voucherForm.issuedToUserId}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        const selectedUser = users.find((u) => u.id === selectedId);
+                        setVoucherForm({
+                          ...voucherForm,
+                          issuedToUserId: selectedId,
+                          issuedToName: selectedUser?.name || voucherForm.issuedToName,
+                          issuedToEmail: selectedUser?.email || voucherForm.issuedToEmail,
+                          referrerName: selectedUser?.name || voucherForm.referrerName,
+                        });
+                      }}
+                    >
+                      <option value="">-- Pilih Akun Terdaftar (Opsional) --</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name || 'Tanpa Nama'} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="field-label">
+                    Issued To: Nama Pemilik (Manual / External)
+                    <input
+                      className="field-input"
+                      placeholder="Kak Budi Ambis"
+                      value={voucherForm.issuedToName}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, issuedToName: e.target.value, referrerName: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="field-label">
+                    Issued To: Email Pemilik (Opsional)
+                    <input
+                      className="field-input"
+                      type="email"
+                      placeholder="budi@ambisptn.com"
+                      value={voucherForm.issuedToEmail}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, issuedToEmail: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="field-label">
+                    Maks. Potongan Diskon (IDR)
+                    <input
+                      className="field-input font-mono"
+                      type="number"
+                      min="0"
+                      placeholder="Tanpa batas"
+                      value={voucherForm.maxDiscount}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, maxDiscount: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="field-label">
+                    Minimal Pembelian (IDR)
+                    <input
+                      className="field-input font-mono"
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={voucherForm.minPurchase}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, minPurchase: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="field-label">
+                    Batas Kuota Penggunaan
+                    <input
+                      className="field-input font-mono"
+                      type="number"
+                      min="1"
+                      placeholder="Tanpa batas"
+                      value={voucherForm.maxUsage}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, maxUsage: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="field-label">
+                    Tanggal Kedaluwarsa
+                    <input
+                      className="field-input"
+                      type="datetime-local"
+                      value={voucherForm.expiresAt}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, expiresAt: e.target.value })}
+                    />
+                  </label>
+
+                  <label className="field-label" style={{ gridColumn: 'span 2' }}>
+                    Deskripsi Program Referal
+                    <input
+                      className="field-input"
+                      placeholder="Contoh: Program Referal Ambis UTBK 2026"
+                      value={voucherForm.description}
+                      onChange={(e) => setVoucherForm({ ...voucherForm, description: e.target.value })}
+                    />
+                  </label>
+
+                  <div style={{ gridColumn: 'span 2', marginTop: '4px' }}>
+                    <label className="control-check">
+                      <input
+                        type="checkbox"
+                        checked={voucherForm.isActive}
+                        onChange={(e) => setVoucherForm({ ...voucherForm, isActive: e.target.checked })}
+                      />
+                      <span>Status Aktif (dapat digunakan langsung saat checkout)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => {
+                    setVoucherForm(initialVoucherForm);
+                    setEditingVoucher(null);
+                    setVoucherFormOpen(false);
+                  }}
+                >
+                  Batal
+                </button>
+                <button type="submit" className="button button-primary" disabled={saving}>
+                  {saving ? 'Menyimpan...' : editingVoucher ? 'Simpan Perubahan' : 'Buat Kode Referal'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* CANDIDATE DETAILS MODAL */}
