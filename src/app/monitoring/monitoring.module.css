@@ -73,7 +73,32 @@
   line-height: 1.5;
 }
 
-.headerActions { gap: 16px; }
+.headerActions { justify-content: flex-end; flex-wrap: wrap; gap: 10px 14px; }
+
+.overallStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.overallStatus > i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.overall_up { border-color: color-mix(in srgb, var(--monitor-green) 28%, transparent); background: color-mix(in srgb, var(--monitor-green) 10%, var(--card)); color: var(--monitor-green); }
+.overall_degraded, .overall_configuration { border-color: color-mix(in srgb, var(--monitor-amber) 30%, transparent); background: color-mix(in srgb, var(--monitor-amber) 10%, var(--card)); color: var(--monitor-amber); }
+.overall_down { border-color: color-mix(in srgb, var(--monitor-red) 30%, transparent); background: color-mix(in srgb, var(--monitor-red) 10%, var(--card)); color: var(--monitor-red); }
+.overall_checking { border-color: var(--border); background: var(--muted-bg); color: var(--muted-fg); }
 
 .pollNote {
   display: inline-flex;
@@ -118,17 +143,18 @@
 
 .summaryCard {
   min-width: 0;
+  min-height: 105px;
   padding: 14px 16px 13px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 10px;
   background: var(--card);
 }
 
-.summaryLabel { justify-content: space-between; gap: 8px; color: var(--muted-fg); font-size: 11px; font-weight: 550; }
-.summaryLabel svg { width: 15px; height: 15px; opacity: .8; }
-.summaryValue { margin-top: 10px; font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.04em; line-height: 1; }
-.summaryValue small { margin-left: 4px; color: var(--muted-fg); font-size: 12px; font-weight: 500; letter-spacing: 0; }
-.summaryFoot { margin-top: 7px; color: var(--muted-fg); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summaryLabel { justify-content: space-between; gap: 8px; color: var(--muted-fg); font-size: 12px; font-weight: 550; }
+.summaryLabel svg { width: 15px; height: 15px; opacity: .72; }
+.summaryValue { display: flex; align-items: baseline; gap: 4px; margin-top: 10px; font-size: 27px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.04em; line-height: 1; }
+.summaryValue small { color: var(--muted-fg); font-size: 12px; font-weight: 550; letter-spacing: 0; }
+.summaryFoot { margin-top: 8px; color: var(--muted-fg); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .toolbar { justify-content: space-between; gap: 12px; margin: 0 0 14px; }
 .scopeTabs, .rangeTabs { gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--muted-bg); }
@@ -159,25 +185,25 @@
   gap: 12px;
 }
 
-.panel { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
+.panel { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
 .latencyPanel { grid-column: span 2; }
 .panelHeader { justify-content: space-between; gap: 14px; padding: 15px 16px 8px; }
-.panelHeader h2 { margin: 0; font-size: 13px; font-weight: 650; letter-spacing: -.01em; }
-.panelHeader p { margin: 4px 0 0; color: var(--muted-fg); font-size: 10.5px; }
+.panelHeader h2 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
+.panelHeader p { margin: 4px 0 0; color: var(--muted-fg); font-size: 11px; }
 .rangeTabs { gap: 1px; padding: 2px; }
 .rangeTabs button { min-width: 34px; min-height: 25px; padding: 0 7px; font-size: 10px; }
 
 .chartWrap { padding: 4px 12px 0; }
 .chart { display: block; width: 100%; height: auto; min-height: 180px; overflow: visible; }
 .gridLine { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 5; }
-.axisLabel { fill: var(--muted-fg); font-size: 9px; font-family: inherit; }
+.axisLabel { fill: var(--muted-fg); font-size: 10px; font-family: inherit; }
 .chartHint { fill: var(--muted-fg); font-size: 11px; font-family: inherit; }
 .traceLine { animation: trace-reveal .75s ease-out both; }
 .chartLegend { flex-wrap: wrap; gap: 12px; padding: 3px 12px 8px 42px; }
-.legendItem { gap: 6px; color: var(--muted-fg); font-size: 10px; }
+.legendItem { gap: 6px; color: var(--muted-fg); font-size: 11px; }
 .legendItem i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
 .legendEmpty { color: var(--muted-fg); font-size: 10px; }
-.sessionNote { margin: 0; padding: 9px 14px; border-top: 1px solid var(--border); color: var(--muted-fg); font-size: 10px; }
+.sessionNote { margin: 0; padding: 10px 14px; border-top: 1px solid var(--border); color: var(--muted-fg); font-size: 11px; }
 
 .liveTag { display: inline-flex; align-items: center; gap: 7px; color: var(--muted-fg); font-size: 9px; font-weight: 700; letter-spacing: .08em; }
 .liveTag i { width: 6px; height: 6px; animation: status-pulse 2.1s ease-out infinite; }
@@ -187,13 +213,13 @@
 .targetIcon { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; border: 1px solid var(--border); border-radius: 7px; background: var(--muted-bg); color: var(--muted-fg); }
 .targetIcon svg { width: 14px; height: 14px; }
 .targetInfo { flex: 1 1 auto; min-width: 0; }
-.targetName { gap: 6px; min-width: 0; color: var(--foreground); font-size: 11px; font-weight: 600; }
-.targetName > span { flex: 0 0 auto; padding: 2px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted-fg); font-size: 9px; font-weight: 500; }
-.targetDetail { margin-top: 4px; overflow: hidden; color: var(--muted-fg); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.targetName { gap: 6px; min-width: 0; color: var(--foreground); font-size: 12px; font-weight: 600; }
+.targetName > span { flex: 0 0 auto; padding: 2px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted-fg); font-size: 10px; font-weight: 500; }
+.targetDetail { margin-top: 4px; overflow: hidden; color: var(--muted-fg); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .targetMetrics { display: flex; min-width: 54px; flex-direction: column; align-items: flex-end; gap: 3px; font-variant-numeric: tabular-nums; }
-.targetMetrics strong { font-size: 10px; font-weight: 600; }
-.targetMetrics span { color: var(--muted-fg); font-size: 9px; }
-.statusPill { display: inline-flex; min-width: 92px; align-items: center; justify-content: center; gap: 5px; padding: 4px 7px; border: 1px solid transparent; border-radius: 99px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+.targetMetrics strong { font-size: 11px; font-weight: 600; }
+.targetMetrics span { color: var(--muted-fg); font-size: 10px; }
+.statusPill { display: inline-flex; min-width: 92px; align-items: center; justify-content: center; gap: 5px; padding: 4px 7px; border: 1px solid transparent; border-radius: 99px; font-size: 10px; font-weight: 600; white-space: nowrap; }
 .statusPill svg { width: 11px; height: 11px; }
 .status_up { border-color: color-mix(in srgb, var(--monitor-green) 26%, transparent); background: color-mix(in srgb, var(--monitor-green) 12%, var(--card)); color: var(--monitor-green); }
 .status_degraded { border-color: color-mix(in srgb, var(--monitor-amber) 30%, transparent); background: color-mix(in srgb, var(--monitor-amber) 12%, var(--card)); color: var(--monitor-amber); }
@@ -220,7 +246,7 @@
 .emptyIncidents strong { font-size: 11px; font-weight: 600; }
 .emptyIncidents span { max-width: 235px; color: var(--muted-fg); font-size: 10px; line-height: 1.5; }
 
-.pageFooter { justify-content: space-between; gap: 12px; margin-top: 13px; color: var(--muted-fg); font-size: 9px; }
+.pageFooter { justify-content: space-between; gap: 12px; margin-top: 13px; color: var(--muted-fg); font-size: 10px; }
 .statePage { display: flex; min-height: 44vh; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 28px; color: var(--muted-fg); text-align: center; }
 .statePage > svg { width: 25px; height: 25px; color: var(--brand); }
 .statePage h1 { margin: 3px 0 0; color: var(--foreground); font-size: 21px; }

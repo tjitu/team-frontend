@@ -77,10 +77,13 @@ function readSessionList<T>(key: string): T[] {
   }
 }
 
-function percentile(values: number[], fraction: number) {
+function median(values: number[]) {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.max(0, Math.ceil(sorted.length * fraction) - 1)];
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? Math.round((sorted[middle - 1] + sorted[middle]) / 2)
+    : sorted[middle];
 }
 
 function stateIcon(state: TargetState) {
@@ -256,7 +259,20 @@ export default function MonitoringPage() {
   const visibleTargets = useMemo(() => targets.filter((target) => target.state !== 'unconfigured'), [targets]);
   const healthyCount = visibleTargets.filter((target) => target.state === 'up').length;
   const configuredCount = targets.filter((target) => target.state !== 'unconfigured').length;
-  const currentMedianLatency = percentile(visibleTargets.map((target) => target.latencyMs).filter((value): value is number => value !== null), 0.5);
+  const currentMedianLatency = median(visibleTargets.map((target) => target.latencyMs).filter((value): value is number => value !== null));
+  const downCount = visibleTargets.filter((target) => target.state === 'down').length;
+  const degradedCount = visibleTargets.filter((target) => target.state === 'degraded').length;
+  const unconfiguredCount = targets.filter((target) => target.state === 'unconfigured').length;
+  const overallTone = !snapshot ? 'checking'
+    : downCount > 0 ? 'down'
+      : degradedCount > 0 ? 'degraded'
+        : unconfiguredCount > 0 ? 'configuration'
+          : 'up';
+  const overallMessage = !snapshot ? 'Memeriksa target'
+    : downCount > 0 ? `${downCount} layanan mengalami gangguan`
+      : degradedCount > 0 ? `${degradedCount} layanan melambat`
+        : unconfiguredCount > 0 ? `${unconfiguredCount} target perlu dikonfigurasi`
+          : 'Semua layanan normal';
   const currentIncidents = incidents.filter((incident) => targets.some((target) => target.name === incident.target)).length;
   const orderedIncidents = incidents.filter((incident) => scope === 'all' || targets.some((target) => target.name === incident.target)).slice(0, 6);
 
@@ -274,12 +290,15 @@ export default function MonitoringPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <div className={styles.eyebrow}><span className={styles.eyebrowDot} />OBSERVABILITY</div>
-          <h1>Web monitoring</h1>
-          <p className={styles.subtitle}>Kesehatan layanan Main dan Team Platform, dalam satu tampilan.</p>
+          <div className={styles.eyebrow}><span className={styles.eyebrowDot} />PLATFORM HEALTH</div>
+          <h1>Monitoring sistem</h1>
+          <p className={styles.subtitle}>Status layanan dan latensi Main serta Team Platform.</p>
         </div>
         <div className={styles.headerActions}>
-          <span className={styles.pollNote}><Clock3 aria-hidden="true" />Refresh tiap 30 detik</span>
+          <span className={`${styles.overallStatus} ${styles[`overall_${overallTone}`]}`} aria-live="polite">
+            <i aria-hidden="true" />{overallMessage}
+          </span>
+          <span className={styles.pollNote}><Clock3 aria-hidden="true" />Auto-refresh 30 detik</span>
           <button className={styles.refreshButton} type="button" onClick={() => void poll()} disabled={refreshing}>
             <RefreshCw className={refreshing ? styles.spinner : ''} aria-hidden="true" />
             <span>{refreshing ? 'Memeriksa…' : 'Refresh sekarang'}</span>
@@ -289,24 +308,26 @@ export default function MonitoringPage() {
 
       <section className={styles.summaryGrid} aria-label="Ringkasan layanan">
         <article className={styles.summaryCard}>
-          <div className={styles.summaryLabel}><span>Service normal</span><ShieldCheck aria-hidden="true" /></div>
-          <div className={styles.summaryValue}>{snapshot ? `${healthyCount}/${visibleTargets.length}` : '—'}</div>
-          <div className={styles.summaryFoot}>Dari layanan yang sudah dikonfigurasi</div>
+          <div className={styles.summaryLabel}><span>Layanan sehat</span><ShieldCheck aria-hidden="true" /></div>
+          <div className={styles.summaryValue}><span>{snapshot ? `${healthyCount}/${visibleTargets.length}` : '—'}</span></div>
+          <div className={styles.summaryFoot}>Dari endpoint yang terkonfigurasi</div>
         </article>
         <article className={styles.summaryCard}>
-          <div className={styles.summaryLabel}><span>Cakupan check</span><Activity aria-hidden="true" /></div>
-          <div className={styles.summaryValue}>{snapshot ? `${configuredCount}/${targets.length}` : '—'}</div>
-          <div className={styles.summaryFoot}>Endpoint terpasang pada filter ini</div>
+          <div className={styles.summaryLabel}><span>Endpoint dipantau</span><Activity aria-hidden="true" /></div>
+          <div className={styles.summaryValue}><span>{snapshot ? `${configuredCount}/${targets.length}` : '—'}</span></div>
+          <div className={styles.summaryFoot}>Target terkonfigurasi pada filter ini</div>
         </article>
         <article className={styles.summaryCard}>
-          <div className={styles.summaryLabel}><span>Median latency</span><Radio aria-hidden="true" /></div>
-          <div className={styles.summaryValue}>{currentMedianLatency === null ? '—' : `${currentMedianLatency}<small>ms</small>`}</div>
-          <div className={styles.summaryFoot}>Health check terbaru</div>
+          <div className={styles.summaryLabel}><span>Median latensi</span><Radio aria-hidden="true" /></div>
+          <div className={styles.summaryValue}>
+            {currentMedianLatency === null ? <span>—</span> : <><span>{currentMedianLatency}</span><small>ms</small></>}
+          </div>
+          <div className={styles.summaryFoot}>Pengecekan terbaru, seluruh endpoint aktif</div>
         </article>
         <article className={styles.summaryCard}>
-          <div className={styles.summaryLabel}><span>Perubahan status</span><AlertTriangle aria-hidden="true" /></div>
-          <div className={styles.summaryValue}>{currentIncidents}</div>
-          <div className={styles.summaryFoot}>Tercatat pada sesi ini</div>
+          <div className={styles.summaryLabel}><span>Transisi status</span><AlertTriangle aria-hidden="true" /></div>
+          <div className={styles.summaryValue}><span>{currentIncidents}</span></div>
+          <div className={styles.summaryFoot}>Tercatat selama sesi monitoring ini</div>
         </article>
       </section>
 
