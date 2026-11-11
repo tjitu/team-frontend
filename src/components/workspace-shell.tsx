@@ -480,45 +480,47 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
           )}
 
           {member && (member.role === 'SYSTEM_OWNER' || member.role === 'SYSTEM_ADMIN') && (
-            <div className="nav-group-collapsible">
-              <Link
-                className={`nav-link ${pathname === '/control-center' ? 'is-active' : ''}`}
-                href="/control-center"
-                title="Control Center"
-                aria-current={pathname === '/control-center' ? 'page' : undefined}
-                onClick={(e) => {
-                  if (pathname === '/control-center') {
-                    e.preventDefault();
-                    setIsControlCenterOpen((prev) => !prev);
-                  } else {
-                    setIsControlCenterOpen(true);
-                  }
-                }}
-              >
-                <SlidersHorizontal className="nav-icon" />
-                <span className="nav-link-text">Control Center</span>
-                <ChevronDown
-                  className={`sidebar-expand-icon ${isControlCenterOpen ? 'is-open' : ''}`}
-                  aria-hidden="true"
-                />
-              </Link>
+            <>
+              <div className="nav-group-collapsible">
+                <Link
+                  className={`nav-link ${pathname === '/control-center' ? 'is-active' : ''}`}
+                  href="/control-center"
+                  title="Control Center"
+                  aria-current={pathname === '/control-center' ? 'page' : undefined}
+                  onClick={(e) => {
+                    if (pathname === '/control-center') {
+                      e.preventDefault();
+                      setIsControlCenterOpen((prev) => !prev);
+                    } else {
+                      setIsControlCenterOpen(true);
+                    }
+                  }}
+                >
+                  <SlidersHorizontal className="nav-icon" />
+                  <span className="nav-link-text">Control Center</span>
+                  <ChevronDown
+                    className={`sidebar-expand-icon ${isControlCenterOpen ? 'is-open' : ''}`}
+                    aria-hidden="true"
+                  />
+                </Link>
 
-              <Suspense fallback={null}>
-                <ControlCenterSubNav
-                  isOpen={isControlCenterOpen && !isCollapsed}
-                  pathname={pathname}
-                />
-              </Suspense>
-            </div>
-            <Link
-              className={`nav-link ${pathname === '/monitoring' ? 'is-active' : ''}`}
-              href="/monitoring"
-              title="Monitoring"
-              aria-current={pathname === '/monitoring' ? 'page' : undefined}
-            >
-              <Radio className="nav-icon" />
-              <span className="nav-link-text">Monitoring</span>
-            </Link>
+                <Suspense fallback={null}>
+                  <ControlCenterSubNav
+                    isOpen={isControlCenterOpen && !isCollapsed}
+                    pathname={pathname}
+                  />
+                </Suspense>
+              </div>
+              <Link
+                className={`nav-link ${pathname === '/monitoring' ? 'is-active' : ''}`}
+                href="/monitoring"
+                title="Monitoring"
+                aria-current={pathname === '/monitoring' ? 'page' : undefined}
+              >
+                <Radio className="nav-icon" />
+                <span className="nav-link-text">Monitoring</span>
+              </Link>
+            </>
           )}
 
           <Link
