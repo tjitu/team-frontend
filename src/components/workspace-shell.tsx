@@ -9,6 +9,7 @@ import {
   CheckSquare,
   Users,
   Activity,
+  Radio,
   Building2,
   SlidersHorizontal,
   Settings,
@@ -181,6 +182,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     : pathname === '/projects/archived' ? 'Archived projects'
     : pathname === '/tasks' ? 'Tasks'
     : pathname === '/control-center' ? 'Control Center'
+    : pathname === '/monitoring' ? 'Monitoring'
     : pathname === '/settings' ? 'Settings'
     : pathname.startsWith('/team') ? 'Team members'
       : pathname === '/activity' ? 'Team activity'
@@ -508,6 +510,15 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                 />
               </Suspense>
             </div>
+            <Link
+              className={`nav-link ${pathname === '/monitoring' ? 'is-active' : ''}`}
+              href="/monitoring"
+              title="Monitoring"
+              aria-current={pathname === '/monitoring' ? 'page' : undefined}
+            >
+              <Radio className="nav-icon" />
+              <span className="nav-link-text">Monitoring</span>
+            </Link>
           )}
 
           <Link
