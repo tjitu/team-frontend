@@ -91,7 +91,7 @@ async function checkTarget(
       id,
       name,
       group,
-      url: new URL(configuredUrl).origin,
+      url: `${new URL(configuredUrl).origin}${new URL(configuredUrl).pathname}`,
       state,
       latencyMs,
       httpStatus: response.status,
@@ -104,7 +104,7 @@ async function checkTarget(
       id,
       name,
       group,
-      url: new URL(configuredUrl).origin,
+      url: `${new URL(configuredUrl).origin}${new URL(configuredUrl).pathname}`,
       state: 'down',
       latencyMs,
       httpStatus: null,
@@ -116,9 +116,13 @@ async function checkTarget(
 
 export async function GET(request: NextRequest) {
   const teamSiteUrl = safeOrigin(process.env.MONITOR_TEAM_URL) ?? request.nextUrl.origin;
+  const mainSiteUrl = safeOrigin(process.env.MONITOR_MAIN_URL || 'https://jituptn.com');
+  const mainApiHealthUrl = safeOrigin(
+    process.env.MONITOR_MAIN_API_HEALTH_URL || 'https://jituptn.com/api/proxy/health/ready',
+  );
   const targets = await Promise.all([
-    checkTarget('main-web', 'Main website', 'Main', safeOrigin(process.env.MONITOR_MAIN_URL)),
-    checkTarget('main-api', 'Main API', 'Main', safeOrigin(process.env.MONITOR_MAIN_API_HEALTH_URL)),
+    checkTarget('main-web', 'Main website', 'Main', mainSiteUrl),
+    checkTarget('main-api', 'Main API + database', 'Main', mainApiHealthUrl),
     checkTarget('team-web', 'Team Platform website', 'Team Platform', teamSiteUrl),
     checkTarget('team-api', 'Team API + database', 'Team Platform', readinessUrl(process.env.NEXT_PUBLIC_TEAM_API_URL)),
   ]);

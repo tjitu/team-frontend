@@ -18,6 +18,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { api, CurrentMember, signInUrl } from '@/lib/api';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import styles from './monitoring.module.css';
 
 type TargetState = 'up' | 'degraded' | 'down' | 'unconfigured';
@@ -33,13 +34,17 @@ type Target = {
   detail: string;
 };
 type Snapshot = { checkedAt: string; targets: Target[] };
-type Sample = { checkedAt: string; values: Record<string, number | null> };
+type Sample = {
+  checkedAt: string;
+  values: Record<string, number | null>;
+  states?: Record<string, TargetState>;
+};
 type Incident = { id: string; checkedAt: string; target: string; state: TargetState; message: string };
 type AccessState = 'checking' | 'allowed' | 'denied' | 'error';
 type Scope = 'all' | 'Main' | 'Team Platform';
 type Range = 5 | 15 | 30;
 
-const HISTORY_KEY = 'jitu-monitoring-samples-v1';
+const HISTORY_KEY = 'jitu-monitoring-samples-v2';
 const INCIDENT_KEY = 'jitu-monitoring-incidents-v1';
 const POLL_INTERVAL = 30_000;
 const rangeOptions: Range[] = [5, 15, 30];
@@ -77,13 +82,10 @@ function readSessionList<T>(key: string): T[] {
   }
 }
 
-function median(values: number[]) {
+function percentile(values: number[], fraction: number) {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? Math.round((sorted[middle - 1] + sorted[middle]) / 2)
-    : sorted[middle];
+  return sorted[Math.max(0, Math.ceil(sorted.length * fraction) - 1)];
 }
 
 function stateIcon(state: TargetState) {
@@ -176,23 +178,51 @@ export default function MonitoringPage() {
   useEffect(() => {
     setSamples(readSessionList<Sample>(HISTORY_KEY));
     setIncidents(readSessionList<Incident>(INCIDENT_KEY));
-    const cachedMember = api.getCached<CurrentMember>('/team/me');
-    void api.get<CurrentMember>('/team/me', { force: true, cacheMs: 0 }).then((currentMember) => {
-      setMember(currentMember);
-      setAccess(currentMember.role === 'SYSTEM_OWNER' || currentMember.role === 'SYSTEM_ADMIN' ? 'allowed' : 'denied');
-    }).catch((error: Error) => {
-      if (error.message === 'SESSION_EXPIRED') {
-        window.location.assign(signInUrl());
-        return;
+    let active = true;
+
+    async function checkAccess() {
+      try {
+        const { data: { session }, error: sessionError } = await createSupabaseBrowserClient().auth.getSession();
+        if (!active) return;
+        if (sessionError || !session?.access_token) {
+          window.location.assign(signInUrl());
+          return;
+        }
+
+        const cachedMember = api.getCached<CurrentMember>('/team/me');
+        try {
+          const currentMember = await api.get<CurrentMember>('/team/me', { force: true, cacheMs: 0 });
+          if (!active) return;
+          setMember(currentMember);
+          setAccess(currentMember.role === 'SYSTEM_OWNER' || currentMember.role === 'SYSTEM_ADMIN' ? 'allowed' : 'denied');
+        } catch (error) {
+          if (!active) return;
+          if (error instanceof Error && error.message === 'SESSION_EXPIRED') {
+            window.location.assign(signInUrl());
+            return;
+          }
+          if (cachedMember?.role === 'SYSTEM_OWNER' || cachedMember?.role === 'SYSTEM_ADMIN') {
+            setMember(cachedMember);
+            setAccess('allowed');
+            return;
+          }
+          if (cachedMember) {
+            setMember(cachedMember);
+            setAccess('denied');
+            return;
+          }
+          setAccessMessage('Hak akses belum bisa diverifikasi. Coba lagi setelah Team API tersedia.');
+          setAccess('error');
+        }
+      } catch (error) {
+        if (!active) return;
+        setAccessMessage(error instanceof Error ? error.message : 'Tidak bisa memeriksa sesi akun.');
+        setAccess('error');
       }
-      if (cachedMember?.role === 'SYSTEM_OWNER' || cachedMember?.role === 'SYSTEM_ADMIN') {
-        setMember(cachedMember);
-        setAccess('allowed');
-        return;
-      }
-      setAccessMessage(error.message || 'Tidak bisa memeriksa hak akses akun.');
-      setAccess('error');
-    });
+    }
+
+    void checkAccess();
+    return () => { active = false; };
   }, []);
 
   const poll = useCallback(async () => {
@@ -209,6 +239,7 @@ export default function MonitoringPage() {
       const sample: Sample = {
         checkedAt: next.checkedAt,
         values: Object.fromEntries(next.targets.map((target) => [target.id, target.state === 'unconfigured' ? null : target.latencyMs])),
+        states: Object.fromEntries(next.targets.map((target) => [target.id, target.state])),
       };
       setSamples((previous) => {
         const updated = [...previous.filter((item) => item.checkedAt !== sample.checkedAt), sample].slice(-120);
@@ -259,7 +290,27 @@ export default function MonitoringPage() {
   const visibleTargets = useMemo(() => targets.filter((target) => target.state !== 'unconfigured'), [targets]);
   const healthyCount = visibleTargets.filter((target) => target.state === 'up').length;
   const configuredCount = targets.filter((target) => target.state !== 'unconfigured').length;
-  const currentMedianLatency = median(visibleTargets.map((target) => target.latencyMs).filter((value): value is number => value !== null));
+  const rangeCutoff = Date.now() - range * 60_000;
+  const rangeSamples = samples.filter((sample) => new Date(sample.checkedAt).getTime() >= rangeCutoff);
+  const p95Latency = percentile(
+    rangeSamples.flatMap((sample) => visibleTargets.flatMap((target) => {
+      const value = sample.values[target.id];
+      return value === null || value === undefined ? [] : [value];
+    })),
+    0.95,
+  );
+  const apiTargets = visibleTargets.filter((target) => target.id.endsWith('-api'));
+  const readyApiCount = apiTargets.filter((target) => target.httpStatus !== null && target.httpStatus >= 200 && target.httpStatus < 300).length;
+  const checkStats = rangeSamples.reduce((stats, sample) => {
+    for (const target of visibleTargets) {
+      const sampleState = sample.states?.[target.id];
+      if (!sampleState || sampleState === 'unconfigured') continue;
+      stats.total += 1;
+      if (sampleState === 'up') stats.normal += 1;
+    }
+    return stats;
+  }, { normal: 0, total: 0 });
+  const normalCheckRate = checkStats.total > 0 ? Math.round((checkStats.normal / checkStats.total) * 100) : null;
   const downCount = visibleTargets.filter((target) => target.state === 'down').length;
   const degradedCount = visibleTargets.filter((target) => target.state === 'degraded').length;
   const unconfiguredCount = targets.filter((target) => target.state === 'unconfigured').length;
@@ -273,7 +324,6 @@ export default function MonitoringPage() {
       : degradedCount > 0 ? `${degradedCount} layanan melambat`
         : unconfiguredCount > 0 ? `${unconfiguredCount} target perlu dikonfigurasi`
           : 'Semua layanan normal';
-  const currentIncidents = incidents.filter((incident) => targets.some((target) => target.name === incident.target)).length;
   const orderedIncidents = incidents.filter((incident) => scope === 'all' || targets.some((target) => target.name === incident.target)).slice(0, 6);
 
   if (access === 'checking') {
@@ -313,21 +363,21 @@ export default function MonitoringPage() {
           <div className={styles.summaryFoot}>Dari endpoint yang terkonfigurasi</div>
         </article>
         <article className={styles.summaryCard}>
-          <div className={styles.summaryLabel}><span>Endpoint dipantau</span><Activity aria-hidden="true" /></div>
-          <div className={styles.summaryValue}><span>{snapshot ? `${configuredCount}/${targets.length}` : '—'}</span></div>
-          <div className={styles.summaryFoot}>Target terkonfigurasi pada filter ini</div>
+          <div className={styles.summaryLabel}><span>API siap</span><Database aria-hidden="true" /></div>
+          <div className={styles.summaryValue}><span>{snapshot && apiTargets.length > 0 ? `${readyApiCount}/${apiTargets.length}` : '—'}</span></div>
+          <div className={styles.summaryFoot}>Health check dan koneksi database</div>
         </article>
         <article className={styles.summaryCard}>
-          <div className={styles.summaryLabel}><span>Median latensi</span><Radio aria-hidden="true" /></div>
+          <div className={styles.summaryLabel}><span>P95 latensi</span><Radio aria-hidden="true" /></div>
           <div className={styles.summaryValue}>
-            {currentMedianLatency === null ? <span>—</span> : <><span>{currentMedianLatency}</span><small>ms</small></>}
+            {p95Latency === null ? <span>—</span> : <><span>{p95Latency}</span><small>ms</small></>}
           </div>
-          <div className={styles.summaryFoot}>Pengecekan terbaru, seluruh endpoint aktif</div>
+          <div className={styles.summaryFoot}>Sampel {range} menit terakhir pada sesi ini</div>
         </article>
         <article className={styles.summaryCard}>
-          <div className={styles.summaryLabel}><span>Transisi status</span><AlertTriangle aria-hidden="true" /></div>
-          <div className={styles.summaryValue}><span>{currentIncidents}</span></div>
-          <div className={styles.summaryFoot}>Tercatat selama sesi monitoring ini</div>
+          <div className={styles.summaryLabel}><span>Pemeriksaan normal</span><Activity aria-hidden="true" /></div>
+          <div className={styles.summaryValue}><span>{normalCheckRate === null ? '—' : `${normalCheckRate}%`}</span></div>
+          <div className={styles.summaryFoot}>{checkStats.total ? `${checkStats.normal} dari ${checkStats.total} check pada ${range} menit` : 'Menunggu sampel health check'}</div>
         </article>
       </section>
 
