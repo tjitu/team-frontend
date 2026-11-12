@@ -202,7 +202,7 @@ export function TryoutQuestionsSection({
     setLoading(true);
     try {
       const data = await api.get<TryoutWorkspaceResponse>(
-        `/team/control-center/tryouts/${encodeURIComponent(tryoutId)}/workspace`,
+        `/team/control-center/tryouts/${encodeURIComponent(tryoutId)}/questions`,
       );
       setWorkspace(data);
     } catch (cause) {
