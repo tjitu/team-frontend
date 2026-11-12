@@ -186,7 +186,7 @@ export function PracticeSection({
   const loadWorkspace = React.useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.get<PracticeWorkspaceResponse>('/team/control-center/practice/workspace');
+      const data = await api.get<PracticeWorkspaceResponse>('/team/control-center/practice');
       setWorkspace(data);
     } catch (cause) {
       onErrorRef.current(getErrorMessage(cause));
@@ -409,7 +409,7 @@ export function PracticeSection({
     onError('');
     try {
       const res = await api.post<{ assignedCount: number }>(
-        '/team/control-center/practice/questions',
+        '/team/control-center/practice/assign',
         { questionIds: selectedIds },
       );
       onNotice(`Berhasil memasukkan ${res.assignedCount ?? selectedIds.length} soal ke paket Latihan.`);
@@ -428,7 +428,7 @@ export function PracticeSection({
     setRemovingId(questionId);
     onError('');
     try {
-      await api.delete(`/team/control-center/practice/questions/${encodeURIComponent(questionId)}`);
+      await api.delete(`/team/control-center/practice/assign/${encodeURIComponent(questionId)}`);
       onNotice('Soal dikeluarkan dari Latihan dan dikembalikan ke Eksperimen (Bank Soal).');
       await loadWorkspace();
       onQuestionsChangedRef.current?.();
