@@ -49,7 +49,7 @@ export interface Department {
   version: number;
   createdAt: string;
   updatedAt: string;
-  _count?: { members: number };
+  _count?: { members: number; projects?: number };
 }
 
 export interface DepartmentMember {
@@ -99,18 +99,23 @@ export interface Project {
   departmentId: string;
   startsAt: string | null;
   endsAt: string | null;
+  hasPartnershipSheet?: boolean;
   department: Pick<Department, 'id' | 'name' | 'slug'> & { isActive?: boolean };
   createdBy: TeamMember;
   version: number;
   updatedAt: string;
   createdAt: string;
   archivedAt: string | null;
-  _count?: { members: number };
+  _count?: { members: number; tasks?: number };
   members?: Array<{ id: string; role: ProjectRole; teamMember: TeamMember }>;
 }
 
 export interface Task {
   id: string;
+  projectId?: string | null;
+  departmentId?: string | null;
+  partnershipId?: string | null;
+  project?: { id: string; name: string; hasPartnershipSheet?: boolean } | null;
   title: string;
   description: string | null;
   attachments?: string[];
@@ -124,6 +129,71 @@ export interface Task {
   createdBy: TeamMember;
   _count?: { comments: number };
   comments?: Array<{ id: string; body: string; createdAt: string; author: TeamMember }>;
+}
+
+export type BroadcastStatus =
+  | 'NOT_STARTED'
+  | 'CONTACTED'
+  | 'NEGOTIATING'
+  | 'AWAITING_RESPONSE'
+  | 'PUBLISHED'
+  | 'DECLINED';
+
+export interface MarketingPartnership {
+  id: string;
+  name: string;
+  category: string;
+  platform: string;
+  totalMembers: number;
+  picName: string | null;
+  picContact: string | null;
+  broadcastStatus: BroadcastStatus;
+  followUpDate: string | null;
+  notes: string | null;
+  departmentId: string | null;
+  projectId: string | null;
+  sortOrder: number;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: TeamMember | null;
+  updatedBy: TeamMember | null;
+  tasks?: Array<{
+    id: string;
+    projectId: string | null;
+    title: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+    dueAt: string | null;
+  }>;
+}
+
+export interface DepartmentWorkspaceResponse {
+  department: Department;
+  isMember: boolean;
+  projects: Project[];
+  tasks: Task[];
+  members: Array<{
+    id: string;
+    teamMember: TeamMember & { role: TeamRole };
+  }>;
+}
+
+export interface MarketingPartnershipSummary {
+  totalTarget: number;
+  totalReach: number;
+  broadcastPublished: number;
+  inProgress: number;
+  successRate: number;
+}
+
+export interface MarketingPartnershipsResponse {
+  summary: MarketingPartnershipSummary;
+  items: MarketingPartnership[];
+  facets: {
+    categories: string[];
+    platforms: string[];
+  };
 }
 
 export interface TaskListPage {
@@ -192,11 +262,13 @@ async function getAccessToken(): Promise<string> {
 function invalidateForPath(path: string) {
   if (path.includes('/projects')) {
     api.invalidate('/team/projects');
+    api.invalidate('/team/departments');
     api.invalidate('/team/control-center/overview');
   }
   if (path.includes('/tasks')) {
     api.invalidate('/team/tasks');
     api.invalidate('/team/projects');
+    api.invalidate('/team/departments/workspace');
     api.invalidate('/team/activity');
   }
   if (path.includes('/departments')) {
@@ -210,6 +282,13 @@ function invalidateForPath(path: string) {
   }
   if (path.includes('/control-center')) {
     api.invalidate('/team/control-center');
+  }
+  if (path.includes('/marketing')) {
+    api.invalidate('/team/marketing');
+    api.invalidate('/team/tasks');
+    api.invalidate('/team/projects');
+    api.invalidate('/team/departments/workspace');
+    api.invalidate('/team/activity');
   }
 }
 

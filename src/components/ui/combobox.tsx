@@ -21,6 +21,7 @@ export interface ComboboxSelectProps {
   searchable?: boolean;
   ariaLabel?: string;
   align?: 'start' | 'end';
+  fullWidth?: boolean;
 }
 
 /**
@@ -38,10 +39,13 @@ export function ComboboxSelect({
   searchable = false,
   ariaLabel,
   align = 'end',
+  fullWidth = false,
 }: ComboboxSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [focusedIndex, setFocusedIndex] = React.useState(-1);
+
+  const isFull = fullWidth || className?.includes('w-full') || triggerClassName?.includes('w-full');
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -148,8 +152,13 @@ export function ComboboxSelect({
   return (
     <div
       ref={containerRef}
-      className={cn('combobox-root relative inline-flex items-center', className)}
-      style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle' }}
+      className={cn('combobox-root relative inline-flex items-center', isFull && 'w-full flex', className)}
+      style={{
+        position: 'relative',
+        display: isFull ? 'flex' : 'inline-flex',
+        width: isFull ? '100%' : undefined,
+        verticalAlign: 'middle',
+      }}
       onKeyDown={handleContainerKeyDown}
     >
       <button
@@ -175,9 +184,10 @@ export function ComboboxSelect({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '8px',
-          minHeight: '34px',
-          height: '34px',
-          minWidth: '110px',
+          minHeight: '36px',
+          height: '36px',
+          width: isFull ? '100%' : undefined,
+          minWidth: isFull ? '100%' : '110px',
           padding: '0 10px 0 12px',
           borderRadius: '8px',
           border: '1px solid var(--border)',
@@ -241,8 +251,8 @@ export function ComboboxSelect({
             left: align === 'start' ? 0 : 'auto',
             zIndex: 1200,
             minWidth: '100%',
-            width: 'max-content',
-            maxWidth: '320px',
+            width: isFull ? '100%' : 'max-content',
+            maxWidth: isFull ? '100%' : '360px',
             maxHeight: '260px',
             overflowY: 'auto',
             borderRadius: '8px',

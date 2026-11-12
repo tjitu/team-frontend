@@ -30,6 +30,7 @@ export interface DataTableProps<TData extends RowData> {
   emptyMessage?: string;
   pageSize?: number;
   className?: string;
+  isRowSelected?: (row: TData) => boolean;
 }
 
 export function DataTable<TData extends RowData>({
@@ -42,6 +43,7 @@ export function DataTable<TData extends RowData>({
   emptyMessage = 'No records found.',
   pageSize = 10,
   className,
+  isRowSelected,
 }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -103,7 +105,7 @@ export function DataTable<TData extends RowData>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && 'selected'}
+                  data-state={(isRowSelected ? isRowSelected(row.original) : row.getIsSelected()) ? 'selected' : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

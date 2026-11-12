@@ -15,6 +15,7 @@ const eventTypes = [
   'TEAM_MEMBER_CREATED', 'TEAM_MEMBER_ACTIVATED', 'TEAM_MEMBER_DEACTIVATED', 'TEAM_MEMBER_ROLE_CHANGED', 'TEAM_MEMBER_PROFILE_SYNCED',
   'TEAM_INVITATION_CREATED', 'TEAM_INVITATION_RESENT', 'TEAM_INVITATION_REVOKED', 'TEAM_INVITATION_ACCEPTED',
   'DEPARTMENT_CREATED', 'DEPARTMENT_UPDATED', 'DEPARTMENT_MEMBER_ADDED', 'DEPARTMENT_MEMBER_REACTIVATED', 'DEPARTMENT_MEMBER_REMOVED',
+  'MARKETING_PARTNERSHIP_CREATED', 'MARKETING_PARTNERSHIP_UPDATED', 'MARKETING_PARTNERSHIP_IMPORTED', 'MARKETING_PARTNERSHIP_ARCHIVED',
 ];
 
 const eventLabels: Record<string, string> = {
@@ -24,16 +25,20 @@ const eventLabels: Record<string, string> = {
   TEAM_MEMBER_CREATED: 'Team account created', TEAM_MEMBER_ACTIVATED: 'Member access enabled', TEAM_MEMBER_DEACTIVATED: 'Member access disabled', TEAM_MEMBER_ROLE_CHANGED: 'Team role changed', TEAM_MEMBER_PROFILE_SYNCED: 'Profile name updated',
   TEAM_INVITATION_CREATED: 'Invitation created', TEAM_INVITATION_RESENT: 'Invitation resent', TEAM_INVITATION_REVOKED: 'Invitation revoked', TEAM_INVITATION_ACCEPTED: 'Invitation accepted',
   DEPARTMENT_CREATED: 'Department created', DEPARTMENT_UPDATED: 'Department updated', DEPARTMENT_MEMBER_ADDED: 'Department member added', DEPARTMENT_MEMBER_REACTIVATED: 'Department member reactivated', DEPARTMENT_MEMBER_REMOVED: 'Department member removed',
+  MARKETING_PARTNERSHIP_CREATED: 'Partnership target created', MARKETING_PARTNERSHIP_UPDATED: 'Partnership target updated', MARKETING_PARTNERSHIP_IMPORTED: 'Partnership targets imported', MARKETING_PARTNERSHIP_ARCHIVED: 'Partnership target archived',
 };
 
 const entityLabels: Record<string, string> = {
   PROJECT: 'Project', PROJECT_MEMBER: 'Project membership', TASK: 'Task', TASK_COMMENT: 'Comment',
   TEAM_MEMBER: 'Team member', TEAM_INVITATION: 'Invitation', DEPARTMENT: 'Department', DEPARTMENT_MEMBER: 'Department membership',
+  MARKETING_PARTNERSHIP: 'Partnership target',
 };
 
 const fieldLabels: Record<string, string> = {
   title: 'title', description: 'description', status: 'status', priority: 'priority', dueAt: 'due date',
   assigneeIds: 'assignees', name: 'name', role: 'role', isActive: 'access status',
+  category: 'category', platform: 'platform', totalMembers: 'total members', picName: 'PIC', picContact: 'PIC contact',
+  broadcastStatus: 'broadcast status', followUpDate: 'follow-up date', notes: 'notes & links',
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -78,6 +83,13 @@ function summaryFor(activity: ActivityRecord) {
     case 'DEPARTMENT_MEMBER_ADDED': return `added ${email} to a department`;
     case 'DEPARTMENT_MEMBER_REACTIVATED': return `reactivated ${email} in a department`;
     case 'DEPARTMENT_MEMBER_REMOVED': return `removed ${email} from a department`;
+    case 'MARKETING_PARTNERSHIP_CREATED': return `added partnership target ${text(metadata.name, '')}`;
+    case 'MARKETING_PARTNERSHIP_UPDATED': {
+      const fields = Object.keys(after).filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key])).map((key) => fieldLabels[key] ?? key);
+      return `updated partnership ${text(metadata.name, '')}${fields.length ? ` · ${fields.join(', ')}` : ''}`;
+    }
+    case 'MARKETING_PARTNERSHIP_IMPORTED': return `imported ${typeof metadata.createdCount === 'number' ? metadata.createdCount : ''} partnership targets`;
+    case 'MARKETING_PARTNERSHIP_ARCHIVED': return `archived partnership target ${text(metadata.name, '')}`;
     default: return activity.eventType.toLowerCase().replaceAll('_', ' ');
   }
 }

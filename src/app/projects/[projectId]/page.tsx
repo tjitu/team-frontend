@@ -17,7 +17,9 @@ const priorities: TaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
 const statusLabels: Record<TaskStatus, string> = { TODO: 'To do', IN_PROGRESS: 'In progress', BLOCKED: 'Blocked', DONE: 'Done' };
 const priorityLabels: Record<TaskPriority, string> = { LOW: 'Low', NORMAL: 'Normal', HIGH: 'High', URGENT: 'Urgent' };
 const roleLabels: Record<ProjectRole, string> = { PROJECT_MANAGER: 'Project Manager', MEMBER: 'Member', VIEWER: 'Viewer' };
-type TaskView = 'board' | 'list' | 'timeline';
+import { PartnershipSheet } from '@/components/partnership-sheet';
+
+type TaskView = 'board' | 'list' | 'timeline' | 'partnerships';
 
 function dateLabel(value?: string | null) {
   if (!value) return 'Not set';
@@ -112,8 +114,12 @@ export default function ProjectPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const taskView: TaskView = searchParams.get('view') === 'list' || searchParams.get('view') === 'timeline' ? searchParams.get('view') as TaskView : 'board';
+  const rawView = searchParams.get('view');
   const [project, setProject] = useState<Project | null>(() => api.getCached<Project>(`/team/projects/${encodeURIComponent(projectId)}`));
+  const taskView: TaskView =
+    rawView === 'list' || rawView === 'timeline' || (rawView === 'partnerships' && project?.hasPartnershipSheet)
+      ? rawView
+      : 'board';
   const [departments, setDepartments] = useState<Department[]>(() => api.getCached<Department[]>('/team/departments') ?? []);
   const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me'));
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -302,6 +308,7 @@ export default function ProjectPage() {
         name,
         description,
         departmentId: String(data.get('departmentId') ?? ''),
+        hasPartnershipSheet: data.get('hasPartnershipSheet') === 'on',
         startsAt: startsAtValue ? new Date(`${startsAtValue}T00:00:00.000Z`).toISOString() : null,
         endsAt: endsAtValue ? new Date(`${endsAtValue}T00:00:00.000Z`).toISOString() : null,
       });
@@ -489,6 +496,7 @@ export default function ProjectPage() {
           <Link className={`project-view-tab ${taskView === 'board' ? 'is-active' : ''}`} href={taskViewHref('board')} aria-current={taskView === 'board' ? 'page' : undefined} scroll={false}>Board</Link>
           <Link className={`project-view-tab ${taskView === 'list' ? 'is-active' : ''}`} href={taskViewHref('list')} aria-current={taskView === 'list' ? 'page' : undefined} scroll={false}>List</Link>
           <Link className={`project-view-tab ${taskView === 'timeline' ? 'is-active' : ''}`} href={taskViewHref('timeline')} aria-current={taskView === 'timeline' ? 'page' : undefined} scroll={false}>Timeline</Link>
+          {project?.hasPartnershipSheet && <Link className={`project-view-tab ${taskView === 'partnerships' ? 'is-active' : ''}`} href={taskViewHref('partnerships')} aria-current={taskView === 'partnerships' ? 'page' : undefined} scroll={false}>Partnerships</Link>}
         </div>
         <div className="project-context-actions">
           {project && <span className="project-member-summary"><span className="mini-people-icon" aria-hidden="true" />{project.members?.length ?? 0} {project.members?.length === 1 ? 'member' : 'members'}</span>}
@@ -504,6 +512,16 @@ export default function ProjectPage() {
       {error && <div className="inline-message error" role="alert">{error}<button className="button button-quiet" onClick={() => void load(false)}>Reload</button></div>}
       {detailError && !selectedTask && <div className="inline-message error" role="alert">{detailError}</div>}
 
+      {taskView === 'partnerships' && project?.hasPartnershipSheet ? (
+        <PartnershipSheet
+          projectId={project.id}
+          canWrite={Boolean(canWrite)}
+          projectMembers={project.members}
+          onOpenTask={(taskId) => void openTask(taskId)}
+          onTaskCreated={() => void load(false)}
+        />
+      ) : (
+        <>
       <div className="section-heading section-spacer task-section-heading"><div><h2>{taskView === 'board' ? 'Task board' : taskView === 'timeline' ? 'Project timeline' : 'Task list'}</h2><p>{taskView === 'board' ? 'Move work by changing the status on a task card.' : taskView === 'timeline' ? 'See each task from its creation date through its due date.' : 'Manage task status, priority, assignees, and due dates.'}</p></div><span className="task-count">{filteredCount} shown</span></div>
       <div className="task-layout">
         <div>
@@ -565,6 +583,9 @@ export default function ProjectPage() {
         </div>
 
       </div>
+
+        </>
+      )}
 
       {selectedTask && <div className="task-detail-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedTask(null); }}>
         <section className="task-detail-card" role="dialog" aria-modal="true" aria-labelledby="task-detail-title">
@@ -628,6 +649,7 @@ export default function ProjectPage() {
             <label className="field-label">Description <span className="subtle-link">Optional</span><textarea className="field-textarea" name="description" key={`project-description-${project.id}`} defaultValue={project.description ?? ''} maxLength={2000} placeholder="Project goals or summary" /></label>
             <label className="field-label">Department<select className="filter-select" name="departmentId" key={`project-department-${project.id}`} defaultValue={project.departmentId} required>{departments.map((department) => <option value={department.id} key={department.id}>{department.name}{department.isActive ? '' : ' (inactive)'}</option>)}</select></label>
             <div className="detail-meta"><label className="field-label">Start date<input className="field-input" name="startsAt" type="date" defaultValue={dateInputValue(project.startsAt)} /></label><label className="field-label">End date<input className="field-input" name="endsAt" type="date" defaultValue={dateInputValue(project.endsAt)} /></label></div>
+            <label className="marketing-checkbox-row"><input type="checkbox" name="hasPartnershipSheet" key={`project-sheet-${project.id}`} defaultChecked={Boolean(project.hasPartnershipSheet)} /><span>Enable Partnership spreadsheet tab (tracker projects)</span></label>
             <div className="form-footer"><button className="button button-secondary" type="button" onClick={() => setEditProjectOpen(false)}>Cancel</button><button className="button button-primary" disabled={projectSaving}>{projectSaving ? 'Saving…' : 'Save changes'}</button></div>
           </form>
         </section>

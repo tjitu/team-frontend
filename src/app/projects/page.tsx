@@ -81,6 +81,7 @@ export default function ProjectsPage() {
         name: String(data.get('name') ?? '').trim(),
         description: String(data.get('description') ?? '').trim(),
         departmentId: String(data.get('departmentId') ?? ''),
+        hasPartnershipSheet: data.get('hasPartnershipSheet') === 'on',
         startsAt: data.get('startsAt') ? new Date(`${String(data.get('startsAt'))}T00:00:00.000Z`).toISOString() : undefined,
         endsAt: data.get('endsAt') ? new Date(`${String(data.get('endsAt'))}T00:00:00.000Z`).toISOString() : undefined,
       });
@@ -209,6 +210,9 @@ export default function ProjectsPage() {
                     <DepartmentIcon name={project.department.name} size={12} className="shrink-0" />
                     {project.department.name}
                   </span>
+                  {project.hasPartnershipSheet && (
+                    <span className="project-sheet-pill">Sheet</span>
+                  )}
                 </div>
                 <span className="project-card-open">
                   Open <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -304,6 +308,10 @@ export default function ProjectsPage() {
                   <input className="field-input" name="endsAt" type="date" />
                 </label>
               </div>
+              <label className="marketing-checkbox-row">
+                <input type="checkbox" name="hasPartnershipSheet" />
+                <span>Include Partnership spreadsheet tab in this project</span>
+              </label>
               <div className="form-footer">
                 <button className="button button-secondary" type="button" onClick={() => setCreateOpen(false)}>Cancel</button>
                 <button className="button button-primary" disabled={saving}>{saving ? 'Saving…' : 'Create project'}</button>

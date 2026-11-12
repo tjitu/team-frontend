@@ -32,6 +32,7 @@ import {
   Ticket,
   BookOpen,
 } from 'lucide-react';
+import { Archive as ArsipIcon, Dumbbell as LatihanIcon } from 'lucide-react';
 import { api, clearSessionCache, CurrentMember, Project, signInUrl } from '@/lib/api';
 import { useInactivityTracker, clearSessionTracking } from '@/lib/session';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -52,6 +53,8 @@ import { getCartoonAvatarUrl } from '@/lib/avatar';
 const controlCenterItems = [
   { id: 'tryouts', label: 'Tryouts', icon: GraduationCap },
   { id: 'questions', label: 'Bank Soal', icon: Layers },
+  { id: 'practice', label: 'Latihan', icon: LatihanIcon },
+  { id: 'soal-asli', label: 'Arsip Soal', icon: ArsipIcon },
   { id: 'curriculum', label: 'Materi & Kurikulum', icon: BookOpen },
   { id: 'pricing', label: 'Pricing & Packages', icon: Coins },
   { id: 'vouchers', label: 'Kode Referal & Voucher', icon: Ticket },
@@ -177,6 +180,20 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   const isProjectActivityRoute = Boolean(activeProject && pathname.endsWith('/activity')) || /^\/projects\/[^/]+\/activity$/.test(pathname);
   const isNestedProjectRoute = Boolean(activeProject) || pathname === '/projects/archived' || (pathname.startsWith('/projects/') && pathname !== '/projects');
 
+  const workspaceSlug = pathname.startsWith('/workspaces/')
+    ? pathname.split('/')[2] ?? ''
+    : '';
+  const matchedWorkspaceDept = member?.departments?.find(
+    (dept) => dept.slug === workspaceSlug || dept.id === workspaceSlug,
+  );
+  const workspaceLabel = matchedWorkspaceDept?.name
+    ?? (workspaceSlug
+      ? workspaceSlug
+          .split('-')
+          .map((part) => (part ? `${part[0].toUpperCase()}${part.slice(1)}` : ''))
+          .join(' ')
+      : 'Workspaces');
+
   const pageLabel = pathname === '/' ? 'Overview'
     : pathname === '/projects' ? 'Projects'
     : pathname === '/projects/archived' ? 'Archived projects'
@@ -186,9 +203,10 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     : pathname === '/settings' ? 'Settings'
     : pathname.startsWith('/team') ? 'Team members'
       : pathname === '/activity' ? 'Team activity'
-        : pathname.startsWith('/departments') ? 'Departments'
-          : isProjectActivityRoute ? 'Project activity'
-            : activeProject?.name ?? (pathname.startsWith('/projects/') ? 'Project' : 'Overview');
+        : pathname === '/workspaces' || pathname.startsWith('/departments') ? 'Workspaces'
+          : pathname.startsWith('/workspaces/') ? workspaceLabel
+            : isProjectActivityRoute ? 'Project activity'
+              : activeProject?.name ?? (pathname.startsWith('/projects/') ? 'Project' : 'Overview');
 
   // Dynamically update document.title based on the current page
   useEffect(() => {
@@ -445,13 +463,13 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
 
           {member && (
             <Link
-              className={`nav-link ${pathname.startsWith('/departments') ? 'is-active' : ''}`}
-              href="/departments"
-              title="Departments"
-              aria-current={pathname.startsWith('/departments') ? 'page' : undefined}
+              className={`nav-link ${pathname.startsWith('/workspaces') || pathname.startsWith('/departments') ? 'is-active' : ''}`}
+              href="/workspaces"
+              title="Workspaces"
+              aria-current={pathname.startsWith('/workspaces') || pathname.startsWith('/departments') ? 'page' : undefined}
             >
               <Building2 className="nav-icon" />
-              <span className="nav-link-text">Departments</span>
+              <span className="nav-link-text">Workspaces</span>
             </Link>
           )}
 
@@ -624,6 +642,17 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
                       <BreadcrumbPage>Archived</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                ) : pathname.startsWith('/workspaces/') ? (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink render={<Link href="/workspaces" />}>Workspaces</BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>{workspaceLabel}</BreadcrumbPage>
                     </BreadcrumbItem>
                   </>
                 ) : (

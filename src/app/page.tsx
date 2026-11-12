@@ -140,11 +140,17 @@ type OverviewResponse = {
   };
   revenue: {
     totalRevenue: number;
+    revenue14d?: number;
+    revenue30d?: number;
     coinsSold: number;
     passSold?: number;
     passRevenue?: number;
     confirmedPayments: number;
+    confirmedPayments14d?: number;
+    confirmedPayments30d?: number;
     pendingPayments: number;
+    pendingPayments14d?: number;
+    pendingPayments30d?: number;
     avgPricePerCoin: number;
     minPricePerCoin: number;
     maxPricePerCoin: number;
@@ -194,6 +200,7 @@ export default function OverviewPage() {
   const [analyticsTab, setAnalyticsTab] = useState<'pages' | 'countries' | 'sources' | 'devices' | 'events'>('pages');
 
   const [visitorInterval, setVisitorInterval] = useState<'7d' | '14d' | '30d'>('14d');
+  const [revenuePeriod, setRevenuePeriod] = useState<'14d' | '30d' | 'all'>('30d');
   const [coinChartMode, setCoinChartMode] = useState<'daily' | 'monthly'>('daily');
   const [hoveredTrendIdx, setHoveredTrendIdx] = useState<number | null>(null);
   const [hoveredCoinIdx, setHoveredCoinIdx] = useState<number | null>(null);
@@ -442,15 +449,57 @@ export default function OverviewPage() {
 
         <article className="dashboard-kpi-card">
           <div className="dashboard-kpi-header">
-            <span>Total Revenue</span>
-            <Wallet className="w-4 h-4" aria-hidden="true" />
+            <span>
+              {revenuePeriod === '30d'
+                ? 'MRR'
+                : revenuePeriod === '14d'
+                  ? 'Revenue (14d)'
+                  : 'Total Revenue'}
+            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <div className="kpi-period-toggle" role="group" aria-label="Revenue period">
+                {(['14d', '30d', 'all'] as const).map((period) => (
+                  <button
+                    key={period}
+                    type="button"
+                    className={`kpi-period-btn ${revenuePeriod === period ? 'active' : ''}`}
+                    onClick={() => setRevenuePeriod(period)}
+                  >
+                    {period === 'all' ? 'All time' : period}
+                  </button>
+                ))}
+              </div>
+              <Wallet className="w-4 h-4" aria-hidden="true" />
+            </div>
           </div>
           <strong>
-            {loading || !data ? '—' : idrFormatter.format(data.revenue.totalRevenue)}
+            {loading || !data
+              ? '—'
+              : idrFormatter.format(
+                  revenuePeriod === '30d'
+                    ? (data.revenue.revenue30d ??
+                      data.visitorTrend.slice(-30).reduce((sum, pt) => sum + (pt.revenue ?? 0), 0))
+                    : revenuePeriod === '14d'
+                      ? (data.revenue.revenue14d ??
+                        data.visitorTrend.slice(-14).reduce((sum, pt) => sum + (pt.revenue ?? 0), 0))
+                      : data.revenue.totalRevenue,
+                )}
           </strong>
           <small>
             {data
-              ? `${data.revenue.confirmedPayments} confirmed orders · ${data.revenue.pendingPayments} pending`
+              ? `${
+                  revenuePeriod === '30d'
+                    ? (data.revenue.confirmedPayments30d ?? data.revenue.confirmedPayments)
+                    : revenuePeriod === '14d'
+                      ? (data.revenue.confirmedPayments14d ?? data.revenue.confirmedPayments)
+                      : data.revenue.confirmedPayments
+                } confirmed orders · ${
+                  revenuePeriod === '30d'
+                    ? (data.revenue.pendingPayments30d ?? data.revenue.pendingPayments)
+                    : revenuePeriod === '14d'
+                      ? (data.revenue.pendingPayments14d ?? data.revenue.pendingPayments)
+                      : data.revenue.pendingPayments
+                } pending`
               : 'Loading revenue…'}
           </small>
         </article>
