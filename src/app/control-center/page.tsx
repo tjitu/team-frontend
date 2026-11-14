@@ -1458,10 +1458,10 @@ PRINSIP KOGNITIF & FORMAT MENJAWAB:
 - Siswa tidak boleh dirugikan akibat format jawaban; format isian harus sangat jelas sehingga tidak ada kebingungan antara angka desimal vs bilangan bulat atau penggunaan satuan.
 - Soal harus menguji daya nalar dan pemecahan masalah (Problem Solving), bukan sekadar mengingat rumus tanpa pemahaman konsep.
 
-FORMAT KELUARAN (WAJIB BERUPA FILE .JSON):
-- Output HARUS berupa file .json (buat dan berikan hasil akhir dalam bentuk file .json yang dapat diunduh, misalnya soal_utbk.json).
-- Isi di dalam file .json HARUS berupa JSON murni yang valid (array of objects jika > 1 soal, atau single object jika 1 soal) tanpa teks pengantar, tanpa komentar, tanpa penjelasan di luar JSON, dan tanpa code fence markdown.
-- Pastikan seluruh sintaks JSON valid (escape backslash LaTeX menjadi ganda seperti \\\\frac, \\\\sqrt, \\\\le di dalam string JSON agar file .json dapat langsung di-parse).
+FORMAT KELUARAN (OUTPUT RAW JSON MURNI):
+- Berikan HANYA teks raw JSON murni langsung di dalam balasan obrolan (tanpa bungkus markdown code block seperti \`\`\`json dan tanpa teks pembuka/penutup).
+- Karakter pertama respons wajib '[' atau '{' dan karakter terakhir ']' atau '}'.
+- Seluruh rumus matematika / LaTeX di dalam string JSON WAJIB di-escape ganda (contoh: \\\\frac, \\\\sqrt, \\\\le) agar string JSON valid saat diparse.
 
 Struktur JSON yang WAJIB dipatuhi:
 ${totalPromptCount > 1 ? '[' : ''}
@@ -1473,7 +1473,7 @@ ${totalPromptCount > 1 ? '[' : ''}
     "narration": "Teks wacana atau konteks bacaan jika ada (kosongkan string jika tidak ada)",
     "content": "${promptQuestionType === 'ISIAN_SINGKAT' ? 'Pertanyaan soal yang spesifik dan menuntut angka pasti...\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]' : 'Pertanyaan soal yang jelas, menuntut analisis nalar, dan tidak ambigu...'}",
     "points": 1,
-    "correctAnswer": "${promptQuestionType === 'ISIAN_SINGKAT' ? '42' : null}",
+    "correctAnswer": ${promptQuestionType === 'ISIAN_SINGKAT' ? '"42"' : 'null'},
     "options": ${promptQuestionType === 'ISIAN_SINGKAT' ? '[]' : `[
       { "content": "Pernyataan / opsi A", "isCorrect": false },
       { "content": "Pernyataan / opsi B (Kunci Jawaban)", "isCorrect": true },
@@ -1481,17 +1481,15 @@ ${totalPromptCount > 1 ? '[' : ''}
       { "content": "Pernyataan / opsi D", "isCorrect": false },
       { "content": "Pernyataan / opsi E", "isCorrect": false }
     ]`},
-    "solution": {
-      "keyFormula": "Rumus inti yang dipakai + 1 kalimat sederhana kapan rumus ini digunakan",
-      "quickTrick": "Tips cepat 30 detik ala kakak tutor (cara baca pola atau eliminasi opsi paling gampang)",
-      "staticExplanation": "Ringkasan 1-2 kalimat santai kenapa opsi tersebut benar",
-      "steps": [
-        { "stepNumber": 1, "category": "Pahami Soal", "title": "Cari Tahu Apa yang Ditanya", "content": "Dari soal kita tahu:\\n- **Info 1:** ...\\n- **Info 2:** ...\\n\\n==Inti ide awal supaya langkah berikutnya terasa gampang.==" },
-        { "stepNumber": 2, "category": "Tahap 1", "title": "Langkah Awal (Sesuaikan Judul)", "content": "Kalimat jembatan singkat kenapa kita hitung bagian ini:\\n$$...$$\\nDari sini ketemu **$x = ...$**." },
-        { "stepNumber": 3, "category": "Tahap 2", "title": "Langkah Lanjutan (Tambah/Kurangi Step Sesuai Soal)", "content": "Sekarang tinggal masukkan angka tadi:\\n$$...$$\\nHasilnya langsung mengarah ke ==poin penentu jawaban==." },
-        { "stepNumber": 4, "category": "Kesimpulan", "title": "Jadi Jawabannya...", "content": "Semua kondisi soal sudah terpenuhi oleh ==hasil/opsi akhir yang tepat==.\\n\\n✅ Jadi, jawaban yang benar adalah **...**." }
-      ]
-    }
+    "staticExplanation": "Ringkasan 1-2 kalimat santai kenapa opsi tersebut benar",
+    "quickTrick": "Tips cepat 30 detik ala kakak tutor (cara baca pola atau eliminasi opsi paling gampang)",
+    "keyFormula": "Rumus inti yang dipakai + 1 kalimat sederhana kapan rumus ini digunakan",
+    "solutionSteps": [
+      { "order": 1, "category": "Pahami Soal", "title": "Cari Tahu Apa yang Ditanya", "content": "Dari soal kita tahu:\\n- **Info 1:** ...\\n- **Info 2:** ...\\n\\n==Inti ide awal supaya langkah berikutnya terasa gampang.==" },
+      { "order": 2, "category": "Tahap 1", "title": "Langkah Awal (Sesuaikan Judul)", "content": "Kalimat jembatan singkat kenapa kita hitung bagian ini:\\n$$...$$\\nDari sini ketemu **$x = ...$**." },
+      { "order": 3, "category": "Tahap 2", "title": "Langkah Lanjutan (Tambah/Kurangi Step Sesuai Soal)", "content": "Sekarang tinggal masukkan angka tadi:\\n$$...$$\\nHasilnya langsung mengarah ke ==poin penentu jawaban==." },
+      { "order": 4, "category": "Kesimpulan", "title": "Jadi Jawabannya...", "content": "Semua kondisi soal sudah terpenuhi oleh ==hasil/opsi akhir yang tepat==.\\n\\n✅ Jadi, jawaban yang benar adalah **...**." }
+    ]
   }
 ${totalPromptCount > 1 ? ']' : ''}`;
   }, [autoBalanceEnabled, effectiveBalanceSlots, currentPackageLabel, activeTargetConfig, autoBalanceAnalysis.totalInPackage, activeSubtestEntries, totalPromptCount, promptDifficulty, promptQuestionType, selectedSubtopicMeta, promptCustomTopic, promptIncludePassage, promptIncludeTricks]);

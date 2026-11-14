@@ -1080,6 +1080,7 @@ ${customInstruction.trim() ? `\n### INSTRUKSI TAMBAHAN DARI PENYUSUN:\n${customI
 3. **Ketentuan Tipe PILIHAN_GANDA:**
    - Field "type": bernilai "PILIHAN_GANDA".
    - Field "options": berisi tepat 5 opsi (A, B, C, D, E) dengan tepat 1 "isCorrect": true dan 4 "isCorrect": false.
+   - **Kualitas Distraktor (Pengecoh):** 4 opsi salah WAJIB dirancang berdasarkan miskonsepsi atau kekeliruan umum siswa (contoh: tanda aljabar terbalik, lupa membalik tanda pertidaksamaan saat dibagi negatif, salah rumus turunan), BUKAN angka atau kata acak tanpa dasar.
    - Field "correctAnswer": bernilai null.
 4. **Ketentuan Tipe ISIAN_SINGKAT (Standar SNBT):**
    - Field "type": bernilai "ISIAN_SINGKAT".
@@ -1093,9 +1094,13 @@ ${customInstruction.trim() ? `\n### INSTRUKSI TAMBAHAN DARI PENYUSUN:\n${customI
    - **WAJIB DOUBLE-BACKSLASH:** Seluruh sintaks LaTeX di dalam string JSON WAJIB ditulis dengan double-backslash (contoh: \`\\\\frac{a}{b}\`, \`\\\\sqrt{x}\`, \`\\\\le\`, \`\\\\ge\`), JANGAN gunakan single-backslash agar string JSON valid saat diparse.
 6. **Pembahasan Pedagogis Khas Jitu PTN:**
    - Gunakan gaya bahasa tutor yang ramah, komunikatif, dan lugas (ala kakak pembimbing alumni PTN top).
-   - Array "solutionSteps" wajib terdiri dari 2–5 langkah terstruktur dengan judul langkah yang jelas.
-   - Cantumkan tag <hl>poin kesimpulan kunci</hl> maksimal 1 kali pada langkah inti untuk animasi stabilo interaktif.
-   - Sertakan "quickTrick" (Jurus Cepat 30 detik JITU) dan "keyFormula" (rumus/konsep inti).
+   - Array "solutionSteps" wajib terdiri dari 2–5 langkah terstruktur. Setiap langkah WAJIB menyertakan:
+     * "order": nomor urut langkah (1, 2, 3, dst.)
+     * "category": label tab navigasi ringkas 1–2 kata (contoh: "Pahami Soal", "Cek (1)", "Hitung x", "Kesimpulan")
+     * "title": judul ringkas langkah yang menjelaskan fokus aksi
+     * "content": uraian penjelasan langkah demi langkah
+   - **Animasi Stabilo Interaktif:** Gunakan sintaks stabilo ==poin kesimpulan kunci== maksimal 1–2 kali pada langkah inti untuk memicu efek animasi stabilo kuning di aplikasi siswa.
+   - Sertakan "staticExplanation" (ringkasan santai 1–2 kalimat kenapa opsi benar), "quickTrick" (Jurus Cepat 30 detik JITU), dan "keyFormula" (rumus/konsep inti).
 
 ---
 
@@ -1120,12 +1125,13 @@ ${customInstruction.trim() ? `\n### INSTRUKSI TAMBAHAN DARI PENYUSUN:\n${customI
       { "order": 5, "content": "Opsi E", "isCorrect": false }
     ],
     "correctAnswer": null,
+    "staticExplanation": "Opsi B tepat karena premis kedua langsung menegaskan kondisi tersebut.",
     "quickTrick": "Jurus Cepat JITU: Perhatikan eliminasi langsung dari pola angka...",
     "keyFormula": "Konsep atau Teorema Utama",
     "solutionSteps": [
-      { "order": 1, "title": "Pahami Masalah", "content": "Identifikasi data penting dari soal..." },
-      { "order": 2, "title": "Eksekusi Solusi", "content": "Lakukan perhitungan matematis / penalaran inferensial..." },
-      { "order": 3, "title": "Kesimpulan", "content": "Maka jawaban yang benar adalah <hl>Opsi B</hl>." }
+      { "order": 1, "category": "Pahami Soal", "title": "Pahami Masalah", "content": "Identifikasi data penting dari soal..." },
+      { "order": 2, "category": "Eksekusi", "title": "Eksekusi Solusi", "content": "Lakukan perhitungan matematis / penalaran inferensial..." },
+      { "order": 3, "category": "Kesimpulan", "title": "Kesimpulan Akhir", "content": "Maka jawaban yang benar adalah ==Opsi B==." }
     ]
   }
 ]
