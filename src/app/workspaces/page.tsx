@@ -289,7 +289,7 @@ export default function WorkspacesPage() {
                     </button>
                     <button
                       type="button"
-                      className="button button-quiet compact-button"
+                      className="button button-secondary compact-button"
                       onClick={() => {
                         setEditing(department);
                         setFormError('');

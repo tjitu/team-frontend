@@ -66,7 +66,7 @@ import { TryoutQuestionsSection } from '@/components/tryout-questions-section';
 import { SoalAsliSection } from '@/components/soal-asli-section';
 import { KotakRevisiBanner, BulkRevisionModal, RevisionRequestModal } from '@/components/question-workflow-modals';
 import { AutoBalanceAdjusterModal } from '@/components/auto-balance-adjuster-modal';
-import { getAutoBalanceConfig } from '@/components/auto-balance-settings';
+import { getAutoBalanceConfig, useAutoBalanceConfig } from '@/components/auto-balance-settings';
 import {
   QuestionBatchField,
   mergeBatchSummaries,
@@ -944,9 +944,8 @@ function ControlCenterContent() {
     return 'DRAFT';
   }, [createTarget, createTryoutId]);
 
-  const activeTargetConfig = React.useMemo(() => {
-    return getAutoBalanceConfig(activeAutoBalanceScope);
-  }, [activeAutoBalanceScope, questionFormOpen, createMethodModalOpen]);
+  const { config: activeTargetConfig } = useAutoBalanceConfig(activeAutoBalanceScope);
+  const [scopeSettingsModalOpen, setScopeSettingsModalOpen] = React.useState(false);
 
   const autoBalanceAnalysis = React.useMemo(() => {
     return computePackageAutoBalancePlan({
@@ -1349,7 +1348,9 @@ function ControlCenterContent() {
         slots: effectiveBalanceSlots,
         questionType: promptQuestionType,
         customInstruction: promptCustomTopic,
-        difficultyRatio: difficultyComposition,
+        difficultyRatio: activeTargetConfig.difficulty,
+        targetIsianPct: activeTargetConfig.isianPercentage,
+        existingTotalInPackage: autoBalanceAnalysis.totalInPackage,
       });
     }
 
@@ -1493,7 +1494,7 @@ ${totalPromptCount > 1 ? '[' : ''}
     }
   }
 ${totalPromptCount > 1 ? ']' : ''}`;
-  }, [autoBalanceEnabled, effectiveBalanceSlots, currentPackageLabel, activeSubtestEntries, totalPromptCount, promptDifficulty, promptQuestionType, selectedSubtopicMeta, promptCustomTopic, promptIncludePassage, promptIncludeTricks]);
+  }, [autoBalanceEnabled, effectiveBalanceSlots, currentPackageLabel, activeTargetConfig, autoBalanceAnalysis.totalInPackage, activeSubtestEntries, totalPromptCount, promptDifficulty, promptQuestionType, selectedSubtopicMeta, promptCustomTopic, promptIncludePassage, promptIncludeTricks]);
 
   const jsonValidation = React.useMemo(() => {
     if (!aiJsonInput.trim()) return null;
@@ -4902,17 +4903,6 @@ ${totalPromptCount > 1 ? ']' : ''}`;
           {questionFormOpen && (
             <div
               className="modal-overlay"
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 1100,
-                backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                backdropFilter: 'blur(6px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '16px',
-              }}
               onClick={() => {
                 if (!saving) {
                   setQuestionFormOpen(false);
@@ -4922,20 +4912,10 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               }}
             >
               <div
-                className="modal-dialog"
+                className="modal-dialog modal-wide"
                 onClick={(e) => e.stopPropagation()}
                 style={{
-                  maxWidth: '980px',
-                  width: '100%',
-                  maxHeight: '92vh',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  padding: 0,
-                  overflow: 'hidden',
-                  borderRadius: '16px',
-                  border: '1px solid var(--border)',
-                  background: '#121215',
-                  boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7)',
+                  maxWidth: '940px',
                 }}
               >
                 <form
@@ -4944,41 +4924,42 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     display: 'flex',
                     flexDirection: 'column',
                     height: '100%',
-                    maxHeight: '92vh',
+                    maxHeight: 'calc(100vh - 48px)',
                     overflow: 'hidden',
                   }}
                 >
-                  {/* MODAL HEADER (Sticky) */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '16px 24px',
-                      borderBottom: '1px solid var(--border)',
-                      background: '#16161a',
-                      flexShrink: 0,
-                    }}
-                  >
+                  {/* MODAL HEADER */}
+                  <div className="modal-header">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--foreground)' }}>
+                      <div className="flex items-center gap-2">
+                        <h3>
                           {editingQuestion ? 'Edit Soal' : 'Buat Soal Baru (Input Manual)'}
-                        </span>
+                        </h3>
                         {editingQuestion && (() => {
                           const item = questions.find((q) => q.id === editingQuestion);
                           return item ? (
-                            <span className="font-mono text-xs font-bold text-zinc-300 bg-white/[0.06] border border-white/10 px-2.5 py-0.5 rounded">
+                            <span
+                              style={{
+                                fontFamily: 'monospace',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                background: 'var(--muted-bg)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--foreground)',
+                              }}
+                            >
                               {formatQuestionCode(item)}
                             </span>
                           ) : null;
                         })()}
                       </div>
-                      <p style={{ margin: 0, fontSize: '11px', color: 'var(--muted-fg)' }}>
+                      <small style={{ color: 'var(--muted-fg)' }}>
                         {editingQuestion
                           ? 'Perbarui parameter kurikulum, narasi stimulus, kunci jawaban, dan pembahasan bertahap.'
                           : 'Lengkapi wacana, pertanyaan, kunci jawaban, serta slide deck solusi interaktif.'}
-                      </p>
+                      </small>
                     </div>
 
                     <button
@@ -4992,31 +4973,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                         }
                       }}
                       aria-label="Tutup"
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--muted-fg)',
-                        fontSize: '18px',
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                      }}
                     >
                       ✕
                     </button>
                   </div>
 
                   {/* MODAL BODY (Scrollable) */}
-                  <div
-                    style={{
-                      flex: 1,
-                      overflowY: 'auto',
-                      padding: '20px 24px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '18px',
-                    }}
-                  >
+                  <div className="modal-body" style={{ gap: '16px' }}>
                     {/* 1. TUJUAN SOAL (3 OPSI) + STATUS LIFECYCLE */}
                     <div
                       style={{
@@ -5740,21 +5703,11 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     </div>
                   </div>
 
-                  {/* MODAL FOOTER (Sticky) */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '14px 24px',
-                      borderTop: '1px solid var(--border)',
-                      background: '#16161a',
-                      flexShrink: 0,
-                    }}
-                  >
+                  {/* MODAL FOOTER */}
+                  <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
                     <button
                       type="button"
-                      className="button button-secondary text-xs h-9 px-4"
+                      className="button button-secondary"
                       onClick={() => {
                         setQuestionForm(initialQuestionForm);
                         setEditingQuestion(null);
@@ -5769,8 +5722,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                       {editingQuestion && questionForm.status === 'NEEDS_REVISION' && (
                         <button
                           type="button"
-                          className="button button-secondary text-xs h-9 px-4"
-                          style={{ borderColor: 'rgba(59, 130, 246, 0.5)', color: '#60a5fa', fontWeight: 700 }}
+                          className="button button-secondary"
                           disabled={saving}
                           onClick={() => void handleSaveAndResubmitQc()}
                         >
@@ -5779,8 +5731,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                       )}
                       <button
                         type="submit"
-                        className="button button-primary text-xs h-9 px-5"
-                        style={{ color: '#000000', fontWeight: 650 }}
+                        className="button button-primary"
                         disabled={saving}
                       >
                         {saving ? 'Menyimpan…' : editingQuestion ? 'Simpan Perubahan' : 'Buat Soal'}
@@ -8488,33 +8439,19 @@ ${totalPromptCount > 1 ? ']' : ''}`;
           <div
             className="modal-dialog"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '440px', padding: '24px' }}
+            style={{ maxWidth: '440px' }}
           >
-            <div className="modal-header" style={{ marginBottom: '16px' }}>
-              <div className="flex items-center gap-3">
-                <div
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: sandboxConfirmModal.targetState ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                    color: sandboxConfirmModal.targetState ? '#f59e0b' : '#3b82f6',
-                    border: `1px solid ${sandboxConfirmModal.targetState ? 'rgba(245, 158, 11, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
-                  }}
-                >
-                  <FlaskConical className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--foreground)' }}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FlaskConical style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
+                  <span>
                     {sandboxConfirmModal.targetState ? 'Konfirmasi Pindahkan ke Sandbox' : 'Konfirmasi Cabut Akses Sandbox'}
-                  </h3>
-                  <small style={{ color: 'var(--muted-fg)', fontSize: '12px' }}>
-                    Aksi perubahan hak akses akun pengguna
-                  </small>
-                </div>
+                  </span>
+                </h3>
+                <small style={{ color: 'var(--muted-fg)' }}>
+                  Aksi perubahan hak akses akun pengguna
+                </small>
               </div>
               <button
                 type="button"
@@ -8527,10 +8464,10 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               </button>
             </div>
 
-            <div className="modal-body space-y-4" style={{ marginBottom: '20px' }}>
+            <div className="modal-body">
               <div
                 style={{
-                  background: 'var(--surface-hover)',
+                  background: 'var(--surface)',
                   border: '1px solid var(--border)',
                   borderRadius: '8px',
                   padding: '12px 14px',
@@ -8572,7 +8509,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               </div>
             </div>
 
-            <div className="modal-footer flex items-center justify-end gap-2.5">
+            <div className="modal-footer">
               <button
                 type="button"
                 className="button button-secondary"
@@ -8583,16 +8520,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               </button>
               <button
                 type="button"
-                className="button"
-                style={{
-                  background: sandboxConfirmModal.targetState ? '#f59e0b' : 'var(--brand)',
-                  color: '#fff',
-                  border: 'none',
-                  fontWeight: 600,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
+                className="button button-primary"
                 disabled={sandboxConfirmModal.loading}
                 onClick={() => void handleConfirmSandboxToggle()}
               >
@@ -8898,9 +8826,6 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                      ...(isPromptAdjusterOpen
-                        ? { background: '#fbbf24', color: '#000', fontWeight: 700 }
-                        : { borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }),
                     }}
                     onClick={() => setIsPromptAdjusterOpen(!isPromptAdjusterOpen)}
                   >
@@ -8924,9 +8849,9 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               <div
                 style={{
                   padding: '14px 16px',
-                  borderRadius: '12px',
+                  borderRadius: '10px',
                   border: '1px solid var(--border)',
-                  background: 'rgba(255, 255, 255, 0.025)',
+                  background: 'var(--surface)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px',
@@ -8934,23 +8859,23 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <div>
-                    <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>1. Tujuan Pembuatan Soal</span>
                       <span
                         className="pill"
                         style={{
                           fontSize: '10px',
-                          fontWeight: 700,
-                          background: 'rgba(245, 158, 11, 0.14)',
-                          color: '#fbbf24',
-                          border: '1px solid rgba(245, 158, 11, 0.35)',
+                          fontWeight: 600,
+                          background: 'var(--muted-bg)',
+                          color: 'var(--muted-fg)',
+                          border: '1px solid var(--border)',
                         }}
                       >
                         Masuk sebagai Draf
                       </span>
                     </div>
                     <small style={{ color: 'var(--muted-fg)', fontSize: '11px' }}>
-                      Aktif: <strong style={{ color: '#e5e7eb' }}>{currentPackageLabel}</strong> · Semua soal baru otomatis berstatus Draf agar aman di-QC sebelum tayang.
+                      Aktif: <strong style={{ color: 'var(--foreground)' }}>{currentPackageLabel}</strong> · Semua soal baru otomatis berstatus Draf agar aman di-QC sebelum tayang.
                     </small>
                   </div>
                 </div>
@@ -8963,24 +8888,18 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                         title: 'Latihan',
                         badge: 'Global · 1 Paket',
                         desc: 'Masuk langsung sebagai Draf di halaman Latihan (tanpa pilih paket).',
-                        accent: '#10b981',
-                        bg: 'rgba(16, 185, 129, 0.14)',
                       },
                       {
                         id: 'FOR_TRYOUT' as const,
                         title: 'Tryout',
                         badge: 'Multi-Paket',
                         desc: 'Wajib pilih paket Tryout tujuan; masuk sebagai Draf di paket tersebut.',
-                        accent: '#38bdf8',
-                        bg: 'rgba(56, 189, 248, 0.14)',
                       },
                       {
                         id: 'DRAFT' as const,
                         title: 'Eksperimen',
                         badge: 'Bank Soal',
                         desc: 'Disimpan di Bank Soal sebagai Draf eksperimen untuk dirapikan/dipindah nanti.',
-                        accent: '#f59e0b',
-                        bg: 'rgba(245, 158, 11, 0.14)',
                       },
                     ]
                   ).map((opt) => {
@@ -9001,29 +8920,30 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                           padding: '11px 12px',
                           borderRadius: '10px',
                           cursor: 'pointer',
-                          border: active ? `1.5px solid ${opt.accent}` : '1px solid var(--border)',
-                          background: active ? opt.bg : 'rgba(255,255,255,0.015)',
+                          border: active ? '1.5px solid var(--foreground)' : '1px solid var(--border)',
+                          background: active ? 'var(--card)' : 'transparent',
                           transition: 'all 0.15s ease',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: active ? '#fff' : 'var(--foreground)' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--foreground)' }}>
                             {opt.title}
                           </span>
                           <span
                             style={{
                               fontSize: '10px',
-                              fontWeight: 700,
+                              fontWeight: 600,
                               padding: '1px 7px',
                               borderRadius: '999px',
-                              background: active ? opt.accent : 'rgba(255,255,255,0.06)',
-                              color: active ? '#0b0b0f' : 'var(--muted-fg)',
+                              background: 'var(--muted-bg)',
+                              border: '1px solid var(--border)',
+                              color: active ? 'var(--foreground)' : 'var(--muted-fg)',
                             }}
                           >
                             {opt.badge}
                           </span>
                         </div>
-                        <div style={{ fontSize: '11px', color: active ? '#e4e4e7' : 'var(--muted-fg)', lineHeight: 1.35 }}>
+                        <div style={{ fontSize: '11px', color: 'var(--muted-fg)', lineHeight: 1.35 }}>
                           {opt.desc}
                         </div>
                       </button>
@@ -9032,9 +8952,9 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 </div>
 
                 {createTarget === 'FOR_TRYOUT' && (
-                  <div style={{ paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#7dd3fc', display: 'block', marginBottom: '6px' }}>
-                      Pilih Paket Tryout Tujuan <span style={{ color: '#fb7185' }}>*</span>
+                  <div style={{ paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--foreground)', display: 'block', marginBottom: '6px' }}>
+                      Pilih Paket Tryout Tujuan <span style={{ color: 'var(--destructive)' }}>*</span>
                     </label>
                     <select
                       className="field-input"
@@ -9081,13 +9001,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     }}
                   >
                     <div>
-                      <div className="method-card-icon-wrap method-icon-manual">
-                        <PenTool style={{ width: 22, height: 22 }} />
+                      <div className="method-card-icon-wrap">
+                        <PenTool style={{ width: 20, height: 20 }} />
                       </div>
                       <div>
                         <div className="method-card-header">
                           <h4 className="method-card-title">Input Manual</h4>
-                          <span className="method-card-badge method-badge-manual">
+                          <span className="method-card-badge">
                             Editor
                           </span>
                         </div>
@@ -9096,9 +9016,9 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                         </p>
                       </div>
                     </div>
-                    <div className="method-card-action method-action-manual">
+                    <div className="method-card-action">
                       <span>Buka Form Editor ({createTarget === 'FOR_PRACTICE' ? 'Latihan' : createTarget === 'FOR_TRYOUT' ? 'Tryout' : 'Eksperimen'})</span>
-                      <ArrowRight style={{ width: 16, height: 16 }} />
+                      <ArrowRight style={{ width: 15, height: 15 }} />
                     </div>
                   </div>
 
@@ -9115,24 +9035,24 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     }}
                   >
                     <div>
-                      <div className="method-card-icon-wrap method-icon-ai">
-                        <Sparkles style={{ width: 22, height: 22 }} />
+                      <div className="method-card-icon-wrap">
+                        <Sparkles style={{ width: 20, height: 20 }} />
                       </div>
                       <div>
                         <div className="method-card-header">
                           <h4 className="method-card-title">Import JSON (AI)</h4>
-                          <span className="method-card-badge method-badge-ai">
+                          <span className="method-card-badge">
                             AI + Auto-Balance
                           </span>
                         </div>
                         <p className="method-card-desc">
-                          Paste JSON hasil generate LLM atau aktifkan <strong>Auto-Balance terhadap Paket Saat Ini</strong> agar materi & kurikulum otomatis seimbang.
+                          Paste JSON hasil generate LLM atau centang <strong>Auto-Balance</strong> agar gap soal otomatis terisi sesuai parameter paket.
                         </p>
                       </div>
                     </div>
-                    <div className="method-card-action method-action-ai">
+                    <div className="method-card-action">
                       <span>Lanjut ke Import & Prompt</span>
-                      <ArrowRight style={{ width: 16, height: 16 }} />
+                      <ArrowRight style={{ width: 15, height: 15 }} />
                     </div>
                   </div>
                 </div>
@@ -9145,71 +9065,84 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                   {isPromptAdjusterOpen && (
                     <div className="prompt-builder-box">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Sliders style={{ width: 16, height: 16 }} /> Prompt Engineering & Auto-Balance Builder
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Sliders style={{ width: 14, height: 14, color: 'var(--muted-fg)' }} />
+                          <span>Konfigurasi Prompt & Auto-Balance</span>
                         </span>
                         <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
-                          Target: <strong style={{ color: '#e5e7eb' }}>{currentPackageLabel}</strong>
+                          Target Paket: <strong style={{ color: 'var(--foreground)' }}>{currentPackageLabel}</strong>
                         </span>
                       </div>
 
-                      {/* 0. AUTO-BALANCE TERHADAP PAKET SAAT INI */}
+                      {/* 0. AUTO-BALANCE TERHADAP PAKET SAAT INI (CHECKBOX + KONTEKS PARAMETER PAKET) */}
                       <div
                         style={{
                           padding: '12px 14px',
                           borderRadius: '10px',
-                          border: autoBalanceEnabled ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid var(--border)',
-                          background: autoBalanceEnabled ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.02)',
+                          border: autoBalanceEnabled ? '1.5px solid var(--foreground)' : '1px solid var(--border)',
+                          background: 'var(--card)',
                           display: 'flex',
                           flexDirection: 'column',
-                          gap: '10px',
+                          gap: '12px',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-                          <div>
-                            <div style={{ fontSize: '12px', fontWeight: 700, color: autoBalanceEnabled ? '#6ee7b7' : 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span>Auto-Balance terhadap Paket Saat Ini</span>
-                              <span
-                                style={{
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  padding: '1px 7px',
-                                  borderRadius: '999px',
-                                  background: autoBalanceEnabled ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255,255,255,0.06)',
-                                  color: autoBalanceEnabled ? '#34d399' : 'var(--muted-fg)',
-                                }}
-                              >
-                                {autoBalanceEnabled ? 'AKTIF' : 'OPSIONAL'}
-                              </span>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                          <label
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '10px',
+                              cursor: 'pointer',
+                              flex: 1,
+                              minWidth: '240px',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={autoBalanceEnabled}
+                              onChange={(e) => setAutoBalanceEnabled(e.target.checked)}
+                              style={{ marginTop: '3px', width: '15px', height: '15px', cursor: 'pointer' }}
+                            />
+                            <div>
+                              <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <span>Aktifkan Auto-Balance (Isi Otomatis Gap Paket)</span>
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    fontWeight: 600,
+                                    padding: '1px 7px',
+                                    borderRadius: '999px',
+                                    background: 'var(--muted-bg)',
+                                    border: '1px solid var(--border)',
+                                    color: autoBalanceEnabled ? 'var(--foreground)' : 'var(--muted-fg)',
+                                  }}
+                                >
+                                  PG {100 - activeTargetConfig.isianPercentage}% : Isian {activeTargetConfig.isianPercentage}% · Level {activeTargetConfig.difficulty.easy}:{activeTargetConfig.difficulty.medium}:{activeTargetConfig.difficulty.hard}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '11px', color: 'var(--muted-fg)', marginTop: '3px', lineHeight: 1.4 }}>
+                                Membaca konteks pengaturan Auto-Balance dari <strong>{currentPackageLabel}</strong> ({autoBalanceAnalysis.totalInPackage} soal saat ini, {autoBalanceAnalysis.uncoveredSubtopicsCount}/{autoBalanceAnalysis.totalCurriculumSubtopics} subtopik belum tercover) lalu otomatis mengisi gap kekurangan soal ke dalam prompt.
+                              </div>
                             </div>
-                            <div style={{ fontSize: '11px', color: 'var(--muted-fg)', marginTop: '2px' }}>
-                              Paket saat ini memiliki <strong style={{ color: '#e5e7eb' }}>{autoBalanceAnalysis.totalInPackage} soal</strong> ·{' '}
-                              <strong style={{ color: '#fbbf24' }}>{autoBalanceAnalysis.uncoveredSubtopicsCount}/{autoBalanceAnalysis.totalCurriculumSubtopics}</strong> subtopik kurikulum belum tercover ·{' '}
-                              Level saat ini: E {autoBalanceAnalysis.difficultyCounts.EASY} / M {autoBalanceAnalysis.difficultyCounts.MEDIUM} / H {autoBalanceAnalysis.difficultyCounts.HARD}.
-                            </div>
-                          </div>
+                          </label>
+
                           <button
                             type="button"
-                            className={`button ${autoBalanceEnabled ? 'button-primary' : 'button-secondary'}`}
-                            style={{
-                              fontSize: '11px',
-                              height: '30px',
-                              padding: '0 12px',
-                              ...(autoBalanceEnabled
-                                ? { background: '#10b981', color: '#052e16', fontWeight: 800 }
-                                : { borderColor: 'rgba(16, 185, 129, 0.4)', color: '#6ee7b7' }),
-                            }}
-                            onClick={() => setAutoBalanceEnabled((prev) => !prev)}
+                            className="button button-secondary"
+                            style={{ fontSize: '11px', height: '30px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                            onClick={() => setScopeSettingsModalOpen(true)}
+                            title="Ubah parameter persentase PG/Isian dan rasio kesulitan untuk paket ini"
                           >
-                            {autoBalanceEnabled ? '✓ Auto-Balance Aktif' : 'Aktifkan Auto-Balance'}
+                            <Sliders style={{ width: 12, height: 12 }} />
+                            <span>Pengaturan Parameter</span>
                           </button>
                         </div>
 
                         {autoBalanceEnabled && (
                           <>
-                            <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr auto', gap: '10px', alignItems: 'end' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr auto', gap: '10px', alignItems: 'end', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
                               <div>
-                                <label style={{ fontSize: '11px', fontWeight: 700, color: '#a7f3d0', display: 'block', marginBottom: '4px' }}>
+                                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
                                   Jumlah Soal Batch (1-15)
                                 </label>
                                 <input
@@ -9226,7 +9159,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                 />
                               </div>
                               <div>
-                                <label style={{ fontSize: '11px', fontWeight: 700, color: '#a7f3d0', display: 'block', marginBottom: '4px' }}>
+                                <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
                                   Fokus Subtes Batch Ini
                                 </label>
                                 <select
@@ -9235,7 +9168,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                   value={autoBalanceSubtestScope}
                                   onChange={(e) => setAutoBalanceSubtestScope(e.target.value)}
                                 >
-                                  <option value="AUTO">Otomatis Seimbangkan Semua Subtes yang Kurang</option>
+                                  <option value="AUTO">Otomatis Isi Gap Semua Subtes yang Kurang</option>
                                   {ALL_SUBTESTS.map((sub) => {
                                     const stat = autoBalanceAnalysis.subtestCounts[sub.id];
                                     return (
@@ -9253,76 +9186,55 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                   style={{ fontSize: '11px', height: '34px' }}
                                   onClick={() => setCustomBalanceSlots(null)}
                                 >
-                                  Reset Plan
+                                  Reset Gap Otomatis
                                 </button>
                               )}
                             </div>
 
-                            {/* Question Type Composition Controls */}
+                            {/* Auto-Filled Gap Summary */}
                             <div
                               style={{
-                                padding: '10px 12px',
+                                padding: '9px 12px',
                                 borderRadius: '8px',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                background: 'rgba(0,0,0,0.22)',
+                                border: '1px solid var(--border)',
+                                background: 'var(--surface)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
                                 gap: '10px',
                                 flexWrap: 'wrap',
+                                fontSize: '11.5px',
                               }}
                             >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#e5e7eb' }}>
-                                  Komposisi Penyeimbang Batch:
-                                </span>
-                                <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 600 }}>
-                                  {effectiveBalanceSlots.filter((s) => s.questionType === 'PILIHAN_GANDA').length} PG (A-E)
-                                </span>
-                                {effectiveBalanceSlots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length > 0 && (
-                                  <>
-                                    <span style={{ color: 'var(--muted-fg)' }}>·</span>
-                                    <span style={{ fontSize: '11px', color: '#c084fc', fontWeight: 600 }}>
-                                      {effectiveBalanceSlots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length} Isian Singkat
-                                    </span>
-                                  </>
-                                )}
-                                <span
-                                  className="pill"
-                                  style={{
-                                    fontSize: '9px',
-                                    background: 'rgba(56, 189, 248, 0.12)',
-                                    color: '#38bdf8',
-                                    border: '1px solid rgba(56, 189, 248, 0.3)',
-                                    padding: '1px 6px',
-                                  }}
-                                  title={`Mengikuti Target Pengaturan: ${activeTargetConfig.isianPercentage}% Isian · Level ${activeTargetConfig.difficulty.easy}/${activeTargetConfig.difficulty.medium}/${activeTargetConfig.difficulty.hard}`}
-                                >
-                                  Target: {activeTargetConfig.isianPercentage}% Isian
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', color: 'var(--foreground)' }}>
+                                <strong style={{ fontWeight: 600 }}>Alokasi Gap Batch Ini:</strong>
+                                <span>
+                                  {effectiveBalanceSlots.filter((s) => s.questionType === 'PILIHAN_GANDA').length} PG (A-E) ·{' '}
+                                  {effectiveBalanceSlots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length} Isian Singkat
                                 </span>
                               </div>
-                              <div style={{ fontSize: '11px', color: '#34d399', fontWeight: 600 }}>
-                                Level otomatis: {effectiveBalanceSlots.filter((s) => s.difficulty === 'EASY').length} Easy · {effectiveBalanceSlots.filter((s) => s.difficulty === 'MEDIUM').length} Med · {effectiveBalanceSlots.filter((s) => s.difficulty === 'HARD').length} Hard
+                              <div style={{ color: 'var(--muted-fg)' }}>
+                                Level: <strong style={{ color: 'var(--foreground)' }}>{effectiveBalanceSlots.filter((s) => s.difficulty === 'EASY').length} Easy · {effectiveBalanceSlots.filter((s) => s.difficulty === 'MEDIUM').length} Med · {effectiveBalanceSlots.filter((s) => s.difficulty === 'HARD').length} Hard</strong>
                               </div>
                             </div>
 
                             {/* Editable Slot Plan Table */}
-                            <div style={{ overflowX: 'auto', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
+                            <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)' }}>
                               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                                 <thead>
-                                  <tr style={{ background: 'rgba(0,0,0,0.28)', textAlign: 'left', color: '#a7f3d0' }}>
+                                  <tr style={{ background: 'var(--muted-bg)', textAlign: 'left', color: 'var(--muted-fg)', borderBottom: '1px solid var(--border)' }}>
                                     <th style={{ padding: '7px 8px' }}>#</th>
                                     <th style={{ padding: '7px 8px' }}>Subtes</th>
                                     <th style={{ padding: '7px 8px' }}>Tipe</th>
                                     <th style={{ padding: '7px 8px' }}>Topik & Subtopik Kurikulum</th>
                                     <th style={{ padding: '7px 8px' }}>Level</th>
-                                    <th style={{ padding: '7px 8px' }}>Alasan Balance</th>
+                                    <th style={{ padding: '7px 8px' }}>Alasan Gap</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {effectiveBalanceSlots.map((slot, sIdx) => (
-                                    <tr key={slot.index} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                                      <td style={{ padding: '6px 8px', fontWeight: 700 }}>{slot.index}</td>
+                                    <tr key={slot.index} style={{ borderTop: sIdx > 0 ? '1px solid var(--border)' : 'none' }}>
+                                      <td style={{ padding: '6px 8px', fontWeight: 600, color: 'var(--foreground)' }}>{slot.index}</td>
                                       <td style={{ padding: '6px 8px' }}>
                                         <select
                                           className="field-input"
@@ -9436,7 +9348,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                           <option value="HARD">HARD</option>
                                         </select>
                                       </td>
-                                      <td style={{ padding: '6px 8px', color: '#9ca3af' }}>{slot.reason}</td>
+                                      <td style={{ padding: '6px 8px', color: 'var(--muted-fg)' }}>{slot.reason}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -9448,7 +9360,6 @@ ${totalPromptCount > 1 ? ']' : ''}`;
 
                       {!autoBalanceEnabled && (
                       <>
-                      {/* 1. Multi-Select Subtests */}
                       {/* 1. Pilih Subtes & Langsung Tentukan Jumlah Soal */}
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -9456,14 +9367,14 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                             <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)' }}>
                               1. Pilih Subtes & Tentukan Jumlah Soal
                             </label>
-                            <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.2)', color: '#fbbf24', padding: '1px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                            <span style={{ fontSize: '11px', background: 'var(--muted-bg)', border: '1px solid var(--border)', color: 'var(--foreground)', padding: '1px 8px', borderRadius: '12px', fontWeight: 600 }}>
                               Total: {totalPromptCount} Soal
                             </span>
                           </div>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
                               type="button"
-                              style={{ background: 'none', border: 'none', color: '#fbbf24', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
+                              style={{ background: 'none', border: 'none', color: 'var(--foreground)', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline' }}
                               onClick={() => {
                                 const allCounts: Record<string, number> = {};
                                 ALL_SUBTESTS.forEach((s) => { allCounts[s.id] = 5; });
@@ -9507,7 +9418,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                   }}
                                 >
                                   {isSelected ? (
-                                    <Check style={{ width: 13, height: 13, color: '#fbbf24' }} />
+                                    <Check style={{ width: 13, height: 13, color: 'var(--foreground)' }} />
                                   ) : (
                                     <span style={{ width: 13, height: 13, borderRadius: '3px', border: '1px solid var(--border)', display: 'inline-block' }} />
                                   )}
@@ -9565,14 +9476,12 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                           })}
                         </div>
                       </div>
-                      </>
-                      )}
 
-                      {/* 2. Format Tipe Soal AI */}
+                      {/* 2. Format Tipe Soal AI (Hanya saat mode Manual; saat Auto-Balance aktif mengikuti parameter paket) */}
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                           <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)' }}>
-                            {autoBalanceEnabled ? '2. Tipe Format Soal AI' : '2. Tipe Format Soal AI'}
+                            2. Tipe Format Soal AI
                           </label>
                           <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
                             {promptQuestionType === 'ISIAN_SINGKAT'
@@ -9589,7 +9498,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                             style={{ height: '36px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                             onClick={() => setPromptQuestionType('PILIHAN_GANDA')}
                           >
-                            <span>🔘 Pilihan Ganda (A-E)</span>
+                            <span>Pilihan Ganda (A-E)</span>
                           </button>
                           <button
                             type="button"
@@ -9597,7 +9506,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                             style={{ height: '36px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                             onClick={() => setPromptQuestionType('ISIAN_SINGKAT')}
                           >
-                            <span>✍️ Isian Singkat BPPP</span>
+                            <span>Isian Singkat BPPP</span>
                           </button>
                           <button
                             type="button"
@@ -9605,14 +9514,12 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                             style={{ height: '36px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                             onClick={() => setPromptQuestionType('CAMPURAN')}
                           >
-                            <span>⚖️ Campuran UTBK</span>
+                            <span>Campuran UTBK</span>
                           </button>
                         </div>
                       </div>
 
-                      {/* 3. Tingkat Kesulitan & Fokus Materi dari Halaman Materi (disembunyikan saat Auto-Balance aktif karena slot sudah menentukan keduanya) */}
-                      {!autoBalanceEnabled && (
-                      <>
+                      {/* 3. Tingkat Kesulitan & Fokus Materi dari Halaman Materi */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
                         <div>
                           <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
@@ -9713,20 +9620,20 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                       </div>
 
                       {/* 4. Live Prompt Box & Copy Button */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '10px', borderTop: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted-fg)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                             Prompt Siap Pakai:
                           </span>
                           <button
                             type="button"
                             className="button button-primary"
-                            style={{ fontSize: '12px', height: '28px', padding: '0 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#fbbf24', color: '#000', fontWeight: 700 }}
+                            style={{ fontSize: '12px', height: '30px', padding: '0 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
                             onClick={handleCopyPrompt}
                           >
                             {copiedPrompt ? (
                               <>
-                                <Check style={{ width: 14, height: 14, color: '#000' }} />
+                                <Check style={{ width: 14, height: 14 }} />
                                 <span>Prompt Berhasil Disalin!</span>
                               </>
                             ) : (
@@ -9750,7 +9657,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                       padding: '12px 14px',
                       borderRadius: '10px',
                       border: '1px solid var(--border)',
-                      background: 'rgba(255, 255, 255, 0.02)',
+                      background: 'var(--surface)',
                     }}
                   >
                     <QuestionBatchField
@@ -9779,14 +9686,14 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                               alignItems: 'center',
                               gap: '4px',
                               background: jsonValidation.valid ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                              color: jsonValidation.valid ? '#34d399' : '#f87171',
+                              color: jsonValidation.valid ? '#10b981' : '#ef4444',
                               border: `1px solid ${jsonValidation.valid ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
                             }}
                           >
                             {jsonValidation.valid ? (
-                              <CheckCircle2 style={{ width: 13, height: 13, color: '#34d399' }} />
+                              <CheckCircle2 style={{ width: 13, height: 13 }} />
                             ) : (
-                              <AlertCircle style={{ width: 13, height: 13, color: '#f87171' }} />
+                              <AlertCircle style={{ width: 13, height: 13 }} />
                             )}
                             <span>{jsonValidation.message}</span>
                           </span>
@@ -9796,7 +9703,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                           <button
                             type="button"
-                            style={{ fontSize: '12px', color: '#34d399', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}
+                            style={{ fontSize: '12px', color: 'var(--foreground)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}
                             onClick={() => {
                               setAutoBalanceEnabled(true);
                               setIsPromptAdjusterOpen(true);
@@ -9808,7 +9715,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                           <span style={{ color: 'var(--border)' }}>|</span>
                           <button
                             type="button"
-                            style={{ fontSize: '12px', color: '#fbbf24', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}
+                            style={{ fontSize: '12px', color: 'var(--muted-fg)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}
                             onClick={() => setIsPromptAdjusterOpen(true)}
                           >
                             <Sliders style={{ width: 13, height: 13 }} />
@@ -9856,7 +9763,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                       <button
                         type="button"
                         className="button button-primary"
-                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px', background: '#fbbf24', color: '#000', fontWeight: 700 }}
+                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
                         onClick={bulkImportQuestions}
                         disabled={!aiJsonInput.trim() || !jsonValidation?.valid || importingBulk}
                       >
@@ -9864,7 +9771,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                           <span>Mengimpor {jsonValidation.count} Soal...</span>
                         ) : (
                           <>
-                            <Zap style={{ width: 14, height: 14, fill: '#000' }} />
+                            <Zap style={{ width: 14, height: 14 }} />
                             <span>Impor Semua ({jsonValidation.count} Soal)</span>
                           </>
                         )}
@@ -9887,6 +9794,16 @@ ${totalPromptCount > 1 ? ']' : ''}`;
           </div>
         </div>
       )}
+
+      {/* MODAL: PENGATURAN PARAMETER AUTO-BALANCE DARI CREATE SOAL MODAL */}
+      <AutoBalanceAdjusterModal
+        open={scopeSettingsModalOpen}
+        onClose={() => setScopeSettingsModalOpen(false)}
+        scopeId={activeAutoBalanceScope}
+        scopeLabel={currentPackageLabel}
+        scopeQuestions={currentPackageQuestions as any}
+        topics={topics as any}
+      />
 
       {/* MODAL: KEMBALIKAN KE KOTAK REVISI QC */}
       <RevisionRequestModal
@@ -9915,27 +9832,10 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         <AutoBalanceAdjusterModal
           open={Boolean(tableAutoBalanceTryout)}
           onClose={() => setTableAutoBalanceTryout(null)}
-          destination="FOR_TRYOUT"
-          scopeKey={tableAutoBalanceTryout.id}
-          packageTitle={tableAutoBalanceTryout.title}
-          packageQuestions={questions.filter((q) => q.tryoutId === tableAutoBalanceTryout.id)}
-          curriculumTopics={topics as any}
-          onOpenAiGenerator={(cfg) => {
-            const tid = tableAutoBalanceTryout.id;
-            const title = tableAutoBalanceTryout.title;
-            setTableAutoBalanceTryout(null);
-            setEditingQuestion(null);
-            setImportBatch('');
-            setCreateTarget('FOR_TRYOUT');
-            setCreateTryoutId(tid);
-            setCreateMethodView('IMPORT_JSON');
-            setIsPromptAdjusterOpen(true);
-            setAutoBalanceEnabled(true);
-            setAutoBalanceCount(cfg.batchSize);
-            setCustomBalanceSlots(cfg.slots);
-            setCreateMethodModalOpen(true);
-            setNotice(`Auto-Balance prompt siap pakai untuk "${title}" dimuat ke Generator AI.`);
-          }}
+          scopeId={tableAutoBalanceTryout.id}
+          scopeLabel={tableAutoBalanceTryout.title}
+          scopeQuestions={questions.filter((q) => q.tryoutId === tableAutoBalanceTryout.id) as any}
+          topics={topics as any}
         />
       )}
     </div>

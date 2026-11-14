@@ -573,8 +573,8 @@ export function SoalAsliSection({ onNotice, onError }: SoalAsliSectionProps) {
             <div className="modal-header">
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Archive style={{ width: 16, height: 16, color: '#a5b4fc' }} />
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--foreground)' }}>
+                  <Archive style={{ width: 16, height: 16, color: 'var(--muted-fg)' }} />
+                  <h3 style={{ margin: 0 }}>
                     {activePackage ? activePackage.title : 'Memuat Paket Arsip...'}
                   </h3>
                 </div>
@@ -615,15 +615,15 @@ export function SoalAsliSection({ onNotice, onError }: SoalAsliSectionProps) {
                   gap: '8px',
                   padding: '10px 12px',
                   borderRadius: '8px',
-                  background: 'rgba(99, 102, 241, 0.1)',
-                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
                   fontSize: '12px',
-                  color: '#c7d2fe',
+                  color: 'var(--muted-fg)',
                 }}
               >
-                <Lock style={{ width: 15, height: 15, flexShrink: 0 }} />
+                <Lock style={{ width: 15, height: 15, flexShrink: 0, color: 'var(--muted-fg)' }} />
                 <span>
-                  Naskah soal dan opsi jawaban bersifat <strong>read-only (terkunci)</strong> demi integritas arsip resmi. Anda bisa menggunakan <strong>Salin Prompt Bahas ke LLM</strong> lalu tempel hasilnya atau edit kunci & pembahasan secara manual.
+                  Naskah soal dan opsi jawaban bersifat <strong style={{ color: 'var(--foreground)' }}>read-only (terkunci)</strong> demi integritas arsip resmi. Anda bisa menggunakan <strong style={{ color: 'var(--foreground)' }}>Salin Prompt Bahas ke LLM</strong> lalu tempel hasilnya atau edit kunci & pembahasan secara manual.
                 </span>
               </div>
 
@@ -649,13 +649,13 @@ export function SoalAsliSection({ onNotice, onError }: SoalAsliSectionProps) {
                       style={{
                         padding: '14px',
                         borderRadius: '10px',
-                        border: isEditing ? '1px solid #fbbf24' : '1px solid var(--border)',
-                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: isEditing ? '1.5px solid var(--foreground)' : '1px solid var(--border)',
+                        background: 'var(--surface)',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontWeight: 800, fontSize: '13px', color: '#fbbf24' }}>
+                          <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--foreground)' }}>
                             Soal No. {q.number}
                           </span>
                           <span
@@ -665,7 +665,7 @@ export function SoalAsliSection({ onNotice, onError }: SoalAsliSectionProps) {
                               padding: '2px 7px',
                               borderRadius: '999px',
                               background: hasKey ? 'rgba(16, 185, 129, 0.14)' : 'rgba(244, 63, 94, 0.14)',
-                              color: hasKey ? '#34d399' : '#fb7185',
+                              color: hasKey ? '#10b981' : '#ef4444',
                             }}
                           >
                             {hasKey ? '✓ Ada Kunci' : '✕ Kunci Kosong'}
@@ -676,8 +676,9 @@ export function SoalAsliSection({ onNotice, onError }: SoalAsliSectionProps) {
                               fontWeight: 700,
                               padding: '2px 7px',
                               borderRadius: '999px',
-                              background: hasSol ? 'rgba(59, 130, 246, 0.14)' : 'rgba(245, 158, 11, 0.14)',
-                              color: hasSol ? '#60a5fa' : '#fbbf24',
+                              background: hasSol ? 'var(--muted-bg)' : 'rgba(245, 158, 11, 0.14)',
+                              color: hasSol ? 'var(--foreground)' : '#f59e0b',
+                              border: hasSol ? '1px solid var(--border)' : 'none',
                             }}
                           >
                             {hasSol ? '✓ Ada Pembahasan' : 'Pembahasan Kosong'}
@@ -695,14 +696,14 @@ export function SoalAsliSection({ onNotice, onError }: SoalAsliSectionProps) {
                               setTimeout(() => setCopiedPromptId(null), 2000);
                             }}
                           >
-                            {copiedPromptId === q.id ? <Check style={{ width: 13, height: 13, color: '#34d399' }} /> : <ClipboardCopy style={{ width: 13, height: 13 }} />}
+                            {copiedPromptId === q.id ? <Check style={{ width: 13, height: 13 }} /> : <ClipboardCopy style={{ width: 13, height: 13 }} />}
                             <span>{copiedPromptId === q.id ? 'Prompt Disalin!' : 'Copy Prompt Bahas ke LLM'}</span>
                           </button>
 
                           <button
                             type="button"
                             className={`button ${isEditing ? 'button-secondary' : 'button-primary'}`}
-                            style={{ height: '30px', fontSize: '11px', padding: '0 10px', color: isEditing ? undefined : '#000', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                            style={{ height: '30px', fontSize: '11px', padding: '0 10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                             onClick={() => {
                               if (isEditing) {
                                 setEditingQuestionId(null);
@@ -720,7 +721,7 @@ export function SoalAsliSection({ onNotice, onError }: SoalAsliSectionProps) {
 
                       {/* READ-ONLY QUESTION CONTENT */}
                       {q.narration && (
-                        <div style={{ fontSize: '12px', color: 'var(--muted-fg)', padding: '8px 10px', borderRadius: '6px', background: 'rgba(0,0,0,0.2)', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--muted-fg)', padding: '8px 10px', borderRadius: '6px', background: 'var(--card)', border: '1px solid var(--border)', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
                           {q.narration}
                         </div>
                       )}

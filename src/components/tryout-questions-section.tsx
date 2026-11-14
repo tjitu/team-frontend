@@ -1335,49 +1335,43 @@ export function TryoutQuestionsSection({
       {pickerOpen && (
         <div
           className="modal-overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.75)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-          }}
           onClick={() => setPickerOpen(false)}
         >
           <div
-            className="modal-card"
-            style={{
-              width: '100%',
-              maxWidth: '980px',
-              maxHeight: '88vh',
-              display: 'flex',
-              flexDirection: 'column',
-              background: '#0f172a',
-              border: '1px solid var(--border)',
-              borderRadius: '14px',
-              overflow: 'hidden',
-            }}
+            className="modal-dialog modal-wide"
+            style={{ maxWidth: '880px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>
+                <h3 style={{ margin: 0 }}>
                   Ambil Soal dari Bank / Eksperimen ke {tryoutMeta?.title || 'Tryout'}
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
+                <small style={{ color: 'var(--muted-fg)' }}>
                   Soal yang diambil akan otomatis masuk ke subtes yang sesuai dan dapat langsung di-QC di dalam Tryout ini.
-                </p>
+                </small>
               </div>
-              <button type="button" className="button button-secondary" onClick={() => setPickerOpen(false)}>
-                Tutup
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setPickerOpen(false)}
+                aria-label="Tutup modal"
+              >
+                ✕
               </button>
             </div>
 
-            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="modal-body" style={{ gap: '12px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  paddingBottom: '12px',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
                 <input
                   type="search"
                   className="field-input"
@@ -1430,9 +1424,7 @@ export function TryoutQuestionsSection({
                   Pilih Semua di Filter ({selectableFilteredIds.length})
                 </button>
               </div>
-            </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
               {filteredPicker.length === 0 ? (
                 <p className="empty-copy">Tidak ada soal yang cocok dengan filter ini.</p>
               ) : (
@@ -1451,12 +1443,8 @@ export function TryoutQuestionsSection({
                           gap: '12px',
                           padding: '10px 12px',
                           borderRadius: '10px',
-                          border: checked ? '1px solid #38bdf8' : '1px solid var(--border)',
-                          background: q.isLockedInOtherTryout
-                            ? 'rgba(239, 68, 68, 0.05)'
-                            : checked
-                              ? 'rgba(56, 189, 248, 0.1)'
-                              : 'rgba(255,255,255,0.02)',
+                          border: checked ? '1.5px solid var(--foreground)' : '1px solid var(--border)',
+                          background: checked ? 'var(--surface)' : 'var(--card)',
                           opacity: q.isLockedInOtherTryout ? 0.55 : 1,
                           cursor: q.isLockedInOtherTryout ? 'not-allowed' : 'pointer',
                         }}
@@ -1474,15 +1462,15 @@ export function TryoutQuestionsSection({
                         />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '4px' }}>
-                            <code style={{ fontSize: '11px', fontWeight: 700 }}>{q.id}</code>
+                            <code style={{ fontSize: '11px', fontWeight: 700, color: 'var(--foreground)' }}>{q.id}</code>
                             {q.batch && (
                               <span
                                 className="pill"
                                 style={{
                                   fontSize: '10px',
-                                  background: 'rgba(245, 158, 11, 0.14)',
-                                  color: '#fbbf24',
-                                  border: '1px solid rgba(245, 158, 11, 0.3)',
+                                  background: 'var(--muted-bg)',
+                                  color: 'var(--foreground)',
+                                  border: '1px solid var(--border)',
                                 }}
                               >
                                 {q.batch}
@@ -1499,20 +1487,20 @@ export function TryoutQuestionsSection({
                             >
                               {stBadge.label}
                             </span>
-                            <span className="pill" style={{ fontSize: '10px', background: 'rgba(56, 189, 248, 0.14)', color: '#7dd3fc' }}>
+                            <span className="pill" style={{ fontSize: '10px', background: 'var(--muted-bg)', color: 'var(--foreground)', border: '1px solid var(--border)' }}>
                               {sub.code}
                             </span>
                             <span className="pill" style={{ fontSize: '10px', background: diff.bg, color: diff.color }}>
                               {diff.label}
                             </span>
                             {q.isLockedInOtherTryout && (
-                              <span className="pill" style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.18)', color: '#fca5a5' }}>
+                              <span className="pill" style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.14)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.35)' }}>
                                 <Lock style={{ width: 10, height: 10, marginRight: 3 }} />
                                 Terikat di {q.tryoutTitle}
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: '12px', color: '#e2e8f0' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--foreground)' }}>
                             <MathText text={stripMarkdownPreview(q.content)} />
                           </div>
                         </div>
@@ -1523,15 +1511,7 @@ export function TryoutQuestionsSection({
               )}
             </div>
 
-            <div
-              style={{
-                padding: '12px 20px',
-                borderTop: '1px solid var(--border)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px', color: 'var(--muted-fg)' }}>
                 <strong>{selectedIds.length}</strong> soal dipilih
               </span>
@@ -1544,7 +1524,6 @@ export function TryoutQuestionsSection({
                   className="button button-primary"
                   disabled={selectedIds.length === 0 || assigning}
                   onClick={() => void handleAssignSelected()}
-                  style={{ color: '#000', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
                   <Check style={{ width: 14, height: 14 }} />
                   <span>{assigning ? 'Memasukkan…' : `Masukkan ke Tryout (${selectedIds.length})`}</span>
@@ -1581,16 +1560,10 @@ export function TryoutQuestionsSection({
       <AutoBalanceAdjusterModal
         open={autoBalanceModalOpen}
         onClose={() => setAutoBalanceModalOpen(false)}
-        destination="FOR_TRYOUT"
-        scopeKey={tryoutId}
-        packageTitle={tryoutMeta?.title || 'Paket Tryout'}
-        packageQuestions={assignedQuestions}
-        curriculumTopics={workspace?.curriculumTopics || []}
-        onOpenAiGenerator={
-          onOpenCreateForTryout
-            ? () => onOpenCreateForTryout(tryoutId)
-            : undefined
-        }
+        scopeId={tryoutId}
+        scopeLabel={tryoutMeta?.title || 'Paket Tryout'}
+        scopeQuestions={assignedQuestions as any}
+        topics={(workspace?.curriculumTopics || []) as any}
       />
     </section>
   );

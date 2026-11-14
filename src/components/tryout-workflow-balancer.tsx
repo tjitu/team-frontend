@@ -142,7 +142,7 @@ export function TryoutWorkflowHeader({
         padding: '14px 16px',
         borderRadius: '12px',
         border: '1px solid var(--border)',
-        background: 'rgba(15, 23, 42, 0.5)',
+        background: 'var(--card)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -167,7 +167,7 @@ export function TryoutWorkflowHeader({
           className="pill"
           style={{
             background: allReady ? 'rgba(16, 185, 129, 0.14)' : 'rgba(245, 158, 11, 0.14)',
-            color: allReady ? '#34d399' : '#fbbf24',
+            color: allReady ? '#10b981' : '#f59e0b',
             border: `1px solid ${allReady ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)'}`,
             fontWeight: 600,
           }}
@@ -178,8 +178,8 @@ export function TryoutWorkflowHeader({
         <span style={{ fontSize: '12px', color: 'var(--muted-fg)' }}>
           Durasi Subtes: <strong style={{ color: 'var(--foreground)' }}>{totalDurationMinutes} menit</strong>
           {pendingCount > 0 && (
-            <span style={{ color: '#fbbf24', marginLeft: '6px' }}>
-              · {pendingCount} soal masih perlu di-QC di tabel bawah sebelum paket di-publish
+            <span style={{ color: 'var(--muted-fg)', marginLeft: '6px' }}>
+              · {pendingCount} soal masih perlu di-QC sebelum paket di-publish
             </span>
           )}
         </span>
@@ -197,12 +197,8 @@ export function TryoutWorkflowHeader({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              color: '#38bdf8',
-              borderColor: 'rgba(56, 189, 248, 0.45)',
-              background: 'rgba(56, 189, 248, 0.08)',
-              fontWeight: 600,
             }}
-            title="Seimbangkan komposisi level dan materi kurikulum paket Tryout ini secara otomatis"
+            title="Atur parameter persentase tipe soal & rasio kesulitan paket ini"
           >
             <Sliders style={{ width: 13, height: 13 }} />
             <span>Atur Auto-Balance Paket</span>
@@ -221,8 +217,6 @@ export function TryoutWorkflowHeader({
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            color: '#93c5fd',
-            borderColor: 'rgba(59, 130, 246, 0.4)',
           }}
         >
           <ExternalLink style={{ width: 13, height: 13 }} />
@@ -354,12 +348,12 @@ export function TryoutSubtestTimerPanel({
         padding: '12px 14px',
         borderRadius: '12px',
         border: '1px solid var(--border)',
-        background: 'rgba(15, 23, 42, 0.35)',
+        background: 'var(--card)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <Clock style={{ width: 15, height: 15, color: '#60a5fa' }} />
+          <Clock style={{ width: 15, height: 15, color: 'var(--muted-fg)' }} />
           <strong style={{ fontSize: '13px', color: 'var(--foreground)' }}>
             Timer Subtes ({totalDraftMinutes} Menit Pengerjaan + {breakCount}×1 Menit Buffer Jeda)
           </strong>
@@ -395,15 +389,15 @@ export function TryoutSubtestTimerPanel({
                 style={{
                   padding: '8px 10px',
                   borderRadius: '8px',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '4px',
                   fontSize: '11px',
                 }}
               >
-                <span style={{ fontWeight: 700, color: '#93c5fd' }}>
+                <span style={{ fontWeight: 700, color: 'var(--foreground)' }}>
                   {spec.code} — <span style={{ color: 'var(--muted-fg)', fontWeight: 500 }}>std {spec.defaultDuration}m</span>
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

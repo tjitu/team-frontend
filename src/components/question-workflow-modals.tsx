@@ -42,9 +42,9 @@ export function RevisionRequestModal({
       >
         <div className="modal-header">
           <div>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#fb7185', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <AlertTriangle style={{ width: 16, height: 16 }} />
-              Kembalikan ke Kotak Revisi
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
+              <span>Kembalikan ke Kotak Revisi</span>
             </h3>
             <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '2px' }}>
               Soal tidak dikembalikan ke Draf, melainkan masuk ke <strong>Kotak Revisi</strong> dan dapat diajukan ulang ke QC setelah diperbaiki.
@@ -56,7 +56,7 @@ export function RevisionRequestModal({
         </div>
 
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', fontSize: '12px', color: 'var(--muted-fg)' }}>
+          <div style={{ padding: '10px 12px', borderRadius: '8px', background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '12px', color: 'var(--muted-fg)' }}>
             <strong style={{ color: 'var(--foreground)', display: 'block', marginBottom: '2px' }}>Potongan Soal:</strong>
             <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
               {questionSnippet}
@@ -65,7 +65,7 @@ export function RevisionRequestModal({
 
           <div>
             <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '6px' }}>
-              Catatan Revisi dari Tim QC <span style={{ color: '#fb7185' }}>*</span>
+              Catatan Revisi dari Tim QC <span style={{ color: 'var(--destructive)' }}>*</span>
             </label>
             <textarea
               className="field-input"
@@ -79,7 +79,7 @@ export function RevisionRequestModal({
           </div>
         </div>
 
-        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+        <div className="modal-footer">
           <button type="button" className="button button-secondary" onClick={onClose} disabled={submitting}>
             Batal
           </button>
@@ -88,7 +88,6 @@ export function RevisionRequestModal({
             className="button button-primary"
             disabled={!notes.trim() || submitting}
             onClick={onConfirm}
-            style={{ background: '#f43f5e', color: '#fff', borderColor: '#f43f5e', fontWeight: 700 }}
           >
             {submitting ? 'Mengirim ke Revisi...' : 'Kirim ke Kotak Revisi'}
           </button>
@@ -304,9 +303,9 @@ export function BulkRevisionModal({
       >
         <div className="modal-header">
           <div>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#fb7185', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <AlertTriangle style={{ width: 16, height: 16 }} />
-              Pindahkan {selectedCount} Soal ke Kotak Revisi
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
+              <span>Pindahkan {selectedCount} Soal ke Kotak Revisi</span>
             </h3>
             <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '2px' }}>
               Seluruh soal terpilih akan berpindah ke status <strong>Kotak Revisi</strong> dan dikeluarkan dari pool Latihan jika sebelumnya aktif.
@@ -337,7 +336,7 @@ export function BulkRevisionModal({
           </div>
         </div>
 
-        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+        <div className="modal-footer">
           <button type="button" className="button button-secondary" onClick={onClose} disabled={submitting}>
             Batal
           </button>
@@ -346,7 +345,6 @@ export function BulkRevisionModal({
             className="button button-primary"
             disabled={submitting || selectedCount === 0}
             onClick={onConfirm}
-            style={{ background: '#f43f5e', color: '#fff', borderColor: '#f43f5e', fontWeight: 700 }}
           >
             {submitting ? 'Memindahkan...' : `Pindahkan ${selectedCount} Soal`}
           </button>
@@ -491,13 +489,13 @@ export function QuestionPreviewModal({
               style={{
                 padding: '12px 14px',
                 borderRadius: '10px',
-                background: 'rgba(255,255,255,0.03)',
+                background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 fontSize: '13px',
                 lineHeight: 1.6,
               }}
             >
-              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: '#93c5fd', marginBottom: '4px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted-fg)', marginBottom: '4px' }}>
                 Wacana / Stimulus
               </div>
               <MathText text={question.narration} />
@@ -518,7 +516,7 @@ export function QuestionPreviewModal({
             style={{
               padding: '14px',
               borderRadius: '10px',
-              background: 'rgba(255,255,255,0.025)',
+              background: 'var(--surface)',
               border: '1px solid var(--border)',
               fontSize: '14px',
               lineHeight: 1.65,
@@ -544,7 +542,7 @@ export function QuestionPreviewModal({
                         padding: '10px 12px',
                         borderRadius: '8px',
                         border: opt.isCorrect ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid var(--border)',
-                        background: opt.isCorrect ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255,255,255,0.015)',
+                        background: opt.isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'var(--card)',
                         fontSize: '13px',
                       }}
                     >
@@ -558,8 +556,8 @@ export function QuestionPreviewModal({
                           justifyContent: 'center',
                           fontWeight: 700,
                           fontSize: '12px',
-                          background: opt.isCorrect ? '#10b981' : 'rgba(255,255,255,0.08)',
-                          color: opt.isCorrect ? '#052e16' : 'var(--foreground)',
+                          background: opt.isCorrect ? '#10b981' : 'var(--muted-bg)',
+                          color: opt.isCorrect ? '#ffffff' : 'var(--foreground)',
                         }}
                       >
                         {letter}
@@ -568,7 +566,7 @@ export function QuestionPreviewModal({
                         <MathText text={opt.content} />
                       </div>
                       {opt.isCorrect && (
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#34d399' }}>✓ Kunci</span>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#10b981' }}>✓ Kunci</span>
                       )}
                     </div>
                   );
@@ -579,10 +577,10 @@ export function QuestionPreviewModal({
               style={{
                 padding: '10px 12px',
                 borderRadius: '8px',
-                border: '1px solid rgba(16, 185, 129, 0.4)',
-                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
                 fontSize: '13px',
-                color: '#6ee7b7',
+                color: 'var(--foreground)',
               }}
             >
               <strong>Kunci Isian Singkat:</strong> {question.correctAnswer || '-'}
@@ -594,27 +592,27 @@ export function QuestionPreviewModal({
               style={{
                 padding: '14px',
                 borderRadius: '10px',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
-                background: 'rgba(245, 158, 11, 0.06)',
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '10px',
               }}
             >
-              <div style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#fbbf24' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--muted-fg)' }}>
                 Pembahasan & Trik Cepat
               </div>
 
               {question.solution?.keyFormula && (
                 <div style={{ fontSize: '12px' }}>
-                  <strong style={{ color: '#fde68a' }}>Konsep / Rumus Inti: </strong>
+                  <strong style={{ color: 'var(--foreground)' }}>Konsep / Rumus Inti: </strong>
                   <MathText text={question.solution.keyFormula} />
                 </div>
               )}
 
               {question.solution?.quickTrick && (
                 <div style={{ fontSize: '12px' }}>
-                  <strong style={{ color: '#6ee7b7' }}>Trik Cepat 30 Detik: </strong>
+                  <strong style={{ color: 'var(--foreground)' }}>Trik Cepat 30 Detik: </strong>
                   <MathText text={question.solution.quickTrick} />
                 </div>
               )}
@@ -624,12 +622,12 @@ export function QuestionPreviewModal({
                   style={{
                     padding: '12px',
                     borderRadius: '8px',
-                    background: 'rgba(0,0,0,0.28)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#fbbf24' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)' }}>
                       Langkah {safeSlide + 1}/{steps.length}: {activeStep.title || activeStep.category || 'Pembahasan'}
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

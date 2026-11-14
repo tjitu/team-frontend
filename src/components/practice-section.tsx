@@ -479,9 +479,6 @@ export function PracticeSection({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              borderColor: 'rgba(56, 189, 248, 0.45)',
-              color: '#38bdf8',
-              background: 'rgba(56, 189, 248, 0.08)',
             }}
           >
             <Sliders style={{ width: 14, height: 14 }} />
@@ -492,7 +489,7 @@ export function PracticeSection({
               type="button"
               className="button button-primary"
               onClick={() => onOpenCreateForPractice()}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#000', fontWeight: 700 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               <Sparkles style={{ width: 14, height: 14 }} />
               <span>Buat Soal Latihan Baru</span>
@@ -1102,127 +1099,103 @@ export function PracticeSection({
       {pickerOpen && (
         <div
           className="modal-overlay"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(2, 6, 23, 0.8)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-          }}
           onClick={() => setPickerOpen(false)}
         >
           <div
-            style={{
-              width: '100%',
-              maxWidth: '940px',
-              maxHeight: '86vh',
-              background: '#0f172a',
-              border: '1px solid var(--border)',
-              borderRadius: '14px',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
+            className="modal-dialog modal-wide"
+            style={{ maxWidth: '880px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                padding: '16px 20px',
-                borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px',
-              }}
-            >
+            <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <BookOpen style={{ width: 16, height: 16, color: '#38bdf8' }} />
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BookOpen style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
                   <span>Ambil Soal dari Bank / Eksperimen ke Latihan</span>
                 </h3>
-                <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
+                <small style={{ color: 'var(--muted-fg)' }}>
                   Soal yang sudah Siap (Ready) akan langsung tayang di <code>/latihan</code>, sedangkan soal Draf / QC dapat langsung dilanjutkan QC-nya di halaman Latihan ini.
-                </p>
+                </small>
               </div>
-              <button type="button" className="button button-secondary" onClick={() => setPickerOpen(false)}>
-                Tutup
-              </button>
-            </div>
-
-            {/* PICKER FILTERS */}
-            <div
-              style={{
-                padding: '12px 20px',
-                borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                gap: '10px',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-              }}
-            >
-              <input
-                type="search"
-                className="field-input"
-                placeholder="Cari soal, ID, topik, atau batch…"
-                value={pickerSearch}
-                onChange={(e) => setPickerSearch(e.target.value)}
-                style={{ flex: '1 1 220px' }}
-              />
-              <select
-                className="field-input"
-                value={pickerSubtest}
-                onChange={(e) => setPickerSubtest(e.target.value)}
-                style={{ width: 'auto', minWidth: '190px' }}
-              >
-                <option value="ALL">Semua Subtes</option>
-                {SUBTEST_CARDS.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.short} — {c.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="field-input"
-                value={pickerBatch}
-                onChange={(e) => setPickerBatch(e.target.value)}
-                style={{ width: 'auto', minWidth: '170px' }}
-              >
-                <option value="ALL">Semua Batch</option>
-                {pickerBatchOptions.batches.map((item) => (
-                  <option key={item.batch} value={item.batch}>
-                    Batch: {item.batch} ({item.count})
-                  </option>
-                ))}
-                {pickerBatchOptions.noBatchCount > 0 && (
-                  <option value="__NONE__">Tanpa Batch ({pickerBatchOptions.noBatchCount})</option>
-                )}
-              </select>
               <button
                 type="button"
-                className="button button-secondary"
-                disabled={selectableFilteredIds.length === 0}
-                onClick={() => {
-                  const allSelected = selectableFilteredIds.every((id) => selectedIds.includes(id));
-                  if (allSelected) {
-                    setSelectedIds((prev) => prev.filter((id) => !selectableFilteredIds.includes(id)));
-                  } else {
-                    setSelectedIds((prev) => Array.from(new Set([...prev, ...selectableFilteredIds])));
-                  }
-                }}
-                style={{ fontSize: '12px' }}
+                className="modal-close-btn"
+                onClick={() => setPickerOpen(false)}
+                aria-label="Tutup modal"
               >
-                Pilih Semua di Filter ({selectableFilteredIds.length})
+                ✕
               </button>
             </div>
 
-            {/* PICKER LIST */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px' }}>
+            <div className="modal-body" style={{ gap: '12px' }}>
+              {/* PICKER FILTERS */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  paddingBottom: '12px',
+                  borderBottom: '1px solid var(--border)',
+                }}
+              >
+                <input
+                  type="search"
+                  className="field-input"
+                  placeholder="Cari soal, ID, topik, atau batch…"
+                  value={pickerSearch}
+                  onChange={(e) => setPickerSearch(e.target.value)}
+                  style={{ flex: '1 1 220px' }}
+                />
+                <select
+                  className="field-input"
+                  value={pickerSubtest}
+                  onChange={(e) => setPickerSubtest(e.target.value)}
+                  style={{ width: 'auto', minWidth: '190px' }}
+                >
+                  <option value="ALL">Semua Subtes</option>
+                  {SUBTEST_CARDS.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.short} — {c.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="field-input"
+                  value={pickerBatch}
+                  onChange={(e) => setPickerBatch(e.target.value)}
+                  style={{ width: 'auto', minWidth: '170px' }}
+                >
+                  <option value="ALL">Semua Batch</option>
+                  {pickerBatchOptions.batches.map((item) => (
+                    <option key={item.batch} value={item.batch}>
+                      Batch: {item.batch} ({item.count})
+                    </option>
+                  ))}
+                  {pickerBatchOptions.noBatchCount > 0 && (
+                    <option value="__NONE__">Tanpa Batch ({pickerBatchOptions.noBatchCount})</option>
+                  )}
+                </select>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  disabled={selectableFilteredIds.length === 0}
+                  onClick={() => {
+                    const allSelected = selectableFilteredIds.every((id) => selectedIds.includes(id));
+                    if (allSelected) {
+                      setSelectedIds((prev) => prev.filter((id) => !selectableFilteredIds.includes(id)));
+                    } else {
+                      setSelectedIds((prev) => Array.from(new Set([...prev, ...selectableFilteredIds])));
+                    }
+                  }}
+                  style={{ fontSize: '12px' }}
+                >
+                  Pilih Semua di Filter ({selectableFilteredIds.length})
+                </button>
+              </div>
+
+              {/* PICKER LIST */}
               {filteredPicker.length === 0 ? (
-                <div className="empty-copy" style={{ padding: '40px 0', textAlign: 'center' }}>
+                <div className="empty-copy" style={{ padding: '32px 0', textAlign: 'center' }}>
                   Tidak ada soal Eksperimen / Bank Soal yang tersedia untuk filter ini.
                 </div>
               ) : (
@@ -1241,12 +1214,8 @@ export function PracticeSection({
                           gap: '12px',
                           padding: '10px 12px',
                           borderRadius: '10px',
-                          border: checked ? '1px solid #38bdf8' : '1px solid var(--border)',
-                          background: q.isLockedInTryout
-                            ? 'rgba(239, 68, 68, 0.05)'
-                            : checked
-                              ? 'rgba(56, 189, 248, 0.08)'
-                              : 'rgba(255,255,255,0.02)',
+                          border: checked ? '1.5px solid var(--foreground)' : '1px solid var(--border)',
+                          background: checked ? 'var(--surface)' : 'var(--card)',
                           opacity: q.isLockedInTryout ? 0.6 : 1,
                           cursor: q.isLockedInTryout ? 'not-allowed' : 'pointer',
                         }}
@@ -1264,16 +1233,16 @@ export function PracticeSection({
                           style={{ marginTop: '4px' }}
                         />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <code style={{ fontSize: '11px', fontWeight: 700, color: '#e2e8f0' }}>{q.id}</code>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <code style={{ fontSize: '11px', fontWeight: 700, color: 'var(--foreground)' }}>{q.id}</code>
                             {q.batch && (
                               <span
                                 className="pill"
                                 style={{
                                   fontSize: '10px',
-                                  background: 'rgba(245, 158, 11, 0.14)',
-                                  color: '#fbbf24',
-                                  border: '1px solid rgba(245, 158, 11, 0.28)',
+                                  background: 'var(--muted-bg)',
+                                  color: 'var(--foreground)',
+                                  border: '1px solid var(--border)',
                                 }}
                               >
                                 {q.batch}
@@ -1294,8 +1263,9 @@ export function PracticeSection({
                               className="pill"
                               style={{
                                 fontSize: '10px',
-                                background: 'rgba(56, 189, 248, 0.14)',
-                                color: '#7dd3fc',
+                                background: 'var(--muted-bg)',
+                                color: 'var(--foreground)',
+                                border: '1px solid var(--border)',
                               }}
                             >
                               {subDisplay.code}
@@ -1318,8 +1288,8 @@ export function PracticeSection({
                                 className="pill"
                                 style={{
                                   fontSize: '10px',
-                                  background: 'rgba(239, 68, 68, 0.18)',
-                                  color: '#f87171',
+                                  background: 'rgba(239, 68, 68, 0.14)',
+                                  color: '#ef4444',
                                   border: '1px solid rgba(239, 68, 68, 0.35)',
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -1343,16 +1313,7 @@ export function PracticeSection({
             </div>
 
             {/* PICKER FOOTER */}
-            <div
-              style={{
-                padding: '12px 20px',
-                borderTop: '1px solid var(--border)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '12px',
-              }}
-            >
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
               <span style={{ fontSize: '12px', color: 'var(--muted-fg)' }}>
                 <strong>{selectedIds.length}</strong> soal dipilih
               </span>
@@ -1365,7 +1326,6 @@ export function PracticeSection({
                   className="button button-primary"
                   disabled={selectedIds.length === 0 || assigning}
                   onClick={() => void handleAssignSelected()}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#000', fontWeight: 700 }}
                 >
                   <Check style={{ width: 14, height: 14 }} />
                   <span>{assigning ? 'Menyimpan…' : `Masukkan ${selectedIds.length} Soal ke Latihan`}</span>
@@ -1402,16 +1362,10 @@ export function PracticeSection({
       <AutoBalanceAdjusterModal
         open={autoBalanceModalOpen}
         onClose={() => setAutoBalanceModalOpen(false)}
-        destination="FOR_PRACTICE"
-        scopeKey="PRACTICE"
-        packageTitle="Paket Global Latihan (/latihan)"
-        packageQuestions={workspace?.assignedQuestions || []}
-        curriculumTopics={curriculumTopics}
-        onOpenAiGenerator={
-          onOpenCreateForPractice
-            ? () => onOpenCreateForPractice()
-            : undefined
-        }
+        scopeId="PRACTICE"
+        scopeLabel="Paket Global Latihan (/latihan)"
+        scopeQuestions={(workspace?.assignedQuestions || []) as any}
+        topics={curriculumTopics as any}
       />
     </section>
   );

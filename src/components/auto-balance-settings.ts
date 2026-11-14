@@ -66,6 +66,26 @@ export const ISIAN_PRESETS: Array<{
   { label: '25%', value: 25, hint: 'Intensif Isian' },
 ];
 
+export const DEFAULT_AUTO_BALANCE_CONFIG = DEFAULT_AUTOBALANCE_CONFIG;
+export const DIFFICULTY_RATIO_PRESETS = DIFFICULTY_PRESETS;
+export const ISIAN_PERCENTAGE_PRESETS = ISIAN_PRESETS;
+
+export function normalizeDifficultyRatio(ratio: { easy: number; medium: number; hard: number }): {
+  easy: number;
+  medium: number;
+  hard: number;
+} {
+  const e = Math.max(0, Number(ratio.easy) || 0);
+  const m = Math.max(0, Number(ratio.medium) || 0);
+  const h = Math.max(0, Number(ratio.hard) || 0);
+  const sum = e + m + h;
+  if (sum <= 0) return { ...DEFAULT_AUTOBALANCE_CONFIG.difficulty };
+  const easy = Math.round((e / sum) * 100);
+  const medium = Math.round((m / sum) * 100);
+  const hard = Math.max(0, 100 - easy - medium);
+  return { easy, medium, hard };
+}
+
 const STORAGE_PREFIX = 'jitu_autobalance_cfg_';
 
 export function normalizeScopeKey(scope: string): string {

@@ -781,7 +781,7 @@ export function computePackageAutoBalancePlan(params: {
   // Resolved target isian % (default 15%, or derived from typeComposition if provided)
   const resolvedTargetIsianPct =
     typeof targetIsianPct === 'number'
-      ? Math.max(0, Math.min(50, Math.round(targetIsianPct)))
+      ? Math.max(0, Math.min(100, Math.round(targetIsianPct)))
       : typeof typeComposition?.isianCount === 'number' && safeCount > 0
         ? Math.round((typeComposition.isianCount / safeCount) * 100)
         : 15;
@@ -1014,12 +1014,21 @@ export function buildAutoBalancedBatchPrompt(params: {
   questionType?: string;
   customInstruction?: string;
   difficultyRatio?: DifficultyComposition;
+  targetIsianPct?: number;
+  existingTotalInPackage?: number;
 }): string {
   const {
     packageLabel,
     slots,
     customInstruction = '',
+    difficultyRatio,
+    targetIsianPct = 15,
+    existingTotalInPackage,
   } = params;
+
+  const normRatio = normalizeDifficultyComposition(difficultyRatio);
+  const resolvedIsianPct = Math.max(0, Math.min(100, Math.round(targetIsianPct)));
+  const resolvedPgPct = 100 - resolvedIsianPct;
 
   const totalSlots = slots.length;
   const pgSlots = slots.filter((s) => s.questionType === 'PILIHAN_GANDA');
@@ -1054,11 +1063,15 @@ Seluruh butir soal yang kamu susun mengacu ketat pada standar resmi **Balai Peng
 
 ### MISI PEMBUATAN BATCH SOAL (AUTO-BALANCE ENGINE)
 Buat tepat **${totalSlots} butir soal UTBK-SNBT baru** dengan mode **AUTO-BALANCE KURIKULUM & TIPE SOAL** untuk paket tujuan:
-👉 **"${packageLabel}"**
+👉 **"${packageLabel}"**${typeof existingTotalInPackage === 'number' ? ` (Saat ini memiliki ${existingTotalInPackage} soal terdaftar)` : ''}
 
-**Komposisi Rencana Batch Ini:**
-- **Tipe Soal:** ${pgSlots.length} Pilihan Ganda (A-E) · ${isianSlots.length} Isian Singkat
-- **Tingkat Kesulitan:** ${slotDiffSummary.EASY} Mudah (Easy) · ${slotDiffSummary.MEDIUM} Sedang (Medium) · ${slotDiffSummary.HARD} Sulit (Hard HOTS)
+**Konteks Parameter Auto-Balance Paket ("${packageLabel}"):**
+- **Target Parameter Tipe Soal Paket:** ${resolvedPgPct}% Pilihan Ganda : ${resolvedIsianPct}% Isian Singkat
+- **Target Parameter Rasio Kesulitan Paket:** ${normRatio.easyPct}% Mudah (Easy) : ${normRatio.mediumPct}% Sedang (Medium) : ${normRatio.hardPct}% Sulit (Hard HOTS)
+
+**Komposisi Rencana Batch Ini (Otomatis Mengisi Gap Paket):**
+- **Tipe Soal Batch:** ${pgSlots.length} Pilihan Ganda (A-E) · ${isianSlots.length} Isian Singkat
+- **Tingkat Kesulitan Batch:** ${slotDiffSummary.EASY} Mudah (Easy) · ${slotDiffSummary.MEDIUM} Sedang (Medium) · ${slotDiffSummary.HARD} Sulit (Hard HOTS)
 
 ---
 
