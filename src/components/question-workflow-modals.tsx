@@ -8,7 +8,6 @@ import {
   getDifficultyMeta,
   getQuestionStatusBadge,
   getSubtestDisplay,
-  getSubtestTheme,
   SolutionStepItem,
 } from './question-lifecycle-types';
 import { MathText } from './math-text';
@@ -37,15 +36,14 @@ export function RevisionRequestModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-dialog modal-dialog-accent-rose"
+        className="modal-dialog"
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '540px' }}
       >
         <div className="modal-header">
           <div>
             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="modal-dot modal-dot-rose" />
-              <AlertTriangle style={{ width: 16, height: 16, color: '#fb7185', flexShrink: 0 }} />
+              <AlertTriangle style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
               <span>Kembalikan ke Kotak Revisi</span>
             </h3>
             <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '2px' }}>
@@ -299,15 +297,14 @@ export function BulkRevisionModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-dialog modal-dialog-accent-rose"
+        className="modal-dialog"
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '520px' }}
       >
         <div className="modal-header">
           <div>
             <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="modal-dot modal-dot-rose" />
-              <AlertTriangle style={{ width: 16, height: 16, color: '#fb7185', flexShrink: 0 }} />
+              <AlertTriangle style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
               <span>Pindahkan {selectedCount} Soal ke Kotak Revisi</span>
             </h3>
             <small style={{ color: 'var(--muted-fg)', display: 'block', marginTop: '2px' }}>
@@ -406,7 +403,6 @@ export function QuestionPreviewModal({
   if (!question) return null;
 
   const sub = getSubtestDisplay(question.subtest);
-  const subTheme = getSubtestTheme(question.subtest);
   const diff = getDifficultyMeta(question.difficulty);
   const statusBadge = getQuestionStatusBadge(question.status);
   const steps = Array.isArray(question.solution?.steps) ? question.solution!.steps! : [];
@@ -418,26 +414,11 @@ export function QuestionPreviewModal({
       <div
         className="modal-dialog"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          maxWidth: '820px',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          borderTop: `2.5px solid ${statusBadge.border || subTheme.topBorder}`,
-        }}
+        style={{ maxWidth: '820px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
       >
         <div className="modal-header">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  backgroundColor: statusBadge.color,
-                  flexShrink: 0,
-                }}
-              />
               <span
                 className="pill"
                 style={{
@@ -455,9 +436,8 @@ export function QuestionPreviewModal({
                 style={{
                   fontSize: '11px',
                   fontWeight: 700,
-                  background: subTheme.bgSoft,
-                  color: subTheme.text,
-                  border: `1px solid ${subTheme.border}`,
+                  background: 'rgba(56, 189, 248, 0.14)',
+                  color: '#7dd3fc',
                 }}
               >
                 {sub.code} — {sub.label}

@@ -271,20 +271,11 @@ export default function ProjectsPage() {
 
       {createOpen && (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateOpen(false); }}>
-          <section
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="create-project-title"
-            style={{ borderTop: '2.5px solid rgba(0, 92, 252, 0.75)' }}
-          >
+          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="create-project-title">
             <div className="modal-header">
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="modal-dot" style={{ backgroundColor: '#005cfc' }} />
-                  <h2 id="create-project-title" style={{ margin: 0 }}>Create project</h2>
-                </div>
-                <p style={{ marginTop: '4px' }}>The new project will be available to your team.</p>
+                <h2 id="create-project-title">Create project</h2>
+                <p>The new project will be available to your team.</p>
               </div>
               <button className="icon-button" aria-label="Close" onClick={() => setCreateOpen(false)}>×</button>
             </div>

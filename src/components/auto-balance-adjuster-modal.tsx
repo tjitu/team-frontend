@@ -75,7 +75,7 @@ export function AutoBalanceAdjusterModal({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-dialog modal-dialog-accent-sky"
+        className="modal-dialog"
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: '580px' }}
       >
@@ -83,8 +83,7 @@ export function AutoBalanceAdjusterModal({
         <div className="modal-header">
           <div>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-              <span className="modal-dot modal-dot-sky" />
-              <Sliders style={{ width: 16, height: 16, color: '#38bdf8', flexShrink: 0 }} />
+              <Sliders style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
               <span>Pengaturan Auto-Balance Paket</span>
             </h3>
             <small style={{ color: 'var(--muted-fg)' }}>

@@ -4040,32 +4040,7 @@ html.dark .source-pill.is-vercel {
   flex-direction: column;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
   animation: modalFadeIn 0.15s ease;
-  overflow: hidden;
 }
-
-/* Minimal Color-Coded Modals & Status Indicators */
-.modal-dialog-accent-sky { border-top: 2.5px solid rgba(56, 189, 248, 0.75); }
-.modal-dialog-accent-amber { border-top: 2.5px solid rgba(245, 158, 11, 0.75); }
-.modal-dialog-accent-emerald { border-top: 2.5px solid rgba(16, 185, 129, 0.75); }
-.modal-dialog-accent-rose { border-top: 2.5px solid rgba(244, 63, 94, 0.75); }
-.modal-dialog-accent-violet { border-top: 2.5px solid rgba(139, 92, 246, 0.75); }
-.modal-dialog-accent-indigo { border-top: 2.5px solid rgba(99, 102, 241, 0.75); }
-.modal-dialog-accent-blue { border-top: 2.5px solid rgba(59, 130, 246, 0.75); }
-
-.modal-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.modal-dot-sky { background-color: #38bdf8; }
-.modal-dot-amber { background-color: #fbbf24; }
-.modal-dot-emerald { background-color: #34d399; }
-.modal-dot-rose { background-color: #fb7185; }
-.modal-dot-violet { background-color: #a78bfa; }
-.modal-dot-indigo { background-color: #818cf8; }
-.modal-dot-blue { background-color: #60a5fa; }
 
 .modal-dialog.modal-wide {
   max-width: 820px;
@@ -5694,22 +5669,6 @@ html.dark .department-chip {
 .method-card:hover {
   border-color: var(--foreground);
   background: var(--card);
-}
-
-.method-card.method-card-manual {
-  border-left: 3px solid rgba(56, 189, 248, 0.55);
-}
-.method-card.method-card-manual:hover {
-  border-left-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.035);
-}
-
-.method-card.method-card-ai {
-  border-left: 3px solid rgba(139, 92, 246, 0.55);
-}
-.method-card.method-card-ai:hover {
-  border-left-color: #a78bfa;
-  background: rgba(139, 92, 246, 0.035);
 }
 
 .method-card-icon-wrap {

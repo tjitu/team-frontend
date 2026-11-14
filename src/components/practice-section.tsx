@@ -1102,15 +1102,14 @@ export function PracticeSection({
           onClick={() => setPickerOpen(false)}
         >
           <div
-            className="modal-dialog modal-wide modal-dialog-accent-emerald"
+            className="modal-dialog modal-wide"
             style={{ maxWidth: '880px' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <div>
                 <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="modal-dot modal-dot-emerald" />
-                  <BookOpen style={{ width: 16, height: 16, color: '#34d399', flexShrink: 0 }} />
+                  <BookOpen style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
                   <span>Ambil Soal dari Bank / Eksperimen ke Latihan</span>
                 </h3>
                 <small style={{ color: 'var(--muted-fg)' }}>

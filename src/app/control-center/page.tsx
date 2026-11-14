@@ -76,10 +76,8 @@ import {
   buildAutoBalancedBatchPrompt,
   computePackageAutoBalancePlan,
   DIFFICULTY_COMPOSITION_PRESETS,
-  getDifficultyMeta,
   getQuestionStatusBadge,
   getSubtestDisplay,
-  getSubtestTheme,
   getTryoutStatusBadge,
   normalizeDifficultyComposition,
   normalizeSubtestKey,
@@ -4913,80 +4911,56 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 }
               }}
             >
-              {(() => {
-                const subtestTheme = getSubtestTheme(questionForm.subtest);
-                const subtestMeta = getSubtestDisplay(questionForm.subtest);
-                return (
-                  <div
-                    className="modal-dialog modal-wide"
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      maxWidth: '940px',
-                      borderTop: `2.5px solid ${subtestTheme.topBorder}`,
-                    }}
-                  >
-                    <form
-                      onSubmit={saveQuestion}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '100%',
-                        maxHeight: 'calc(100vh - 48px)',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {/* MODAL HEADER */}
-                      <div className="modal-header">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
+              <div
+                className="modal-dialog modal-wide"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  maxWidth: '940px',
+                }}
+              >
+                <form
+                  onSubmit={saveQuestion}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    maxHeight: 'calc(100vh - 48px)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* MODAL HEADER */}
+                  <div className="modal-header">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3>
+                          {editingQuestion ? 'Edit Soal' : 'Buat Soal Baru (Input Manual)'}
+                        </h3>
+                        {editingQuestion && (() => {
+                          const item = questions.find((q) => q.id === editingQuestion);
+                          return item ? (
                             <span
-                              className="modal-dot"
-                              style={{ backgroundColor: subtestTheme.dot }}
-                              title={`Subtes: ${subtestMeta.label}`}
-                            />
-                            <h3>
-                              {editingQuestion ? 'Edit Soal' : 'Buat Soal Baru (Input Manual)'}
-                            </h3>
-                            <span
-                              className="pill"
                               style={{
-                                fontSize: '11px',
-                                fontWeight: 700,
+                                fontFamily: 'monospace',
+                                fontSize: '11.5px',
+                                fontWeight: 600,
                                 padding: '2px 8px',
                                 borderRadius: '6px',
-                                background: subtestTheme.bgSoft,
-                                border: `1px solid ${subtestTheme.border}`,
-                                color: subtestTheme.text,
+                                background: 'var(--muted-bg)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--foreground)',
                               }}
                             >
-                              {subtestMeta.code} · {subtestMeta.label}
+                              {formatQuestionCode(item)}
                             </span>
-                            {editingQuestion && (() => {
-                              const item = questions.find((q) => q.id === editingQuestion);
-                              return item ? (
-                                <span
-                                  style={{
-                                    fontFamily: 'monospace',
-                                    fontSize: '11.5px',
-                                    fontWeight: 600,
-                                    padding: '2px 8px',
-                                    borderRadius: '6px',
-                                    background: 'var(--muted-bg)',
-                                    border: '1px solid var(--border)',
-                                    color: 'var(--foreground)',
-                                  }}
-                                >
-                                  {formatQuestionCode(item)}
-                                </span>
-                              ) : null;
-                            })()}
-                          </div>
-                          <small style={{ color: 'var(--muted-fg)' }}>
-                            {editingQuestion
-                              ? 'Perbarui parameter kurikulum, narasi stimulus, kunci jawaban, dan pembahasan bertahap.'
-                              : 'Lengkapi wacana, pertanyaan, kunci jawaban, serta slide deck solusi interaktif.'}
-                          </small>
-                        </div>
+                          ) : null;
+                        })()}
+                      </div>
+                      <small style={{ color: 'var(--muted-fg)' }}>
+                        {editingQuestion
+                          ? 'Perbarui parameter kurikulum, narasi stimulus, kunci jawaban, dan pembahasan bertahap.'
+                          : 'Lengkapi wacana, pertanyaan, kunci jawaban, serta slide deck solusi interaktif.'}
+                      </small>
+                    </div>
 
                     <button
                       type="button"
@@ -5268,32 +5242,9 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                         </div>
 
                         <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <label className="text-xs font-semibold text-zinc-300">
-                              Tingkat Kesulitan <span className="text-red-400">*</span>
-                            </label>
-                            {(() => {
-                              const diff = getDifficultyMeta(questionForm.difficulty);
-                              return (
-                                <span
-                                  className="pill"
-                                  style={{
-                                    fontSize: '10px',
-                                    padding: '1px 6px',
-                                    background: diff.bg,
-                                    color: diff.color,
-                                    border: `1px solid ${diff.border}`,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                  }}
-                                >
-                                  <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: diff.color }} />
-                                  {diff.label}
-                                </span>
-                              );
-                            })()}
-                          </div>
+                          <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
+                            Tingkat Kesulitan <span className="text-red-400">*</span>
+                          </label>
                           <ComboboxSelect
                             value={questionForm.difficulty}
                             onValueChange={(val) => setQuestionForm({ ...questionForm, difficulty: val as QuestionForm['difficulty'] })}
@@ -5338,17 +5289,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                               fontSize: '12px',
                               fontWeight: 600,
                               cursor: 'pointer',
-                              border: questionForm.type === 'MULTIPLE_CHOICE' ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
-                              background: questionForm.type === 'MULTIPLE_CHOICE' ? 'rgba(59, 130, 246, 0.18)' : 'transparent',
+                              border: 'none',
+                              background: questionForm.type === 'MULTIPLE_CHOICE' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
                               color: questionForm.type === 'MULTIPLE_CHOICE' ? '#93c5fd' : '#9ca3af',
                               transition: 'all 0.15s ease',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
                             }}
                           >
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: questionForm.type === 'MULTIPLE_CHOICE' ? '#60a5fa' : '#6b7280' }} />
-                            <span>Pilihan Ganda (A-E)</span>
+                            🔘 Pilihan Ganda (A-E)
                           </button>
                           <button
                             type="button"
@@ -5365,17 +5312,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                               fontSize: '12px',
                               fontWeight: 600,
                               cursor: 'pointer',
-                              border: questionForm.type === 'SHORT_ANSWER' ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid transparent',
-                              background: questionForm.type === 'SHORT_ANSWER' ? 'rgba(245, 158, 11, 0.18)' : 'transparent',
+                              border: 'none',
+                              background: questionForm.type === 'SHORT_ANSWER' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
                               color: questionForm.type === 'SHORT_ANSWER' ? '#fcd34d' : '#9ca3af',
                               transition: 'all 0.15s ease',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
                             }}
                           >
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: questionForm.type === 'SHORT_ANSWER' ? '#fbbf24' : '#6b7280' }} />
-                            <span>Isian Singkat (BPPP)</span>
+                            ✍️ Isian Singkat (BPPP)
                           </button>
                         </div>
                       </div>
@@ -5797,10 +5740,8 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                   </div>
                 </form>
               </div>
-            );
-          })()}
-        </div>
-      )}
+            </div>
+          )}
 
           {/* BULK MULTI-SELECT ACTION BAR */}
           {!loading && selectedVisibleQuestions.length > 0 && (
@@ -7598,16 +7539,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       {voucherFormOpen && (
         <div className="modal-overlay" onClick={() => setVoucherFormOpen(false)}>
           <div
-            className="modal-dialog modal-dialog-accent-amber"
+            className="modal-dialog"
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '640px' }}
           >
             <div className="modal-header">
               <div>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <span className="modal-dot modal-dot-amber" />
-                  <span>{editingVoucher ? 'Edit Kode Referal' : 'Buat Kode Referal Baru'}</span>
-                </h3>
+                <h3>{editingVoucher ? 'Edit Kode Referal' : 'Buat Kode Referal Baru'}</h3>
                 <small style={{ color: 'var(--muted-fg)' }}>
                   Atur kode referal, persentase diskon pembeli, persentase komisi mitra, dan akun pemilik.
                 </small>
@@ -7809,11 +7747,10 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       {/* CANDIDATE DETAILS MODAL */}
       {selectedApplicant && (
         <div className="modal-overlay" onClick={() => setSelectedApplicant(null)}>
-          <div className="modal-dialog modal-wide modal-dialog-accent-indigo" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-dialog modal-wide" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="modal-dot modal-dot-indigo" />
                   <h3>{selectedApplicant.fullName}</h3>
                   <span className={`applicant-status-badge status-${selectedApplicant.status.toLowerCase()}`}>
                     {selectedApplicant.status.replace('_', ' ')}
@@ -8025,21 +7962,17 @@ ${totalPromptCount > 1 ? ']' : ''}`;
             {/* PREVIEW QUESTION & INTERACTIVE SOLUTION MODAL */}
       {previewQuestion && (
         <div className="modal-overlay" onClick={() => setPreviewQuestion(null)}>
-          {(() => {
-            const previewTheme = getSubtestTheme(previewQuestion.subtest);
-            return (
-              <div
-                className="modal-dialog modal-wide"
-                onClick={(e) => e.stopPropagation()}
-                style={{ maxHeight: '92vh', borderTop: `2.5px solid ${previewTheme.topBorder}` }}
-              >
-                <div className="modal-header">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <span className="modal-dot" style={{ backgroundColor: previewTheme.dot }} />
-                      <span className="font-mono text-xs font-bold text-zinc-200 bg-white/[0.06] border border-white/10 px-2.5 py-0.5 rounded">
-                        {formatQuestionCode(previewQuestion)}
-                      </span>
+          <div
+            className="modal-dialog modal-wide"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxHeight: '92vh' }}
+          >
+            <div className="modal-header">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <span className="font-mono text-xs font-bold text-zinc-200 bg-white/[0.06] border border-white/10 px-2.5 py-0.5 rounded">
+                    {formatQuestionCode(previewQuestion)}
+                  </span>
                   {previewQuestion.target === 'DRAFT' && (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
                       Draft
@@ -8331,15 +8264,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
               </div>
             </div>
           </div>
-        );
-      })()}
-    </div>
-  )}
+        </div>
+      )}
 
       {/* USER DETAILS MODAL */}
       {userModalOpen && selectedUserForModal && (
         <div className="modal-overlay" onClick={() => setUserModalOpen(false)}>
-          <div className="modal-dialog modal-dialog-accent-blue" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div className="modal-header">
               <div className="flex items-center gap-3">
                 <Avatar
@@ -8349,7 +8280,6 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="modal-dot" style={{ backgroundColor: selectedUserForModal.isBanned ? '#fb7185' : '#34d399' }} />
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--foreground)' }}>
                       {selectedUserForModal.name || 'Anonymous User'}
                     </h3>
@@ -8507,15 +8437,14 @@ ${totalPromptCount > 1 ? ']' : ''}`;
           }}
         >
           <div
-            className="modal-dialog modal-dialog-accent-violet"
+            className="modal-dialog"
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '440px' }}
           >
             <div className="modal-header">
               <div>
                 <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="modal-dot modal-dot-violet" />
-                  <FlaskConical style={{ width: 16, height: 16, color: '#a78bfa', flexShrink: 0 }} />
+                  <FlaskConical style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
                   <span>
                     {sandboxConfirmModal.targetState ? 'Konfirmasi Pindahkan ke Sandbox' : 'Konfirmasi Cabut Akses Sandbox'}
                   </span>
@@ -8607,13 +8536,10 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       {/* ARTICLE PREVIEW MODAL */}
       {previewArticle && (
         <div className="modal-overlay" onClick={() => setPreviewArticle(null)}>
-          <div className="modal-dialog modal-wide modal-dialog-accent-rose" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-dialog modal-wide" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                  <span className="modal-dot modal-dot-rose" />
-                  <span className="article-badge-category">{previewArticle.category}</span>
-                </div>
+                <span className="article-badge-category">{previewArticle.category}</span>
                 <h3>{previewArticle.title}</h3>
                 <small style={{ color: 'var(--muted-fg)' }}>
                   By {previewArticle.authorName} · {previewArticle.readTimeMinutes} min read · Status: {previewArticle.status}
@@ -8672,13 +8598,10 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       {/* MODAL: CREATE / EDIT TOPIC */}
       {topicModalOpen && (
         <div className="modal-overlay" onClick={() => setTopicModalOpen(false)}>
-          <div className="modal-dialog modal-dialog-accent-violet" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-dialog" style={{ maxWidth: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <span className="modal-dot modal-dot-violet" />
-                  <span>{editingTopic ? 'Edit Materi Utama' : 'Tambah Materi Utama'}</span>
-                </h3>
+                <h3>{editingTopic ? 'Edit Materi Utama' : 'Tambah Materi Utama'}</h3>
                 <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
                   Materi utama mengelompokkan submateri pada masing-masing subtes SNBT.
                 </p>
@@ -8757,13 +8680,10 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       {/* MODAL: CREATE / EDIT SUBTOPIC */}
       {subtopicModalOpen && (
         <div className="modal-overlay" onClick={() => setSubtopicModalOpen(false)}>
-          <div className="modal-dialog modal-dialog-accent-violet" style={{ maxWidth: '540px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="modal-dialog" style={{ maxWidth: '540px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <span className="modal-dot modal-dot-violet" />
-                  <span>{editingSubtopic ? 'Edit Submateri & Pola Soal' : 'Tambah Submateri Baru'}</span>
-                </h3>
+                <h3>{editingSubtopic ? 'Edit Submateri & Pola Soal' : 'Tambah Submateri Baru'}</h3>
                 <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
                   {activeParentTopic ? `Materi Induk: ${activeParentTopic.title}` : 'Atur rincian submateri dan daftar indikator pola soal.'}
                 </p>
@@ -8865,7 +8785,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       {createMethodModalOpen && (
         <div className="modal-overlay" onClick={() => setCreateMethodModalOpen(false)}>
           <div
-            className={`modal-dialog ${createMethodView === 'IMPORT_JSON' ? 'modal-wide' : ''} modal-dialog-accent-violet`}
+            className={`modal-dialog ${createMethodView === 'IMPORT_JSON' ? 'modal-wide' : ''}`}
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: createMethodView === 'IMPORT_JSON' ? '900px' : '640px' }}
           >
@@ -8882,7 +8802,6 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     <span>Kembali</span>
                   </button>
                 )}
-                <span className="modal-dot modal-dot-violet" />
                 <div>
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--foreground)' }}>
                     {createMethodView === 'SELECT'
@@ -9082,23 +9001,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     }}
                   >
                     <div>
-                      <div className="method-card-icon-wrap" style={{ color: '#38bdf8' }}>
+                      <div className="method-card-icon-wrap">
                         <PenTool style={{ width: 20, height: 20 }} />
                       </div>
                       <div>
                         <div className="method-card-header">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#38bdf8' }} />
-                            <h4 className="method-card-title">Input Manual</h4>
-                          </div>
-                          <span
-                            className="method-card-badge"
-                            style={{
-                              background: 'rgba(56, 189, 248, 0.08)',
-                              border: '1px solid rgba(56, 189, 248, 0.25)',
-                              color: '#7dd3fc',
-                            }}
-                          >
+                          <h4 className="method-card-title">Input Manual</h4>
+                          <span className="method-card-badge">
                             Editor
                           </span>
                         </div>
@@ -9126,23 +9035,13 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                     }}
                   >
                     <div>
-                      <div className="method-card-icon-wrap" style={{ color: '#a78bfa' }}>
+                      <div className="method-card-icon-wrap">
                         <Sparkles style={{ width: 20, height: 20 }} />
                       </div>
                       <div>
                         <div className="method-card-header">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#a78bfa' }} />
-                            <h4 className="method-card-title">Import JSON (AI)</h4>
-                          </div>
-                          <span
-                            className="method-card-badge"
-                            style={{
-                              background: 'rgba(139, 92, 246, 0.08)',
-                              border: '1px solid rgba(139, 92, 246, 0.25)',
-                              color: '#c4b5fd',
-                            }}
-                          >
+                          <h4 className="method-card-title">Import JSON (AI)</h4>
+                          <span className="method-card-badge">
                             AI + Auto-Balance
                           </span>
                         </div>

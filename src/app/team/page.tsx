@@ -192,8 +192,8 @@ export default function TeamPage() {
       {!isAdministrator(currentMember?.role) && !loading && <div className="team-back-link"><Link className="button button-secondary" href="/">Back to workspace</Link></div>}
 
       {createOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateOpen(false); }}>
-        <section className="modal" role="dialog" aria-modal="true" aria-labelledby="create-member-title" style={{ borderTop: '2.5px solid rgba(99, 102, 241, 0.75)' }}>
-          <div className="modal-header"><div><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><span className="modal-dot" style={{ backgroundColor: '#818cf8' }} /><h2 id="create-member-title" style={{ margin: 0 }}>Add team member</h2></div><p style={{ marginTop: '4px' }}>Create a sign-in account and assign its workspace role.</p></div><button className="icon-button" aria-label="Close" onClick={() => setCreateOpen(false)}>×</button></div>
+        <section className="modal" role="dialog" aria-modal="true" aria-labelledby="create-member-title">
+          <div className="modal-header"><div><h2 id="create-member-title">Add team member</h2><p>Create a sign-in account and assign its workspace role.</p></div><button className="icon-button" aria-label="Close" onClick={() => setCreateOpen(false)}>×</button></div>
           <form className="form-stack" onSubmit={createMember}>
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Full name<input className="field-input" name="name" minLength={2} maxLength={120} autoComplete="name" required autoFocus /></label>

@@ -1338,15 +1338,14 @@ export function TryoutQuestionsSection({
           onClick={() => setPickerOpen(false)}
         >
           <div
-            className="modal-dialog modal-wide modal-dialog-accent-sky"
+            className="modal-dialog modal-wide"
             style={{ maxWidth: '880px' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="modal-dot modal-dot-sky" />
-                  <span>Ambil Soal dari Bank / Eksperimen ke {tryoutMeta?.title || 'Tryout'}</span>
+                <h3 style={{ margin: 0 }}>
+                  Ambil Soal dari Bank / Eksperimen ke {tryoutMeta?.title || 'Tryout'}
                 </h3>
                 <small style={{ color: 'var(--muted-fg)' }}>
                   Soal yang diambil akan otomatis masuk ke subtes yang sesuai dan dapat langsung di-QC di dalam Tryout ini.

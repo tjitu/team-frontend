@@ -306,58 +306,6 @@ export function getSubtestDisplay(raw?: string | null): { code: string; label: s
   return found ? { code: found.code, label: found.label } : { code: raw || 'SNBT', label: raw || 'SNBT' };
 }
 
-export type SubtestThemeMeta = {
-  name: string;
-  dot: string;
-  border: string;
-  topBorder: string;
-  bgSoft: string;
-  text: string;
-};
-
-export function getSubtestTheme(raw?: string | null): SubtestThemeMeta {
-  const norm = normalizeSubtestKey(raw);
-  if (norm === 'PENGETAHUAN_KUANTITATIF' || norm === 'PENALARAN_MATEMATIKA') {
-    return {
-      name: 'sky',
-      dot: '#38bdf8',
-      border: 'rgba(56, 189, 248, 0.4)',
-      topBorder: 'rgba(56, 189, 248, 0.75)',
-      bgSoft: 'rgba(56, 189, 248, 0.08)',
-      text: '#7dd3fc',
-    };
-  }
-  if (norm === 'PENALARAN_UMUM') {
-    return {
-      name: 'amber',
-      dot: '#fbbf24',
-      border: 'rgba(245, 158, 11, 0.4)',
-      topBorder: 'rgba(245, 158, 11, 0.75)',
-      bgSoft: 'rgba(245, 158, 11, 0.08)',
-      text: '#fde68a',
-    };
-  }
-  if (norm === 'LITERASI_INDONESIA' || norm === 'LITERASI_INGGRIS') {
-    return {
-      name: 'indigo',
-      dot: '#818cf8',
-      border: 'rgba(99, 102, 241, 0.4)',
-      topBorder: 'rgba(99, 102, 241, 0.75)',
-      bgSoft: 'rgba(99, 102, 241, 0.08)',
-      text: '#c7d2fe',
-    };
-  }
-  // PEMAHAMAN_BACAAN_MENULIS, PENGETAHUAN_PEMAHAMAN_UMUM
-  return {
-    name: 'emerald',
-    dot: '#34d399',
-    border: 'rgba(16, 185, 129, 0.4)',
-    topBorder: 'rgba(16, 185, 129, 0.75)',
-    bgSoft: 'rgba(16, 185, 129, 0.08)',
-    text: '#a7f3d0',
-  };
-}
-
 export function getDifficultyMeta(difficulty?: string | null): {
   label: string;
   bg: string;
