@@ -441,6 +441,19 @@ export function PracticeSection({
   const allFilteredSelected =
     filteredAssigned.length > 0 && filteredAssigned.every((q) => selectedTableIds.includes(q.id));
 
+  const togglePageQuestionSelection = React.useCallback((pageIds: string[]) => {
+    if (pageIds.length === 0) return;
+    setSelectedTableIds((prev) => {
+      const prevSet = new Set(prev);
+      const allSelected = pageIds.every((id) => prevSet.has(id));
+      if (allSelected) {
+        const pageSet = new Set(pageIds);
+        return prev.filter((id) => !pageSet.has(id));
+      }
+      return Array.from(new Set([...prev, ...pageIds]));
+    });
+  }, []);
+
   return (
     <section className="control-panel" aria-labelledby="practice-heading">
       {/* HEADER */}
@@ -645,6 +658,16 @@ export function PracticeSection({
             {selectedTableIds.length} soal Latihan dipilih
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {selectedTableIds.length < filteredAssigned.length && (
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => setSelectedTableIds(filteredAssigned.map((q) => q.id))}
+                style={{ height: '30px', fontSize: '11px' }}
+              >
+                Pilih semua ({filteredAssigned.length})
+              </button>
+            )}
             <button
               type="button"
               className="button button-secondary"
@@ -750,6 +773,7 @@ export function PracticeSection({
             prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
           );
         }}
+        onToggleSelectPage={togglePageQuestionSelection}
         onToggleSelectAll={() => {
           if (allFilteredSelected) {
             const removeSet = new Set(filteredAssigned.map((q) => q.id));

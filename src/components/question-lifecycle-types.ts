@@ -1045,7 +1045,7 @@ export function buildAutoBalancedBatchPrompt(params: {
   const slotLines = slots
     .map(
       (s) =>
-        `  - Butir #${s.index}: Subtes="${s.subtest}" (${s.subtestShort} - ${s.subtestLabel}) | Tipe="${s.questionType}" | Topik="${s.topicTitle}" | Subtopik="${s.subtopicTitle}" | topicId="${s.topicId}" | subtopicId="${s.subtopicId}" | Difficulty="${s.difficulty}" (${s.reason})`,
+        `  - Butir #${s.index}: Subtes="${s.subtest}" (${s.subtestShort}) | Tipe="${s.questionType}" | Topik="${s.topicTitle}" | Subtopik="${s.subtopicTitle}" | topicId="${s.topicId}" | subtopicId="${s.subtopicId}" | Difficulty="${s.difficulty}"`,
     )
     .join('\n');
 
@@ -1061,21 +1061,15 @@ Seluruh butir soal yang kamu susun mengacu ketat pada standar resmi **Balai Peng
 
 ---
 
-### MISI PEMBUATAN BATCH SOAL (AUTO-BALANCE ENGINE)
-Buat tepat **${totalSlots} butir soal UTBK-SNBT baru** dengan mode **AUTO-BALANCE KURIKULUM & TIPE SOAL** untuk paket tujuan:
-👉 **"${packageLabel}"**${typeof existingTotalInPackage === 'number' ? ` (Saat ini memiliki ${existingTotalInPackage} soal terdaftar)` : ''}
-
-**Konteks Parameter Auto-Balance Paket ("${packageLabel}"):**
-- **Target Parameter Tipe Soal Paket:** ${resolvedPgPct}% Pilihan Ganda : ${resolvedIsianPct}% Isian Singkat
-- **Target Parameter Rasio Kesulitan Paket:** ${normRatio.easyPct}% Mudah (Easy) : ${normRatio.mediumPct}% Sedang (Medium) : ${normRatio.hardPct}% Sulit (Hard HOTS)
-
-**Komposisi Rencana Batch Ini (Otomatis Mengisi Gap Paket):**
-- **Tipe Soal Batch:** ${pgSlots.length} Pilihan Ganda (A-E) · ${isianSlots.length} Isian Singkat
-- **Tingkat Kesulitan Batch:** ${slotDiffSummary.EASY} Mudah (Easy) · ${slotDiffSummary.MEDIUM} Sedang (Medium) · ${slotDiffSummary.HARD} Sulit (Hard HOTS)
+### MISI PEMBUATAN BATCH SOAL (AUTO-BALANCE)
+Buat tepat **${totalSlots} butir soal UTBK-SNBT baru** dalam format JSON Array untuk paket: **"${packageLabel}"**.
+Komposisi batch yang wajib dipenuhi:
+- **Tipe Soal:** ${pgSlots.length} Pilihan Ganda (A-E) · ${isianSlots.length} Isian Singkat
+- **Tingkat Kesulitan:** ${slotDiffSummary.EASY} Mudah (Easy) · ${slotDiffSummary.MEDIUM} Sedang (Medium) · ${slotDiffSummary.HARD} Sulit (Hard HOTS)
 
 ---
 
-### RENCANA DISTRIBUSI SLOT BUTIR (WAJIB DIIKUTI PERSIS DARI BUTIR #1 SAMPAI #${totalSlots}):
+### DAFTAR SLOT BUTIR (WAJIB DIIKUTI PERSIS DARI BUTIR #1 SAMPAI #${totalSlots}):
 ${slotLines}
 ${customInstruction.trim() ? `\n### INSTRUKSI TAMBAHAN DARI PENYUSUN:\n${customInstruction.trim()}\n` : ''}
 ---
