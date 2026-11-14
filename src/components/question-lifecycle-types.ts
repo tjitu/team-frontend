@@ -846,12 +846,16 @@ export function computePackageAutoBalancePlan(params: {
     simSubtopicCounts.set(item.subtopicId, item.existingCount);
   }
 
-  // Type composition configuration
-  const requestedIsian =
-    typeof typeComposition?.isianCount === 'number'
-      ? Math.max(0, Math.min(safeCount, Math.round(typeComposition.isianCount)))
-      : 0;
-  let remainingIsian = requestedIsian;
+  // Track existing isian count per subtest
+  const existingIsianBySubtest: Record<string, number> = {};
+  for (const q of packageQuestions) {
+    const t = String(q.type || 'PILIHAN_GANDA').toUpperCase();
+    if (t === 'ISIAN_SINGKAT' || t === 'SHORT_ANSWER') {
+      const normSub = normalizeSubtestKey(q.subtest || '');
+      existingIsianBySubtest[normSub] = (existingIsianBySubtest[normSub] || 0) + 1;
+    }
+  }
+  const simIsianBySubtest = { ...existingIsianBySubtest };
 
   const slots: AutoBalanceSlot[] = [];
 
@@ -895,17 +899,18 @@ export function computePackageAutoBalancePlan(params: {
       ? (simSubtopicCounts.get(chosenSubtopic.subtopicId) ?? chosenSubtopic.existingCount)
       : 0;
 
-    // Determine question type for this slot
-    const slotsRemaining = safeCount - i;
+    // Automatic Question Type Allocation strictly based on SNBT BP3 Regulations:
+    // Only PK (Pengetahuan Kuantitatif) and PM (Penalaran Matematika) have short answer questions (target 2-3 per 20 questions).
+    // All other subtests are strictly 100% Multiple Choice (Pilihan Ganda A-E).
     const isMathSubtest =
       chosenSubtestKey === 'PENGETAHUAN_KUANTITATIF' || chosenSubtestKey === 'PENALARAN_MATEMATIKA';
-    let slotType: 'PILIHAN_GANDA' | 'ISIAN_SINGKAT' = 'PILIHAN_GANDA';
+    const targetIsianQuota = isMathSubtest ? 2 : 0;
+    const currentIsianInSubtest = simIsianBySubtest[chosenSubtestKey] || 0;
 
-    if (remainingIsian > 0) {
-      if (isMathSubtest || remainingIsian >= slotsRemaining) {
-        slotType = 'ISIAN_SINGKAT';
-        remainingIsian -= 1;
-      }
+    let slotType: 'PILIHAN_GANDA' | 'ISIAN_SINGKAT' = 'PILIHAN_GANDA';
+    if (isMathSubtest && currentIsianInSubtest < targetIsianQuota) {
+      slotType = 'ISIAN_SINGKAT';
+      simIsianBySubtest[chosenSubtestKey] = currentIsianInSubtest + 1;
     }
 
     slots.push({
@@ -930,16 +935,6 @@ export function computePackageAutoBalancePlan(params: {
     simDiff[chosenDiff] += 1;
     if (chosenSubtopic) {
       simSubtopicCounts.set(chosenSubtopic.subtopicId, currentSubCount + 1);
-    }
-  }
-
-  // If there are still remaining isian that couldn't be placed in math subtests, allocate from end
-  if (remainingIsian > 0) {
-    for (let j = slots.length - 1; j >= 0 && remainingIsian > 0; j--) {
-      if (slots[j].questionType === 'PILIHAN_GANDA') {
-        slots[j].questionType = 'ISIAN_SINGKAT';
-        remainingIsian -= 1;
-      }
     }
   }
 

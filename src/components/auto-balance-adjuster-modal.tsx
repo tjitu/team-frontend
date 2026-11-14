@@ -57,14 +57,9 @@ export function AutoBalanceAdjusterModal({
   onOpenAiGenerator,
 }: AutoBalanceAdjusterModalProps) {
   const [batchCount, setBatchCount] = React.useState<number>(8);
-  const [isianCount, setIsianCount] = React.useState<number>(2);
   const [subtestScope, setSubtestScope] = React.useState<string>('AUTO');
   const [customInstruction, setCustomInstruction] = React.useState<string>('');
   const [copied, setCopied] = React.useState<boolean>(false);
-
-  // Sync isian count when batchCount changes
-  const effectiveIsian = Math.max(0, Math.min(batchCount, isianCount));
-  const effectivePg = Math.max(0, batchCount - effectiveIsian);
 
   const plan = React.useMemo(() => {
     return computePackageAutoBalancePlan({
@@ -73,12 +68,8 @@ export function AutoBalanceAdjusterModal({
       curriculumTopics,
       count: batchCount,
       scopeSubtest: subtestScope,
-      typeComposition: {
-        pgCount: effectivePg,
-        isianCount: effectiveIsian,
-      },
     });
-  }, [destination, packageQuestions, curriculumTopics, batchCount, subtestScope, effectivePg, effectiveIsian]);
+  }, [destination, packageQuestions, curriculumTopics, batchCount, subtestScope]);
 
   const generatedPrompt = React.useMemo(() => {
     return buildAutoBalancedBatchPrompt({
@@ -103,8 +94,6 @@ export function AutoBalanceAdjusterModal({
   function handleBatchChange(val: number) {
     const nextCount = Math.max(1, Math.min(25, val));
     setBatchCount(nextCount);
-    // keep proportion roughly 20-25% isian
-    setIsianCount((prev) => Math.min(nextCount, Math.round(nextCount * 0.25)));
   }
 
   return (
@@ -267,40 +256,32 @@ export function AutoBalanceAdjusterModal({
               </div>
             </div>
 
-            {/* QUESTION TYPE COMPOSITION */}
+            {/* QUESTION TYPE COMPOSITION (AUTO-BALANCED READ-ONLY SUMMARY) */}
             <div style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label style={{ fontSize: '11px', fontWeight: 700, color: '#93c5fd', margin: 0 }}>
-                  Komposisi Tipe Soal
+                  Komposisi Tipe Soal (Otomatis)
                 </label>
-                <span style={{ fontSize: '10px', color: '#c084fc', fontWeight: 600 }}>
-                  {effectivePg} PG · {effectiveIsian} Isian
+                <span className="pill" style={{ background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', fontSize: '10px', padding: '1px 6px' }}>
+                  Regulasi SNBT BP3
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>Isian:</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={batchCount}
-                    value={effectiveIsian}
-                    onChange={(e) => setIsianCount(Math.max(0, Math.min(batchCount, parseInt(e.target.value, 10) || 0)))}
-                    className="field-input"
-                    style={{ width: '60px', height: '32px', fontSize: '12px' }}
-                  />
-                  <span style={{ fontSize: '10px', color: 'var(--muted-fg)' }}>butir</span>
-                </div>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => setIsianCount(0)}
-                  style={{ height: '30px', fontSize: '10px', padding: '0 8px' }}
-                  title="Jadikan seluruhnya Pilihan Ganda"
-                >
-                  Semua PG
-                </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8' }}>
+                  {plan.slots.filter((s) => s.questionType === 'PILIHAN_GANDA').length} PG (A-E)
+                </span>
+                {plan.slots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length > 0 ? (
+                  <>
+                    <span style={{ color: 'var(--muted-fg)' }}>·</span>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#c084fc' }}>
+                      {plan.slots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length} Isian Singkat
+                    </span>
+                  </>
+                ) : null}
               </div>
+              <p style={{ margin: '4px 0 0', fontSize: '10px', color: 'var(--muted-fg)' }}>
+                Isian dialokasikan otomatis khusus subtes Matematika (PK/PM) bila ada defisit; subtes lain 100% PG.
+              </p>
             </div>
 
             {/* SUBTEST SCOPE */}

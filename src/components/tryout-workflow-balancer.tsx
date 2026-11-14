@@ -7,6 +7,7 @@ import {
   ExternalLink,
   RotateCcw,
   Save,
+  Sliders,
   Wrench,
 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -52,6 +53,7 @@ export function TryoutWorkflowHeader({
   onUpdated,
   onError,
   onNotice,
+  onOpenAutoBalance,
 }: {
   tryout: TryoutHeaderMeta | undefined;
   questionCount: number;
@@ -61,6 +63,7 @@ export function TryoutWorkflowHeader({
   onUpdated: () => Promise<void> | void;
   onError: (msg: string) => void;
   onNotice: (msg: string) => void;
+  onOpenAutoBalance?: () => void;
 }) {
   const [busyAction, setBusyAction] = React.useState<string | null>(null);
 
@@ -183,6 +186,29 @@ export function TryoutWorkflowHeader({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        {onOpenAutoBalance && (
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={onOpenAutoBalance}
+            style={{
+              height: '34px',
+              fontSize: '12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              color: '#38bdf8',
+              borderColor: 'rgba(56, 189, 248, 0.45)',
+              background: 'rgba(56, 189, 248, 0.08)',
+              fontWeight: 600,
+            }}
+            title="Seimbangkan komposisi level dan materi kurikulum paket Tryout ini secara otomatis"
+          >
+            <Sliders style={{ width: 13, height: 13 }} />
+            <span>Atur Auto-Balance Paket</span>
+          </button>
+        )}
+
         <button
           type="button"
           className="button button-secondary"

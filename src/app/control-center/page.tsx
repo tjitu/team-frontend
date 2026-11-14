@@ -65,6 +65,7 @@ import { PracticeSection } from '@/components/practice-section';
 import { TryoutQuestionsSection } from '@/components/tryout-questions-section';
 import { SoalAsliSection } from '@/components/soal-asli-section';
 import { KotakRevisiBanner, BulkRevisionModal, RevisionRequestModal } from '@/components/question-workflow-modals';
+import { AutoBalanceAdjusterModal } from '@/components/auto-balance-adjuster-modal';
 import {
   QuestionBatchField,
   mergeBatchSummaries,
@@ -896,8 +897,8 @@ function ControlCenterContent() {
   const [createTryoutId, setCreateTryoutId] = React.useState<string>('');
   const [autoBalanceEnabled, setAutoBalanceEnabled] = React.useState<boolean>(false);
   const [autoBalanceCount, setAutoBalanceCount] = React.useState<number>(5);
-  const [autoBalanceIsianCount, setAutoBalanceIsianCount] = React.useState<number>(1);
   const [autoBalanceSubtestScope, setAutoBalanceSubtestScope] = React.useState<string>('AUTO');
+  const [tableAutoBalanceTryout, setTableAutoBalanceTryout] = React.useState<Tryout | null>(null);
   const [difficultyComposition, setDifficultyComposition] = React.useState<DifficultyComposition>({
     easy: 30,
     medium: 50,
@@ -943,14 +944,13 @@ function ControlCenterContent() {
       curriculumTopics: topics as any,
       count: autoBalanceCount,
       scopeSubtest: autoBalanceSubtestScope,
-      typeComposition: { isianCount: autoBalanceIsianCount },
       difficultyRatio: difficultyComposition,
     });
-  }, [createTarget, currentPackageQuestions, topics, autoBalanceCount, autoBalanceSubtestScope, autoBalanceIsianCount, difficultyComposition]);
+  }, [createTarget, currentPackageQuestions, topics, autoBalanceCount, autoBalanceSubtestScope, difficultyComposition]);
 
   React.useEffect(() => {
     setCustomBalanceSlots(null);
-  }, [createTarget, createTryoutId, autoBalanceCount, autoBalanceSubtestScope, autoBalanceIsianCount, difficultyComposition]);
+  }, [createTarget, createTryoutId, autoBalanceCount, autoBalanceSubtestScope, difficultyComposition]);
 
   const effectiveBalanceSlots = React.useMemo(() => {
     if (customBalanceSlots && customBalanceSlots.length === autoBalanceAnalysis.slots.length) {
@@ -2856,6 +2856,22 @@ ${totalPromptCount > 1 ? ']' : ''}`;
 
         return (
           <div className="table-action-group" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              className="table-action-btn"
+              style={{
+                borderColor: 'rgba(56, 189, 248, 0.45)',
+                color: '#38bdf8',
+                background: 'rgba(56, 189, 248, 0.08)',
+              }}
+              onClick={() => {
+                setTableAutoBalanceTryout(row.original);
+              }}
+              title="Atur Auto-Balance komposisi tipe & level serta materi kurikulum paket tryout ini"
+            >
+              <Sliders className="action-icon" /> Auto-Balance
+            </button>
+
             <button
               type="button"
               className="table-action-btn"
@@ -9246,25 +9262,32 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '11px', fontWeight: 700, color: '#e5e7eb' }}>
-                                  Komposisi Tipe:
+                                  Komposisi Tipe (Otomatis):
                                 </span>
                                 <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 600 }}>
                                   {effectiveBalanceSlots.filter((s) => s.questionType === 'PILIHAN_GANDA').length} PG (A-E)
                                 </span>
-                                <span style={{ color: 'var(--muted-fg)' }}>·</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <label style={{ fontSize: '11px', color: '#c084fc', fontWeight: 600 }}>Isian Singkat:</label>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    max={autoBalanceCount}
-                                    value={autoBalanceIsianCount}
-                                    onChange={(e) => setAutoBalanceIsianCount(Math.max(0, Math.min(autoBalanceCount, parseInt(e.target.value, 10) || 0)))}
-                                    className="field-input"
-                                    style={{ width: '56px', height: '28px', fontSize: '11px', padding: '0 6px' }}
-                                  />
-                                  <span style={{ fontSize: '10px', color: 'var(--muted-fg)' }}>butir</span>
-                                </div>
+                                {effectiveBalanceSlots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length > 0 && (
+                                  <>
+                                    <span style={{ color: 'var(--muted-fg)' }}>·</span>
+                                    <span style={{ fontSize: '11px', color: '#c084fc', fontWeight: 600 }}>
+                                      {effectiveBalanceSlots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length} Isian Singkat (PK/PM)
+                                    </span>
+                                  </>
+                                )}
+                                <span
+                                  className="pill"
+                                  style={{
+                                    fontSize: '9px',
+                                    background: 'rgba(56, 189, 248, 0.12)',
+                                    color: '#38bdf8',
+                                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                                    padding: '1px 6px',
+                                  }}
+                                  title="Isian Singkat dialokasikan otomatis khusus subtes Matematika (PK/PM) bila terdapat defisit, subtes penalaran lainnya 100% PG sesuai regulasi resmi BP3"
+                                >
+                                  SNBT BP3
+                                </span>
                               </div>
                               <div style={{ fontSize: '11px', color: '#34d399', fontWeight: 600 }}>
                                 Level otomatis: {effectiveBalanceSlots.filter((s) => s.difficulty === 'EASY').length} Easy · {effectiveBalanceSlots.filter((s) => s.difficulty === 'MEDIUM').length} Med · {effectiveBalanceSlots.filter((s) => s.difficulty === 'HARD').length} Hard
@@ -9874,6 +9897,34 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         onClose={() => setBulkRevisionModal({ open: false, notes: '', submitting: false })}
         onConfirm={() => void confirmBulkRevision()}
       />
+
+      {/* MODAL: AUTO-BALANCE DARI TABEL TRYOUT */}
+      {tableAutoBalanceTryout && (
+        <AutoBalanceAdjusterModal
+          open={Boolean(tableAutoBalanceTryout)}
+          onClose={() => setTableAutoBalanceTryout(null)}
+          destination="FOR_TRYOUT"
+          packageTitle={tableAutoBalanceTryout.title}
+          packageQuestions={questions.filter((q) => q.tryoutId === tableAutoBalanceTryout.id)}
+          curriculumTopics={topics as any}
+          onOpenAiGenerator={(cfg) => {
+            const tid = tableAutoBalanceTryout.id;
+            const title = tableAutoBalanceTryout.title;
+            setTableAutoBalanceTryout(null);
+            setEditingQuestion(null);
+            setImportBatch('');
+            setCreateTarget('FOR_TRYOUT');
+            setCreateTryoutId(tid);
+            setCreateMethodView('IMPORT_JSON');
+            setIsPromptAdjusterOpen(true);
+            setAutoBalanceEnabled(true);
+            setAutoBalanceCount(cfg.batchSize);
+            setCustomBalanceSlots(cfg.slots);
+            setCreateMethodModalOpen(true);
+            setNotice(`Auto-Balance prompt siap pakai untuk "${title}" dimuat ke Generator AI.`);
+          }}
+        />
+      )}
     </div>
   );
 }

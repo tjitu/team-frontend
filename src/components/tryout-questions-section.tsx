@@ -637,6 +637,7 @@ export function TryoutQuestionsSection({
         }}
         onError={onError}
         onNotice={onNotice}
+        onOpenAutoBalance={() => setAutoBalanceModalOpen(true)}
       />
 
       {/* SUBTEST TIMER CONFIGURATOR (195M DEFAULT + 1M BUFFER) */}
