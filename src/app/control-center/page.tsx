@@ -896,6 +896,7 @@ function ControlCenterContent() {
   const [createTryoutId, setCreateTryoutId] = React.useState<string>('');
   const [autoBalanceEnabled, setAutoBalanceEnabled] = React.useState<boolean>(false);
   const [autoBalanceCount, setAutoBalanceCount] = React.useState<number>(5);
+  const [autoBalanceIsianCount, setAutoBalanceIsianCount] = React.useState<number>(1);
   const [autoBalanceSubtestScope, setAutoBalanceSubtestScope] = React.useState<string>('AUTO');
   const [difficultyComposition, setDifficultyComposition] = React.useState<DifficultyComposition>({
     easy: 30,
@@ -942,13 +943,14 @@ function ControlCenterContent() {
       curriculumTopics: topics as any,
       count: autoBalanceCount,
       scopeSubtest: autoBalanceSubtestScope,
+      typeComposition: { isianCount: autoBalanceIsianCount },
       difficultyRatio: difficultyComposition,
     });
-  }, [createTarget, currentPackageQuestions, topics, autoBalanceCount, autoBalanceSubtestScope, difficultyComposition]);
+  }, [createTarget, currentPackageQuestions, topics, autoBalanceCount, autoBalanceSubtestScope, autoBalanceIsianCount, difficultyComposition]);
 
   React.useEffect(() => {
     setCustomBalanceSlots(null);
-  }, [createTarget, createTryoutId, autoBalanceCount, autoBalanceSubtestScope, difficultyComposition]);
+  }, [createTarget, createTryoutId, autoBalanceCount, autoBalanceSubtestScope, autoBalanceIsianCount, difficultyComposition]);
 
   const effectiveBalanceSlots = React.useMemo(() => {
     if (customBalanceSlots && customBalanceSlots.length === autoBalanceAnalysis.slots.length) {
@@ -5899,6 +5901,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
         <PracticeSection
           key={practiceRefreshKey}
           jituMainUrl={JITU_MAIN_URL}
+          curriculumTopics={topics as any}
           onEditQuestion={(q) => editQuestionItem(q as unknown as QuestionItem)}
           onOpenCreateForPractice={() => {
             setEditingQuestion(null);
@@ -9227,9 +9230,46 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                               )}
                             </div>
 
-                            {renderDifficultyCompositionControls(
-                              `Batch ini: ${effectiveBalanceSlots.filter((s) => s.difficulty === 'EASY').length} Easy · ${effectiveBalanceSlots.filter((s) => s.difficulty === 'MEDIUM').length} Med · ${effectiveBalanceSlots.filter((s) => s.difficulty === 'HARD').length} Hard`,
-                            )}
+                            {/* Question Type Composition Controls */}
+                            <div
+                              style={{
+                                padding: '10px 12px',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                background: 'rgba(0,0,0,0.22)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '10px',
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#e5e7eb' }}>
+                                  Komposisi Tipe:
+                                </span>
+                                <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 600 }}>
+                                  {effectiveBalanceSlots.filter((s) => s.questionType === 'PILIHAN_GANDA').length} PG (A-E)
+                                </span>
+                                <span style={{ color: 'var(--muted-fg)' }}>·</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <label style={{ fontSize: '11px', color: '#c084fc', fontWeight: 600 }}>Isian Singkat:</label>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={autoBalanceCount}
+                                    value={autoBalanceIsianCount}
+                                    onChange={(e) => setAutoBalanceIsianCount(Math.max(0, Math.min(autoBalanceCount, parseInt(e.target.value, 10) || 0)))}
+                                    className="field-input"
+                                    style={{ width: '56px', height: '28px', fontSize: '11px', padding: '0 6px' }}
+                                  />
+                                  <span style={{ fontSize: '10px', color: 'var(--muted-fg)' }}>butir</span>
+                                </div>
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#34d399', fontWeight: 600 }}>
+                                Level otomatis: {effectiveBalanceSlots.filter((s) => s.difficulty === 'EASY').length} Easy · {effectiveBalanceSlots.filter((s) => s.difficulty === 'MEDIUM').length} Med · {effectiveBalanceSlots.filter((s) => s.difficulty === 'HARD').length} Hard
+                              </div>
+                            </div>
 
                             {/* Editable Slot Plan Table */}
                             <div style={{ overflowX: 'auto', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px' }}>
@@ -9238,6 +9278,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                   <tr style={{ background: 'rgba(0,0,0,0.28)', textAlign: 'left', color: '#a7f3d0' }}>
                                     <th style={{ padding: '7px 8px' }}>#</th>
                                     <th style={{ padding: '7px 8px' }}>Subtes</th>
+                                    <th style={{ padding: '7px 8px' }}>Tipe</th>
                                     <th style={{ padding: '7px 8px' }}>Topik & Subtopik Kurikulum</th>
                                     <th style={{ padding: '7px 8px' }}>Level</th>
                                     <th style={{ padding: '7px 8px' }}>Alasan Balance</th>
@@ -9276,6 +9317,24 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                               {sub.label}
                                             </option>
                                           ))}
+                                        </select>
+                                      </td>
+                                      <td style={{ padding: '6px 8px' }}>
+                                        <select
+                                          className="field-input"
+                                          style={{ fontSize: '11px', padding: '4px 6px' }}
+                                          value={slot.questionType}
+                                          onChange={(e) => {
+                                            const nextSlots = [...effectiveBalanceSlots];
+                                            nextSlots[sIdx] = {
+                                              ...slot,
+                                              questionType: e.target.value as AutoBalanceSlot['questionType'],
+                                            };
+                                            setCustomBalanceSlots(nextSlots);
+                                          }}
+                                        >
+                                          <option value="PILIHAN_GANDA">PG (A-E)</option>
+                                          <option value="ISIAN_SINGKAT">Isian</option>
                                         </select>
                                       </td>
                                       <td style={{ padding: '6px 8px' }}>

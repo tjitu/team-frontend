@@ -15,6 +15,7 @@ import {
   RotateCcw,
   Search,
   Send,
+  Sliders,
   Sparkles,
   Trash2,
 } from 'lucide-react';
@@ -26,8 +27,10 @@ import {
   getSubtestDisplay,
   normalizeSubtestKey,
   type QuestionStatusType,
+  type TryoutCurriculumTopic,
 } from './question-lifecycle-types';
 import { QuestionPreviewModal, RevisionRequestModal } from './question-workflow-modals';
+import { AutoBalanceAdjusterModal } from './auto-balance-adjuster-modal';
 
 export type PracticeAssignedQuestion = {
   id: string;
@@ -138,6 +141,7 @@ function getErrorMessage(error: unknown): string {
 
 export function PracticeSection({
   jituMainUrl = 'http://localhost:5173',
+  curriculumTopics = [],
   onError,
   onNotice,
   onOpenCreateForPractice,
@@ -145,6 +149,7 @@ export function PracticeSection({
   onQuestionsChanged,
 }: {
   jituMainUrl?: string;
+  curriculumTopics?: TryoutCurriculumTopic[];
   onError: (msg: string) => void;
   onNotice: (msg: string) => void;
   onOpenCreateForPractice?: () => void;
@@ -175,6 +180,7 @@ export function PracticeSection({
   const [removingId, setRemovingId] = React.useState<string | null>(null);
 
   const [previewQuestion, setPreviewQuestion] = React.useState<PracticeAssignedQuestion | null>(null);
+  const [autoBalanceModalOpen, setAutoBalanceModalOpen] = React.useState(false);
 
   const onErrorRef = React.useRef(onError);
   const onQuestionsChangedRef = React.useRef(onQuestionsChanged);
@@ -464,6 +470,22 @@ export function PracticeSection({
           >
             <RefreshCw style={{ width: 14, height: 14 }} />
             <span>Refresh</span>
+          </button>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => setAutoBalanceModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderColor: 'rgba(56, 189, 248, 0.45)',
+              color: '#38bdf8',
+              background: 'rgba(56, 189, 248, 0.08)',
+            }}
+          >
+            <Sliders style={{ width: 14, height: 14 }} />
+            <span>Atur Auto-Balance Latihan</span>
           </button>
           {onOpenCreateForPractice && (
             <button
@@ -1374,6 +1396,21 @@ export function PracticeSection({
           setRevisionNotesDraft('');
         }}
         onConfirm={() => void handleConfirmRevision()}
+      />
+
+      {/* AUTO-BALANCE ADJUSTER MODAL */}
+      <AutoBalanceAdjusterModal
+        open={autoBalanceModalOpen}
+        onClose={() => setAutoBalanceModalOpen(false)}
+        destination="FOR_PRACTICE"
+        packageTitle="Paket Global Latihan (/latihan)"
+        packageQuestions={workspace?.assignedQuestions || []}
+        curriculumTopics={curriculumTopics}
+        onOpenAiGenerator={
+          onOpenCreateForPractice
+            ? () => onOpenCreateForPractice()
+            : undefined
+        }
       />
     </section>
   );

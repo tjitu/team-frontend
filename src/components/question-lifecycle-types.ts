@@ -715,6 +715,7 @@ export type AutoBalanceSlot = {
   topicTitle: string;
   subtopicId: string;
   subtopicTitle: string;
+  questionType: 'PILIHAN_GANDA' | 'ISIAN_SINGKAT';
   difficulty: 'EASY' | 'MEDIUM' | 'HARD';
   currentSubtopicCount: number;
   reason: string;
@@ -724,10 +725,16 @@ export type PackageAutoBalanceAnalysis = {
   totalInPackage: number;
   subtestCounts: Record<string, { count: number; targetQuota: number; short: string; label: string }>;
   difficultyCounts: { EASY: number; MEDIUM: number; HARD: number };
+  typeCounts: { PILIHAN_GANDA: number; ISIAN_SINGKAT: number };
   targetDifficultyPct: { easy: number; medium: number; hard: number };
   uncoveredSubtopicsCount: number;
   totalCurriculumSubtopics: number;
   slots: AutoBalanceSlot[];
+};
+
+export type QuestionTypeComposition = {
+  pgCount?: number;
+  isianCount?: number;
 };
 
 export function computePackageAutoBalancePlan(params: {
@@ -739,10 +746,12 @@ export function computePackageAutoBalancePlan(params: {
     topicTitle?: string | null;
     subtopicTitle?: string | null;
     difficulty?: string | null;
+    type?: string | null;
   }>;
   curriculumTopics: TryoutCurriculumTopic[];
   count: number;
   scopeSubtest?: string;
+  typeComposition?: QuestionTypeComposition;
   difficultyRatio?: DifficultyComposition;
 }): PackageAutoBalanceAnalysis {
   const {
@@ -751,9 +760,10 @@ export function computePackageAutoBalancePlan(params: {
     curriculumTopics,
     count,
     scopeSubtest = 'AUTO',
+    typeComposition,
     difficultyRatio,
   } = params;
-  const safeCount = Math.max(1, Math.min(15, Number(count) || 5));
+  const safeCount = Math.max(1, Math.min(25, Number(count) || 5));
   const normRatio = normalizeDifficultyComposition(difficultyRatio);
 
   const subtestCounts: Record<string, { count: number; targetQuota: number; short: string; label: string }> = {};
@@ -767,6 +777,7 @@ export function computePackageAutoBalancePlan(params: {
   }
 
   const difficultyCounts = { EASY: 0, MEDIUM: 0, HARD: 0 };
+  const typeCounts = { PILIHAN_GANDA: 0, ISIAN_SINGKAT: 0 };
   const subtopicCountMap = new Map<string, number>();
   const subtopicTitleCountMap = new Map<string, number>();
 
@@ -779,6 +790,13 @@ export function computePackageAutoBalancePlan(params: {
     if (diff === 'EASY') difficultyCounts.EASY += 1;
     else if (diff === 'HARD') difficultyCounts.HARD += 1;
     else difficultyCounts.MEDIUM += 1;
+
+    const t = String(q.type || 'PILIHAN_GANDA').toUpperCase();
+    if (t === 'ISIAN_SINGKAT' || t === 'SHORT_ANSWER') {
+      typeCounts.ISIAN_SINGKAT += 1;
+    } else {
+      typeCounts.PILIHAN_GANDA += 1;
+    }
 
     if (q.subtopicId) {
       subtopicCountMap.set(q.subtopicId, (subtopicCountMap.get(q.subtopicId) || 0) + 1);
@@ -828,6 +846,13 @@ export function computePackageAutoBalancePlan(params: {
     simSubtopicCounts.set(item.subtopicId, item.existingCount);
   }
 
+  // Type composition configuration
+  const requestedIsian =
+    typeof typeComposition?.isianCount === 'number'
+      ? Math.max(0, Math.min(safeCount, Math.round(typeComposition.isianCount)))
+      : 0;
+  let remainingIsian = requestedIsian;
+
   const slots: AutoBalanceSlot[] = [];
 
   for (let i = 0; i < safeCount; i++) {
@@ -870,6 +895,19 @@ export function computePackageAutoBalancePlan(params: {
       ? (simSubtopicCounts.get(chosenSubtopic.subtopicId) ?? chosenSubtopic.existingCount)
       : 0;
 
+    // Determine question type for this slot
+    const slotsRemaining = safeCount - i;
+    const isMathSubtest =
+      chosenSubtestKey === 'PENGETAHUAN_KUANTITATIF' || chosenSubtestKey === 'PENALARAN_MATEMATIKA';
+    let slotType: 'PILIHAN_GANDA' | 'ISIAN_SINGKAT' = 'PILIHAN_GANDA';
+
+    if (remainingIsian > 0) {
+      if (isMathSubtest || remainingIsian >= slotsRemaining) {
+        slotType = 'ISIAN_SINGKAT';
+        remainingIsian -= 1;
+      }
+    }
+
     slots.push({
       index: i + 1,
       subtest: chosenSubtestKey,
@@ -879,12 +917,13 @@ export function computePackageAutoBalancePlan(params: {
       topicTitle: chosenSubtopic?.topicTitle || `Topik ${subDisplay.label}`,
       subtopicId: chosenSubtopic?.subtopicId || '',
       subtopicTitle: chosenSubtopic?.subtopicTitle || `Subtopik Inti ${subDisplay.code} #${i + 1}`,
+      questionType: slotType,
       difficulty: chosenDiff,
       currentSubtopicCount: currentSubCount,
       reason:
         currentSubCount === 0
-          ? `Subtopik belum ada di paket ini (0 soal) · Target ${chosenDiff}`
-          : `Subtopik baru memiliki ${currentSubCount} soal di paket ini · Target ${chosenDiff}`,
+          ? `Subtopik belum ada di paket (0 soal) · Target ${slotType === 'ISIAN_SINGKAT' ? 'Isian Singkat' : 'PG'} ${chosenDiff}`
+          : `Subtopik baru ${currentSubCount} soal di paket · Target ${slotType === 'ISIAN_SINGKAT' ? 'Isian Singkat' : 'PG'} ${chosenDiff}`,
     });
 
     simSubtestCounts[chosenSubtestKey] = (simSubtestCounts[chosenSubtestKey] ?? 0) + 1;
@@ -894,10 +933,21 @@ export function computePackageAutoBalancePlan(params: {
     }
   }
 
+  // If there are still remaining isian that couldn't be placed in math subtests, allocate from end
+  if (remainingIsian > 0) {
+    for (let j = slots.length - 1; j >= 0 && remainingIsian > 0; j--) {
+      if (slots[j].questionType === 'PILIHAN_GANDA') {
+        slots[j].questionType = 'ISIAN_SINGKAT';
+        remainingIsian -= 1;
+      }
+    }
+  }
+
   return {
     totalInPackage: packageQuestions.length,
     subtestCounts,
     difficultyCounts,
+    typeCounts,
     targetDifficultyPct: {
       easy: normRatio.easyPct,
       medium: normRatio.mediumPct,
@@ -919,12 +969,13 @@ export function buildAutoBalancedBatchPrompt(params: {
   const {
     packageLabel,
     slots,
-    questionType = 'PILIHAN_GANDA',
     customInstruction = '',
-    difficultyRatio,
   } = params;
-  const isShort = questionType === 'ISIAN_SINGKAT';
-  const normRatio = normalizeDifficultyComposition(difficultyRatio);
+
+  const totalSlots = slots.length;
+  const pgSlots = slots.filter((s) => s.questionType === 'PILIHAN_GANDA');
+  const isianSlots = slots.filter((s) => s.questionType === 'ISIAN_SINGKAT');
+
   const slotDiffSummary = slots.reduce(
     (acc, s) => {
       acc[s.difficulty] += 1;
@@ -936,54 +987,91 @@ export function buildAutoBalancedBatchPrompt(params: {
   const slotLines = slots
     .map(
       (s) =>
-        `  - Soal #${s.index}: Subtes="${s.subtest}" (${s.subtestShort} - ${s.subtestLabel}) | Topik="${s.topicTitle}" | Subtopik="${s.subtopicTitle}" | topicId="${s.topicId}" | subtopicId="${s.subtopicId}" | Difficulty="${s.difficulty}" (${s.reason})`,
+        `  - Butir #${s.index}: Subtes="${s.subtest}" (${s.subtestShort} - ${s.subtestLabel}) | Tipe="${s.questionType}" | Topik="${s.topicTitle}" | Subtopik="${s.subtopicTitle}" | topicId="${s.topicId}" | subtopicId="${s.subtopicId}" | Difficulty="${s.difficulty}" (${s.reason})`,
     )
     .join('\n');
 
-  return `Kamu adalah Master Pembuat Soal UTBK-SNBT 2026 & Kurator Kurikulum JITU.
-Tugasmu: Buat tepat ${slots.length} soal UTBK baru dengan mode AUTO-BALANCE KURIKULUM untuk paket tujuan: "${packageLabel}".
-Target komposisi level paket: Easy ${normRatio.easyPct}% · Medium ${normRatio.mediumPct}% · Hard ${normRatio.hardPct}% (Batch ini: ${slotDiffSummary.EASY} Easy, ${slotDiffSummary.MEDIUM} Medium, ${slotDiffSummary.HARD} Hard).
+  return `### IDENTITAS & PERAN SISTEM (ROLEPLAY)
+Kamu adalah **Senior Assessment Specialist, Psychometrician, & Master Author Soal UTBK-SNBT di Jitu PTN**.
+**Jitu PTN** adalah platform edukasi edtech terdepan di Indonesia yang mengkhususkan diri pada persiapan seleksi masuk Perguruan Tinggi Negeri (UTBK-SNBT). Jitu berfokus pada penalaran konseptual kritis (Higher-Order Thinking Skills / HOTS), eliminasi hafalan buta, dan penyajian pembahasan interaktif bertahap yang ramah siswa SMA (student-friendly, santai, komunikatif, tidak kaku, dengan trik cerdas "Jurus Jitu").
 
-RENCANA DISTRIBUSI SOAL (WAJIB DIIKUTI PERSIS URUT SOAL #1 SAMPAI #${slots.length}):
+Seluruh butir soal yang kamu susun mengacu ketat pada standar resmi **Balai Pengelolaan Pengujian Pendidikan (BP3 / SNPMB Kemendikbudristek)** dengan karakteristik:
+1. Stimulus bacaan/data autentik, relevan dengan fenomena nyata, dan tidak membosankan.
+2. Logika inferensi yang presisi, bebas dari multitafsir atau ambiguitas kalimat.
+3. Distraktor (opsi pengecoh) yang masuk akal dan berbasis miskonsepsi umum siswa, bukan angka/kata acak.
+4. Daya beda psikometri tinggi yang secara efektif membedakan siswa berkemampuan tinggi dan rendah.
+
+---
+
+### MISI PEMBUATAN BATCH SOAL (AUTO-BALANCE ENGINE)
+Buat tepat **${totalSlots} butir soal UTBK-SNBT baru** dengan mode **AUTO-BALANCE KURIKULUM & TIPE SOAL** untuk paket tujuan:
+👉 **"${packageLabel}"**
+
+**Komposisi Rencana Batch Ini:**
+- **Tipe Soal:** ${pgSlots.length} Pilihan Ganda (A-E) · ${isianSlots.length} Isian Singkat
+- **Tingkat Kesulitan:** ${slotDiffSummary.EASY} Mudah (Easy) · ${slotDiffSummary.MEDIUM} Sedang (Medium) · ${slotDiffSummary.HARD} Sulit (Hard HOTS)
+
+---
+
+### RENCANA DISTRIBUSI SLOT BUTIR (WAJIB DIIKUTI PERSIS DARI BUTIR #1 SAMPAI #${totalSlots}):
 ${slotLines}
-${customInstruction.trim() ? `\nINSTRUKSI TAMBAHAN DARI PENYUSUN:\n${customInstruction.trim()}\n` : ''}
-ATURAN KUALITAS & FORMAT WAJIB:
-1. Kembalikan HANYA JSON Array valid \`[ ... ]\` berisi tepat ${slots.length} objek soal tanpa teks pembuka/penutup di luar JSON.
-2. Setiap objek soal WAJIB menyertakan field \`"subtest"\`, \`"topicId"\`, \`"subtopicId"\`, \`"topic"\`, \`"subtopic"\`, dan \`"difficulty"\` persis sesuai daftar slot di atas agar otomatis terpetakan ke kurikulum dan subtes saat di-import!
-3. Jika soal memiliki pernyataan bernomor (1), (2), (3), (4) atau daftar premis, WAJIB pisahkan setiap pernyataan dengan baris baru (\\n) di dalam \`"content"\` agar rapi.
-4. Gunakan LaTeX \`$...$\` (inline) atau \`$$...$$\` (blok) untuk semua rumus/simbol matematika.
-5. Pembahasan (\`solutionSteps\` & \`quickTrick\`) WAJIB memakai bahasa yang santai, jelas, dan mudah dipahami anak SMA kelas 12. Gunakan tag \`<hl>kesimpulan kunci</hl>\` maksimal 1 kali pada langkah terpenting untuk animasi stabilo kuning.
+${customInstruction.trim() ? `\n### INSTRUKSI TAMBAHAN DARI PENYUSUN:\n${customInstruction.trim()}\n` : ''}
+---
 
-FORMAT JSON ARRAY YANG WAJIB DIKELUARKAN:
+### ATURAN KUALITAS & FORMAT STANDAR BP3 / JITU PTN:
+1. **JSON Output Murni:** Kembalikan **HANYA** JSON Array valid \`[ ... ]\` berisi tepat ${totalSlots} objek butir soal tanpa teks pembuka/penutup di luar JSON.
+2. **Field Metadata Wajib:** Setiap objek butir soal WAJIB menyertakan field \`"subtest"\`, \`"topicId"\`, \`"subtopicId"\`, \`"topic"\`, \`"subtopic"\`, \`"type"\`, dan \`"difficulty"\` persis sesuai pemetaan slot di atas!
+3. **Ketentuan Tipe PILIHAN_GANDA:**
+   - Field \`"type"\`: bernilai \`"PILIHAN_GANDA"\`.
+   - Field \`"options"\`: berisi tepat 5 opsi (A, B, C, D, E) dengan tepat 1 \`"isCorrect": true\` dan 4 \`"isCorrect": false\`.
+   - Field \`"correctAnswer"\`: bernilai \`null\`.
+4. **Ketentuan Tipe ISIAN_SINGKAT (Standar SNBT):**
+   - Field \`"type"\`: bernilai \`"ISIAN_SINGKAT"\`.
+   - Field \`"options"\`: bernilai array kosong \`[]\`.
+   - Field \`"correctAnswer"\`: string angka bilangan bulat eksak (contoh: \`"42"\`), tanpa satuan dan bukan desimal.
+   - Pada akhir teks pertanyaan (field \`"content"\`), **WAJIB** cantumkan petunjuk format berikut:
+     \`\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]\`
+5. **Format Soal & Rumus:**
+   - Jika soal memuat pernyataan bernomor (1), (2), (3), (4) atau perbandingan P dan Q, wajib pisahkan setiap baris pernyataan dengan newline (\`\\n\`) di dalam \`"content"\`.
+   - Wajib gunakan LaTeX format inline \`$...$\` atau block \`$$...$$\` untuk semua simbol dan rumus matematika.
+6. **Pembahasan Pedagogis Khas Jitu PTN:**
+   - Gunakan gaya bahasa tutor yang ramah, komunikatif, dan lugas (ala kakak pembimbing alumni PTN top).
+   - Array \`"solutionSteps"\` wajib terdiri dari 2–5 langkah terstruktur dengan judul langkah yang jelas.
+   - Cantumkan tag \`<hl>poin kesimpulan kunci</hl>\` maksimal 1 kali pada langkah inti untuk animasi stabilo interaktif.
+   - Sertakan \`"quickTrick"\` (Jurus Cepat 30 detik JITU) dan \`"keyFormula"\` (rumus/konsep inti).
+
+---
+
+### CONTOH FORMAT JSON ARRAY VALID:
+\`\`\`json
 [
   {
     "subtest": "${slots[0]?.subtest || 'PENALARAN_UMUM'}",
     "topicId": "${slots[0]?.topicId || ''}",
     "subtopicId": "${slots[0]?.subtopicId || ''}",
-    "topic": "${slots[0]?.topicTitle || ''}",
-    "subtopic": "${slots[0]?.subtopicTitle || ''}",
+    "topic": "${slots[0]?.topicTitle || 'Topik Inti'}",
+    "subtopic": "${slots[0]?.subtopicTitle || 'Subtopik Inti'}",
     "difficulty": "${slots[0]?.difficulty || 'MEDIUM'}",
-    "type": "${isShort ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA'}",
-    "narration": "Teks bacaan jika perlu, atau kosongkan",
-    "content": "Teks pertanyaan utama...",
-    ${
-      isShort
-        ? `"correctAnswer": "Jawaban singkat eksak",
-    "options": [],`
-        : `"options": [
+    "type": "${slots[0]?.questionType || 'PILIHAN_GANDA'}",
+    "narration": "Stimulus bacaan atau konteks naratif jika diperlukan, atau null",
+    "content": "Pertanyaan utama soal...",
+    "options": [
       { "order": 1, "content": "Opsi A", "isCorrect": false },
       { "order": 2, "content": "Opsi B", "isCorrect": true },
       { "order": 3, "content": "Opsi C", "isCorrect": false },
       { "order": 4, "content": "Opsi D", "isCorrect": false },
       { "order": 5, "content": "Opsi E", "isCorrect": false }
-    ],`
-    }
-    "quickTrick": "Jurus Cepat JITU ala mentor SMA...",
-    "keyFormula": "Rumus atau konsep kunci...",
+    ],
+    "correctAnswer": null,
+    "quickTrick": "Jurus Cepat JITU: Perhatikan eliminasi langsung dari pola angka...",
+    "keyFormula": "Konsep atau Teorema Utama",
     "solutionSteps": [
-      { "order": 1, "title": "Identifikasi", "content": "Penjelasan langkah 1..." },
-      { "order": 2, "title": "Kesimpulan", "content": "Penjelasan langkah 2... <hl>poin inti jawaban</hl>" }
+      { "order": 1, "title": "Pahami Masalah", "content": "Identifikasi data penting dari soal..." },
+      { "order": 2, "title": "Eksekusi Solusi", "content": "Lakukan perhitungan matematis / penalaran inferensial..." },
+      { "order": 3, "title": "Kesimpulan", "content": "Maka jawaban yang benar adalah <hl>Opsi B</hl>." }
     ]
   }
-]`;
+]
+\`\`\`
+Pastikan seluruh string JSON ter-escape dengan benar (misal backslash LaTeX ditulis ganda \`\\\\\`) agar valid ketika di-parse.`;
 }

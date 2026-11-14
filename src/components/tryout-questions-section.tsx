@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Search,
   Send,
+  Sliders,
   Sparkles,
   Trash2,
 } from 'lucide-react';
@@ -36,6 +37,7 @@ import {
   TryoutSubtestTimerPanel,
   TryoutWorkflowHeader,
 } from './tryout-workflow-balancer';
+import { AutoBalanceAdjusterModal } from './auto-balance-adjuster-modal';
 
 type TryoutMeta = {
   id: string;
@@ -190,6 +192,7 @@ export function TryoutQuestionsSection({
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [removingBatch, setRemovingBatch] = React.useState(false);
   const [previewQuestion, setPreviewQuestion] = React.useState<TryoutAssignedQuestion | null>(null);
+  const [autoBalanceModalOpen, setAutoBalanceModalOpen] = React.useState(false);
 
   const onErrorRef = React.useRef(onError);
   const onQuestionsChangedRef = React.useRef(onQuestionsChanged);
@@ -578,6 +581,22 @@ export function TryoutQuestionsSection({
           >
             <RefreshCw style={{ width: 14, height: 14 }} />
             <span>Refresh</span>
+          </button>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => setAutoBalanceModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              borderColor: 'rgba(56, 189, 248, 0.45)',
+              color: '#38bdf8',
+              background: 'rgba(56, 189, 248, 0.08)',
+            }}
+          >
+            <Sliders style={{ width: 14, height: 14 }} />
+            <span>Atur Auto-Balance Paket</span>
           </button>
           {onOpenCreateForTryout && (
             <button
@@ -1555,6 +1574,21 @@ export function TryoutQuestionsSection({
           setRevisionNotesDraft('');
         }}
         onConfirm={() => void handleConfirmRevision()}
+      />
+
+      {/* AUTO-BALANCE ADJUSTER MODAL */}
+      <AutoBalanceAdjusterModal
+        open={autoBalanceModalOpen}
+        onClose={() => setAutoBalanceModalOpen(false)}
+        destination="FOR_TRYOUT"
+        packageTitle={tryoutMeta?.title || 'Paket Tryout'}
+        packageQuestions={assignedQuestions}
+        curriculumTopics={workspace?.curriculumTopics || []}
+        onOpenAiGenerator={
+          onOpenCreateForTryout
+            ? () => onOpenCreateForTryout(tryoutId)
+            : undefined
+        }
       />
     </section>
   );
