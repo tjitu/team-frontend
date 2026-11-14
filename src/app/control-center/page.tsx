@@ -66,6 +66,7 @@ import { TryoutQuestionsSection } from '@/components/tryout-questions-section';
 import { SoalAsliSection } from '@/components/soal-asli-section';
 import { KotakRevisiBanner, BulkRevisionModal, RevisionRequestModal } from '@/components/question-workflow-modals';
 import { AutoBalanceAdjusterModal } from '@/components/auto-balance-adjuster-modal';
+import { getAutoBalanceConfig } from '@/components/auto-balance-settings';
 import {
   QuestionBatchField,
   mergeBatchSummaries,
@@ -937,6 +938,16 @@ function ControlCenterContent() {
     return questions.filter((q) => q.target !== 'SOAL_ASLI' && q.status !== 'RETIRED');
   }, [createTarget, createTryoutId, questions]);
 
+  const activeAutoBalanceScope = React.useMemo(() => {
+    if (createTarget === 'FOR_TRYOUT' && createTryoutId) return createTryoutId;
+    if (createTarget === 'FOR_PRACTICE') return 'PRACTICE';
+    return 'DRAFT';
+  }, [createTarget, createTryoutId]);
+
+  const activeTargetConfig = React.useMemo(() => {
+    return getAutoBalanceConfig(activeAutoBalanceScope);
+  }, [activeAutoBalanceScope, questionFormOpen, createMethodModalOpen]);
+
   const autoBalanceAnalysis = React.useMemo(() => {
     return computePackageAutoBalancePlan({
       destination: createTarget,
@@ -944,13 +955,14 @@ function ControlCenterContent() {
       curriculumTopics: topics as any,
       count: autoBalanceCount,
       scopeSubtest: autoBalanceSubtestScope,
-      difficultyRatio: difficultyComposition,
+      targetIsianPct: activeTargetConfig.isianPercentage,
+      difficultyRatio: activeTargetConfig.difficulty,
     });
-  }, [createTarget, currentPackageQuestions, topics, autoBalanceCount, autoBalanceSubtestScope, difficultyComposition]);
+  }, [createTarget, currentPackageQuestions, topics, autoBalanceCount, autoBalanceSubtestScope, activeTargetConfig]);
 
   React.useEffect(() => {
     setCustomBalanceSlots(null);
-  }, [createTarget, createTryoutId, autoBalanceCount, autoBalanceSubtestScope, difficultyComposition]);
+  }, [createTarget, createTryoutId, autoBalanceCount, autoBalanceSubtestScope, activeTargetConfig]);
 
   const effectiveBalanceSlots = React.useMemo(() => {
     if (customBalanceSlots && customBalanceSlots.length === autoBalanceAnalysis.slots.length) {
@@ -9262,7 +9274,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '11px', fontWeight: 700, color: '#e5e7eb' }}>
-                                  Komposisi Tipe (Otomatis):
+                                  Komposisi Penyeimbang Batch:
                                 </span>
                                 <span style={{ fontSize: '11px', color: '#38bdf8', fontWeight: 600 }}>
                                   {effectiveBalanceSlots.filter((s) => s.questionType === 'PILIHAN_GANDA').length} PG (A-E)
@@ -9271,7 +9283,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                   <>
                                     <span style={{ color: 'var(--muted-fg)' }}>·</span>
                                     <span style={{ fontSize: '11px', color: '#c084fc', fontWeight: 600 }}>
-                                      {effectiveBalanceSlots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length} Isian Singkat (PK/PM)
+                                      {effectiveBalanceSlots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length} Isian Singkat
                                     </span>
                                   </>
                                 )}
@@ -9284,9 +9296,9 @@ ${totalPromptCount > 1 ? ']' : ''}`;
                                     border: '1px solid rgba(56, 189, 248, 0.3)',
                                     padding: '1px 6px',
                                   }}
-                                  title="Isian Singkat dialokasikan otomatis khusus subtes Matematika (PK/PM) bila terdapat defisit, subtes penalaran lainnya 100% PG sesuai regulasi resmi BP3"
+                                  title={`Mengikuti Target Pengaturan: ${activeTargetConfig.isianPercentage}% Isian · Level ${activeTargetConfig.difficulty.easy}/${activeTargetConfig.difficulty.medium}/${activeTargetConfig.difficulty.hard}`}
                                 >
-                                  SNBT BP3
+                                  Target: {activeTargetConfig.isianPercentage}% Isian
                                 </span>
                               </div>
                               <div style={{ fontSize: '11px', color: '#34d399', fontWeight: 600 }}>
@@ -9904,6 +9916,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
           open={Boolean(tableAutoBalanceTryout)}
           onClose={() => setTableAutoBalanceTryout(null)}
           destination="FOR_TRYOUT"
+          scopeKey={tableAutoBalanceTryout.id}
           packageTitle={tableAutoBalanceTryout.title}
           packageQuestions={questions.filter((q) => q.tryoutId === tableAutoBalanceTryout.id)}
           curriculumTopics={topics as any}

@@ -1403,6 +1403,7 @@ export function PracticeSection({
         open={autoBalanceModalOpen}
         onClose={() => setAutoBalanceModalOpen(false)}
         destination="FOR_PRACTICE"
+        scopeKey="PRACTICE"
         packageTitle="Paket Global Latihan (/latihan)"
         packageQuestions={workspace?.assignedQuestions || []}
         curriculumTopics={curriculumTopics}

@@ -1582,6 +1582,7 @@ export function TryoutQuestionsSection({
         open={autoBalanceModalOpen}
         onClose={() => setAutoBalanceModalOpen(false)}
         destination="FOR_TRYOUT"
+        scopeKey={tryoutId}
         packageTitle={tryoutMeta?.title || 'Paket Tryout'}
         packageQuestions={assignedQuestions}
         curriculumTopics={workspace?.curriculumTopics || []}

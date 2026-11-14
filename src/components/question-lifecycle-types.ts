@@ -727,6 +727,16 @@ export type PackageAutoBalanceAnalysis = {
   difficultyCounts: { EASY: number; MEDIUM: number; HARD: number };
   typeCounts: { PILIHAN_GANDA: number; ISIAN_SINGKAT: number };
   targetDifficultyPct: { easy: number; medium: number; hard: number };
+  targetIsianPct: number;
+  existingDifficultyPct: { easy: number; medium: number; hard: number };
+  existingIsianPct: number;
+  deficit: {
+    isian: number;
+    pg: number;
+    easy: number;
+    medium: number;
+    hard: number;
+  };
   uncoveredSubtopicsCount: number;
   totalCurriculumSubtopics: number;
   slots: AutoBalanceSlot[];
@@ -751,6 +761,7 @@ export function computePackageAutoBalancePlan(params: {
   curriculumTopics: TryoutCurriculumTopic[];
   count: number;
   scopeSubtest?: string;
+  targetIsianPct?: number;
   typeComposition?: QuestionTypeComposition;
   difficultyRatio?: DifficultyComposition;
 }): PackageAutoBalanceAnalysis {
@@ -760,11 +771,20 @@ export function computePackageAutoBalancePlan(params: {
     curriculumTopics,
     count,
     scopeSubtest = 'AUTO',
+    targetIsianPct,
     typeComposition,
     difficultyRatio,
   } = params;
   const safeCount = Math.max(1, Math.min(25, Number(count) || 5));
   const normRatio = normalizeDifficultyComposition(difficultyRatio);
+
+  // Resolved target isian % (default 15%, or derived from typeComposition if provided)
+  const resolvedTargetIsianPct =
+    typeof targetIsianPct === 'number'
+      ? Math.max(0, Math.min(50, Math.round(targetIsianPct)))
+      : typeof typeComposition?.isianCount === 'number' && safeCount > 0
+        ? Math.round((typeComposition.isianCount / safeCount) * 100)
+        : 15;
 
   const subtestCounts: Record<string, { count: number; targetQuota: number; short: string; label: string }> = {};
   for (const spec of OFFICIAL_SNBT_SUBTEST_SPEC) {
@@ -807,6 +827,26 @@ export function computePackageAutoBalancePlan(params: {
     }
   }
 
+  const existingTotal = packageQuestions.length;
+  const existingIsianPct = existingTotal > 0 ? Math.round((typeCounts.ISIAN_SINGKAT / existingTotal) * 100) : 0;
+  const existingEasyPct = existingTotal > 0 ? Math.round((difficultyCounts.EASY / existingTotal) * 100) : 0;
+  const existingHardPct = existingTotal > 0 ? Math.round((difficultyCounts.HARD / existingTotal) * 100) : 0;
+  const existingMedPct = existingTotal > 0 ? Math.max(0, 100 - existingEasyPct - existingHardPct) : 0;
+
+  // Gap / Deficit calculation: Target Settings - Existing State
+  const totalAfterBatch = existingTotal + safeCount;
+  const idealIsianTotal = Math.round((totalAfterBatch * resolvedTargetIsianPct) / 100);
+  const isianDeficit = Math.max(0, idealIsianTotal - typeCounts.ISIAN_SINGKAT);
+  const batchIsianTarget = Math.min(safeCount, isianDeficit);
+
+  const idealEasyTotal = Math.round(totalAfterBatch * normRatio.easyShare);
+  const idealHardTotal = Math.round(totalAfterBatch * normRatio.hardShare);
+  const idealMedTotal = Math.max(0, totalAfterBatch - idealEasyTotal - idealHardTotal);
+  const easyDeficit = idealEasyTotal - difficultyCounts.EASY;
+  const medDeficit = idealMedTotal - difficultyCounts.MEDIUM;
+  const hardDeficit = idealHardTotal - difficultyCounts.HARD;
+  const pgDeficit = Math.max(0, (totalAfterBatch - idealIsianTotal) - typeCounts.PILIHAN_GANDA);
+
   type FlatSubtopic = {
     subtestKey: string;
     topicId: string;
@@ -846,17 +886,7 @@ export function computePackageAutoBalancePlan(params: {
     simSubtopicCounts.set(item.subtopicId, item.existingCount);
   }
 
-  // Track existing isian count per subtest
-  const existingIsianBySubtest: Record<string, number> = {};
-  for (const q of packageQuestions) {
-    const t = String(q.type || 'PILIHAN_GANDA').toUpperCase();
-    if (t === 'ISIAN_SINGKAT' || t === 'SHORT_ANSWER') {
-      const normSub = normalizeSubtestKey(q.subtest || '');
-      existingIsianBySubtest[normSub] = (existingIsianBySubtest[normSub] || 0) + 1;
-    }
-  }
-  const simIsianBySubtest = { ...existingIsianBySubtest };
-
+  let remainingBatchIsian = batchIsianTarget;
   const slots: AutoBalanceSlot[] = [];
 
   for (let i = 0; i < safeCount; i++) {
@@ -899,18 +929,17 @@ export function computePackageAutoBalancePlan(params: {
       ? (simSubtopicCounts.get(chosenSubtopic.subtopicId) ?? chosenSubtopic.existingCount)
       : 0;
 
-    // Automatic Question Type Allocation strictly based on SNBT BP3 Regulations:
-    // Only PK (Pengetahuan Kuantitatif) and PM (Penalaran Matematika) have short answer questions (target 2-3 per 20 questions).
-    // All other subtests are strictly 100% Multiple Choice (Pilihan Ganda A-E).
+    // Automatic Question Type Allocation based on Target Gap & Subtest suitability:
     const isMathSubtest =
       chosenSubtestKey === 'PENGETAHUAN_KUANTITATIF' || chosenSubtestKey === 'PENALARAN_MATEMATIKA';
-    const targetIsianQuota = isMathSubtest ? 2 : 0;
-    const currentIsianInSubtest = simIsianBySubtest[chosenSubtestKey] || 0;
+    const slotsRemaining = safeCount - i;
 
     let slotType: 'PILIHAN_GANDA' | 'ISIAN_SINGKAT' = 'PILIHAN_GANDA';
-    if (isMathSubtest && currentIsianInSubtest < targetIsianQuota) {
-      slotType = 'ISIAN_SINGKAT';
-      simIsianBySubtest[chosenSubtestKey] = currentIsianInSubtest + 1;
+    if (remainingBatchIsian > 0) {
+      if (isMathSubtest || destination === 'FOR_PRACTICE' || slotsRemaining <= remainingBatchIsian) {
+        slotType = 'ISIAN_SINGKAT';
+        remainingBatchIsian--;
+      }
     }
 
     slots.push({
@@ -927,14 +956,25 @@ export function computePackageAutoBalancePlan(params: {
       currentSubtopicCount: currentSubCount,
       reason:
         currentSubCount === 0
-          ? `Subtopik belum ada di paket (0 soal) · Target ${slotType === 'ISIAN_SINGKAT' ? 'Isian Singkat' : 'PG'} ${chosenDiff}`
-          : `Subtopik baru ${currentSubCount} soal di paket · Target ${slotType === 'ISIAN_SINGKAT' ? 'Isian Singkat' : 'PG'} ${chosenDiff}`,
+          ? `Subtopik belum tercover di paket · Target ${slotType === 'ISIAN_SINGKAT' ? 'Isian Singkat' : 'PG'} ${chosenDiff} (mengejar target setting)`
+          : `Subtopik baru ${currentSubCount} soal · Target ${slotType === 'ISIAN_SINGKAT' ? 'Isian Singkat' : 'PG'} ${chosenDiff}`,
     });
 
     simSubtestCounts[chosenSubtestKey] = (simSubtestCounts[chosenSubtestKey] ?? 0) + 1;
     simDiff[chosenDiff] += 1;
     if (chosenSubtopic) {
       simSubtopicCounts.set(chosenSubtopic.subtopicId, currentSubCount + 1);
+    }
+  }
+
+  // If there are still remaining isian that couldn't be placed, allocate to earlier math slots or last slots
+  if (remainingBatchIsian > 0) {
+    for (let j = 0; j < slots.length && remainingBatchIsian > 0; j++) {
+      if (slots[j].questionType === 'PILIHAN_GANDA') {
+        slots[j].questionType = 'ISIAN_SINGKAT';
+        slots[j].reason = `${slots[j].reason} (Dialokasikan untuk mengejar target ${resolvedTargetIsianPct}% isian)`;
+        remainingBatchIsian--;
+      }
     }
   }
 
@@ -947,6 +987,20 @@ export function computePackageAutoBalancePlan(params: {
       easy: normRatio.easyPct,
       medium: normRatio.mediumPct,
       hard: normRatio.hardPct,
+    },
+    targetIsianPct: resolvedTargetIsianPct,
+    existingDifficultyPct: {
+      easy: existingEasyPct,
+      medium: existingMedPct,
+      hard: existingHardPct,
+    },
+    existingIsianPct,
+    deficit: {
+      isian: isianDeficit,
+      pg: pgDeficit,
+      easy: easyDeficit,
+      medium: medDeficit,
+      hard: hardDeficit,
     },
     uncoveredSubtopicsCount,
     totalCurriculumSubtopics: allSubtopics.length,

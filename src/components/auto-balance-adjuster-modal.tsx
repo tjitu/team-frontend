@@ -3,24 +3,24 @@
 import React from 'react';
 import {
   Check,
-  CheckCircle2,
   Copy,
   Layers,
-  Sparkles,
   Sliders,
+  Sparkles,
   X,
-  FileQuestion,
-  HelpCircle,
-  Hash,
 } from 'lucide-react';
 import {
   buildAutoBalancedBatchPrompt,
   computePackageAutoBalancePlan,
-  getSubtestDisplay,
-  LIFECYCLE_SUBTESTS,
   type AutoBalanceSlot,
   type TryoutCurriculumTopic,
 } from './question-lifecycle-types';
+import {
+  useAutoBalanceConfig,
+  type AutoBalanceTargetConfig,
+} from './auto-balance-settings';
+import { AutoBalanceTargetPanel } from './auto-balance-target-panel';
+import { AutoBalanceGeneratorPanel } from './auto-balance-generator-panel';
 
 export type AutoBalanceAdjusterModalProps = {
   open: boolean;
@@ -39,6 +39,8 @@ export type AutoBalanceAdjusterModalProps = {
     status?: string | null;
   }>;
   curriculumTopics: TryoutCurriculumTopic[];
+  scopeKey?: string;
+  initialTab?: 'TARGET_CONFIG' | 'GENERATOR_GAP';
   onOpenAiGenerator?: (config: {
     slots: AutoBalanceSlot[];
     batchSize: number;
@@ -54,12 +56,32 @@ export function AutoBalanceAdjusterModal({
   packageTitle,
   packageQuestions,
   curriculumTopics,
+  scopeKey,
+  initialTab = 'TARGET_CONFIG',
   onOpenAiGenerator,
 }: AutoBalanceAdjusterModalProps) {
+  const effectiveScope = scopeKey || (destination === 'FOR_PRACTICE' ? 'PRACTICE' : packageTitle);
+  const { config: storedConfig, saveConfig } = useAutoBalanceConfig(effectiveScope);
+
+  const [activeTab, setActiveTab] = React.useState<'TARGET_CONFIG' | 'GENERATOR_GAP'>(initialTab);
+  const [draftConfig, setDraftConfig] = React.useState<AutoBalanceTargetConfig>(storedConfig);
+  const [savedNotice, setSavedNotice] = React.useState<boolean>(false);
+
   const [batchCount, setBatchCount] = React.useState<number>(8);
-  const [subtestScope, setSubtestScope] = React.useState<string>('AUTO');
+  const [subtestScope, setSubtestScope] = React.useState<string>(storedConfig.subtestScope || 'AUTO');
   const [customInstruction, setCustomInstruction] = React.useState<string>('');
   const [copied, setCopied] = React.useState<boolean>(false);
+
+  // Sync draftConfig when storedConfig loads/changes
+  React.useEffect(() => {
+    setDraftConfig(storedConfig);
+  }, [storedConfig]);
+
+  React.useEffect(() => {
+    if (open) {
+      setActiveTab(initialTab);
+    }
+  }, [open, initialTab]);
 
   const plan = React.useMemo(() => {
     return computePackageAutoBalancePlan({
@@ -68,8 +90,10 @@ export function AutoBalanceAdjusterModal({
       curriculumTopics,
       count: batchCount,
       scopeSubtest: subtestScope,
+      targetIsianPct: draftConfig.isianPercentage,
+      difficultyRatio: draftConfig.difficulty,
     });
-  }, [destination, packageQuestions, curriculumTopics, batchCount, subtestScope]);
+  }, [destination, packageQuestions, curriculumTopics, batchCount, subtestScope, draftConfig]);
 
   const generatedPrompt = React.useMemo(() => {
     return buildAutoBalancedBatchPrompt({
@@ -81,6 +105,12 @@ export function AutoBalanceAdjusterModal({
 
   if (!open) return null;
 
+  function handleSaveTargetConfig() {
+    saveConfig(draftConfig);
+    setSavedNotice(true);
+    setTimeout(() => setSavedNotice(false), 2500);
+  }
+
   async function handleCopyPrompt() {
     try {
       await navigator.clipboard.writeText(generatedPrompt);
@@ -91,11 +121,6 @@ export function AutoBalanceAdjusterModal({
     }
   }
 
-  function handleBatchChange(val: number) {
-    const nextCount = Math.max(1, Math.min(25, val));
-    setBatchCount(nextCount);
-  }
-
   return (
     <div
       role="dialog"
@@ -104,8 +129,8 @@ export function AutoBalanceAdjusterModal({
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(0, 0, 0, 0.78)',
+        backdropFilter: 'blur(5px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -115,23 +140,23 @@ export function AutoBalanceAdjusterModal({
       <div
         style={{
           width: '100%',
-          maxWidth: '860px',
+          maxWidth: '890px',
           maxHeight: '92vh',
           background: '#0f172a',
           border: '1px solid rgba(56, 189, 248, 0.35)',
           borderRadius: '16px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.75)',
           overflow: 'hidden',
         }}
       >
         {/* HEADER */}
         <div
           style={{
-            padding: '16px 20px',
+            padding: '14px 20px',
             borderBottom: '1px solid var(--border)',
-            background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(15, 23, 42, 0.8))',
+            background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(15, 23, 42, 0.85))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -157,14 +182,14 @@ export function AutoBalanceAdjusterModal({
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
-                  Auto-Balance Engine
+                  Auto-Balance Engine & Settings
                 </h3>
                 <span className="pill" style={{ background: 'rgba(16, 185, 129, 0.16)', color: '#34d399', fontSize: '10px' }}>
-                  Paket: {packageTitle}
+                  {packageTitle}
                 </span>
               </div>
-              <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
-                Seimbangkan komposisi tipe soal (PG & Isian) serta cakupan materi kurikulum secara otomatis.
+              <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--muted-fg)' }}>
+                Atur target komposisi dan seimbangkan defisit tipe & level secara otomatis.
               </p>
             </div>
           </div>
@@ -178,206 +203,81 @@ export function AutoBalanceAdjusterModal({
           </button>
         </div>
 
-        {/* BODY */}
-        <div style={{ padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* STATS BANNER */}
-          <div
+        {/* TAB NAVIGATION */}
+        <div
+          style={{
+            display: 'flex',
+            padding: '0 20px',
+            borderBottom: '1px solid var(--border)',
+            background: 'rgba(0,0,0,0.2)',
+            gap: '8px',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab('TARGET_CONFIG')}
             style={{
               padding: '10px 14px',
-              borderRadius: '10px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              background: 'rgba(255, 255, 255, 0.02)',
+              fontSize: '12px',
+              fontWeight: 700,
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'TARGET_CONFIG' ? '2px solid #38bdf8' : '2px solid transparent',
+              color: activeTab === 'TARGET_CONFIG' ? '#38bdf8' : 'var(--muted-fg)',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              flexWrap: 'wrap',
-              fontSize: '11px',
+              gap: '6px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              <div>
-                <span style={{ color: 'var(--muted-fg)' }}>Soal di Paket: </span>
-                <strong style={{ color: '#f8fafc' }}>{plan.totalInPackage} butir</strong>
-              </div>
-              <div>
-                <span style={{ color: 'var(--muted-fg)' }}>Komposisi Saat Ini: </span>
-                <strong style={{ color: '#38bdf8' }}>{plan.typeCounts.PILIHAN_GANDA} PG</strong> ·{' '}
-                <strong style={{ color: '#c084fc' }}>{plan.typeCounts.ISIAN_SINGKAT} Isian</strong>
-              </div>
-              <div>
-                <span style={{ color: 'var(--muted-fg)' }}>Materi Kurikulum Kosong: </span>
-                <strong style={{ color: plan.uncoveredSubtopicsCount > 0 ? '#fbbf24' : '#34d399' }}>
-                  {plan.uncoveredSubtopicsCount}/{plan.totalCurriculumSubtopics} subtopik
-                </strong>
-              </div>
-            </div>
-            <div style={{ color: '#34d399', fontWeight: 600 }}>
-              Level kesulitan diseimbangkan otomatis (E/M/H)
-            </div>
-          </div>
+            <Sliders style={{ width: 14, height: 14 }} />
+            <span>1. Pengaturan Target Komposisi</span>
+          </button>
 
-          {/* CONTROLS GRID */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-            {/* BATCH SIZE */}
-            <div style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: '#93c5fd', display: 'block', marginBottom: '6px' }}>
-                Jumlah Butir Batch (1-25)
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input
-                  type="number"
-                  min={1}
-                  max={25}
-                  value={batchCount}
-                  onChange={(e) => handleBatchChange(parseInt(e.target.value, 10) || 1)}
-                  className="field-input"
-                  style={{ width: '80px', height: '32px', fontSize: '13px', fontWeight: 700 }}
-                />
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {[5, 8, 10, 15].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => handleBatchChange(preset)}
-                      className={`pill ${batchCount === preset ? 'pill-active' : ''}`}
-                      style={{
-                        cursor: 'pointer',
-                        padding: '3px 8px',
-                        fontSize: '11px',
-                        background: batchCount === preset ? '#38bdf8' : 'rgba(255,255,255,0.06)',
-                        color: batchCount === preset ? '#000' : 'var(--foreground)',
-                      }}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('GENERATOR_GAP')}
+            style={{
+              padding: '10px 14px',
+              fontSize: '12px',
+              fontWeight: 700,
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'GENERATOR_GAP' ? '2px solid #38bdf8' : '2px solid transparent',
+              color: activeTab === 'GENERATOR_GAP' ? '#38bdf8' : 'var(--muted-fg)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Sparkles style={{ width: 14, height: 14 }} />
+            <span>2. Generator & Gap Soal ({plan.slots.length} Butir)</span>
+          </button>
+        </div>
 
-            {/* QUESTION TYPE COMPOSITION (AUTO-BALANCED READ-ONLY SUMMARY) */}
-            <div style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: '#93c5fd', margin: 0 }}>
-                  Komposisi Tipe Soal (Otomatis)
-                </label>
-                <span className="pill" style={{ background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', fontSize: '10px', padding: '1px 6px' }}>
-                  Regulasi SNBT BP3
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8' }}>
-                  {plan.slots.filter((s) => s.questionType === 'PILIHAN_GANDA').length} PG (A-E)
-                </span>
-                {plan.slots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length > 0 ? (
-                  <>
-                    <span style={{ color: 'var(--muted-fg)' }}>·</span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#c084fc' }}>
-                      {plan.slots.filter((s) => s.questionType === 'ISIAN_SINGKAT').length} Isian Singkat
-                    </span>
-                  </>
-                ) : null}
-              </div>
-              <p style={{ margin: '4px 0 0', fontSize: '10px', color: 'var(--muted-fg)' }}>
-                Isian dialokasikan otomatis khusus subtes Matematika (PK/PM) bila ada defisit; subtes lain 100% PG.
-              </p>
-            </div>
-
-            {/* SUBTEST SCOPE */}
-            <div style={{ padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border)', background: 'rgba(0,0,0,0.2)' }}>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: '#93c5fd', display: 'block', marginBottom: '6px' }}>
-                Fokus Subtes Sasaran
-              </label>
-              <select
-                className="field-input"
-                style={{ width: '100%', height: '32px', fontSize: '12px' }}
-                value={subtestScope}
-                onChange={(e) => setSubtestScope(e.target.value)}
-              >
-                <option value="AUTO">Otomatis Seimbangkan Semua Subtes Defisit</option>
-                {LIFECYCLE_SUBTESTS.map((st) => {
-                  const stat = plan.subtestCounts[st.value];
-                  return (
-                    <option key={st.value} value={st.value}>
-                      {st.code} — {st.label} ({stat?.count ?? 0}/{stat?.targetQuota ?? 20} soal)
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          </div>
-
-          {/* SLOTS PREVIEW TABLE */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <strong style={{ fontSize: '12px', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Layers style={{ width: 14, height: 14, color: '#38bdf8' }} />
-                Rencana {plan.slots.length} Butir Soal Terseimbang
-              </strong>
-              <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
-                Tiap butir dialokasikan otomatis ke materi & subtes yang paling membutuhkan
-              </span>
-            </div>
-
-            <div style={{ maxHeight: '230px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '10px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(0,0,0,0.35)', color: '#94a3b8', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '8px 10px', width: '38px' }}>#</th>
-                    <th style={{ padding: '8px 10px', width: '70px' }}>Subtes</th>
-                    <th style={{ padding: '8px 10px', width: '100px' }}>Tipe</th>
-                    <th style={{ padding: '8px 10px' }}>Materi Kurikulum</th>
-                    <th style={{ padding: '8px 10px', width: '70px' }}>Level</th>
-                    <th style={{ padding: '8px 10px' }}>Status Alokasi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.slots.map((s) => (
-                    <tr key={s.index} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td style={{ padding: '6px 10px', color: 'var(--muted-fg)', fontWeight: 700 }}>{s.index}</td>
-                      <td style={{ padding: '6px 10px' }}>
-                        <span className="pill" style={{ background: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', fontSize: '10px', fontWeight: 700 }}>
-                          {s.subtestShort}
-                        </span>
-                      </td>
-                      <td style={{ padding: '6px 10px' }}>
-                        <span
-                          className="pill"
-                          style={{
-                            background: s.questionType === 'ISIAN_SINGKAT' ? 'rgba(192, 132, 252, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                            color: s.questionType === 'ISIAN_SINGKAT' ? '#c084fc' : '#60a5fa',
-                            fontSize: '10px',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {s.questionType === 'ISIAN_SINGKAT' ? 'Isian' : 'PG (A-E)'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '6px 10px', color: '#f1f5f9' }}>
-                        <div style={{ fontWeight: 600 }}>{s.topicTitle}</div>
-                        <div style={{ fontSize: '10px', color: 'var(--muted-fg)' }}>{s.subtopicTitle}</div>
-                      </td>
-                      <td style={{ padding: '6px 10px' }}>
-                        <span
-                          style={{
-                            fontSize: '10px',
-                            fontWeight: 700,
-                            color: s.difficulty === 'EASY' ? '#34d399' : s.difficulty === 'HARD' ? '#f87171' : '#fbbf24',
-                          }}
-                        >
-                          {s.difficulty}
-                        </span>
-                      </td>
-                      <td style={{ padding: '6px 10px', fontSize: '10px', color: 'var(--muted-fg)' }}>
-                        {s.reason}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* MODAL BODY */}
+        <div style={{ padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {activeTab === 'TARGET_CONFIG' ? (
+            <AutoBalanceTargetPanel
+              config={draftConfig}
+              onChangeConfig={setDraftConfig}
+              onSaveConfig={handleSaveTargetConfig}
+              savedNotice={savedNotice}
+              analysis={plan}
+              onGoToGenerator={() => setActiveTab('GENERATOR_GAP')}
+            />
+          ) : (
+            <AutoBalanceGeneratorPanel
+              batchCount={batchCount}
+              onBatchChange={setBatchCount}
+              subtestScope={subtestScope}
+              onSubtestScopeChange={setSubtestScope}
+              customInstruction={customInstruction}
+              onCustomInstructionChange={setCustomInstruction}
+              analysis={plan}
+            />
+          )}
         </div>
 
         {/* FOOTER */}
@@ -394,7 +294,8 @@ export function AutoBalanceAdjusterModal({
           }}
         >
           <div style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
-            Prompt memuat identitas kurator Jitu PTN & format standar psikometri SNBT.
+            Target aktif: <strong style={{ color: '#c084fc' }}>{draftConfig.isianPercentage}% Isian</strong> ·{' '}
+            <strong style={{ color: '#38bdf8' }}>Level {draftConfig.difficulty.easy}/{draftConfig.difficulty.medium}/{draftConfig.difficulty.hard}</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
@@ -412,7 +313,7 @@ export function AutoBalanceAdjusterModal({
               }}
             >
               {copied ? <Check style={{ width: 14, height: 14 }} /> : <Copy style={{ width: 14, height: 14 }} />}
-              <span>{copied ? 'Tersalin ke Clipboard!' : 'Salin Prompt Siap Pakai'}</span>
+              <span>{copied ? 'Tersalin!' : 'Salin Prompt Penyeimbang'}</span>
             </button>
 
             {onOpenAiGenerator && (
