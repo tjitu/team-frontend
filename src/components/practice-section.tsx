@@ -2,22 +2,14 @@
 
 import React from 'react';
 import {
-  AlertTriangle,
   BookOpen,
   Check,
-  CheckCircle2,
-  ExternalLink,
-  Eye,
   Lock,
-  Pencil,
   Plus,
   RefreshCw,
-  RotateCcw,
   Search,
-  Send,
   Sliders,
   Sparkles,
-  Trash2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { MathText } from './math-text';
@@ -31,6 +23,7 @@ import {
 } from './question-lifecycle-types';
 import { QuestionPreviewModal, RevisionRequestModal } from './question-workflow-modals';
 import { AutoBalanceAdjusterModal } from './auto-balance-adjuster-modal';
+import { PracticeTable } from './practice-table';
 
 export type PracticeAssignedQuestion = {
   id: string;
@@ -748,352 +741,41 @@ export function PracticeSection({
       </div>
 
       {/* ASSIGNED QUESTIONS TABLE WITH FULL QC WORKFLOW */}
-      <div className="table-wrap">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th style={{ width: '36px' }}>
-                <input
-                  type="checkbox"
-                  checked={allFilteredSelected}
-                  onChange={() => {
-                    if (allFilteredSelected) {
-                      const removeSet = new Set(filteredAssigned.map((q) => q.id));
-                      setSelectedTableIds((prev) => prev.filter((id) => !removeSet.has(id)));
-                    } else {
-                      setSelectedTableIds((prev) =>
-                        Array.from(new Set([...prev, ...filteredAssigned.map((q) => q.id)])),
-                      );
-                    }
-                  }}
-                />
-              </th>
-              <th>ID &amp; Batch</th>
-              <th>Status QC &amp; Tayang</th>
-              <th>Subtes &amp; Topik</th>
-              <th>Kesulitan</th>
-              <th>Cuplikan Soal &amp; Catatan QC</th>
-              <th>Statistik Siswa</th>
-              <th style={{ textAlign: 'right' }}>Aksi QC &amp; Latihan</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="empty-copy">
-                  Memuat daftar soal latihan…
-                </td>
-              </tr>
-            ) : filteredAssigned.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="empty-copy">
-                  Belum ada soal latihan pada filter ini. Klik <strong>Buat Soal Latihan Baru</strong> atau ambil dari Bank Soal.
-                </td>
-              </tr>
-            ) : (
-              filteredAssigned.map((q) => {
-                const subDisplay = getSubtestDisplay(q.subtest);
-                const diffMeta = getDifficultyMeta(q.difficulty);
-                const statusBadge = getQuestionStatusBadge(q.status);
-                const statusUpper = String(q.status || 'DRAFT').toUpperCase();
-                const isBusy = busyQuestionId === q.id;
-                const isChecked = selectedTableIds.includes(q.id);
-
-                return (
-                  <tr key={q.id}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {
-                          setSelectedTableIds((prev) =>
-                            prev.includes(q.id) ? prev.filter((id) => id !== q.id) : [...prev, q.id],
-                          );
-                        }}
-                      />
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                        <code style={{ fontSize: '11px', fontWeight: 700, color: '#e2e8f0' }}>{q.id}</code>
-                        {q.batch && (
-                          <span
-                            className="pill"
-                            style={{
-                              fontSize: '10px',
-                              padding: '1px 7px',
-                              background: 'rgba(245, 158, 11, 0.14)',
-                              color: '#fbbf24',
-                              border: '1px solid rgba(245, 158, 11, 0.28)',
-                            }}
-                          >
-                            {q.batch}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                        <span
-                          className="pill"
-                          style={{
-                            fontSize: '11px',
-                            background: statusBadge.bg,
-                            color: statusBadge.color,
-                            border: `1px solid ${statusBadge.border}`,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {statusBadge.label}
-                        </span>
-                        {statusUpper === 'READY' && (
-                          <span style={{ fontSize: '10px', color: '#34d399', fontWeight: 600 }}>
-                            ● Tayang di /latihan
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
-                        <span
-                          className="pill"
-                          style={{
-                            fontSize: '11px',
-                            background: 'rgba(56, 189, 248, 0.12)',
-                            color: '#7dd3fc',
-                            border: '1px solid rgba(56, 189, 248, 0.25)',
-                          }}
-                        >
-                          {subDisplay.code} — {subDisplay.label}
-                        </span>
-                        <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
-                          {q.topicTitle || 'Tanpa Topik'} {q.subtopicTitle ? `› ${q.subtopicTitle}` : ''}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <span
-                        className="pill"
-                        style={{
-                          fontSize: '11px',
-                          background: diffMeta.bg,
-                          color: diffMeta.color,
-                          border: `1px solid ${diffMeta.border}`,
-                        }}
-                      >
-                        ● {diffMeta.label}
-                      </span>
-                    </td>
-                    <td style={{ maxWidth: '330px' }}>
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          color: 'var(--foreground)',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        <MathText text={stripMarkdownPreview(q.content)} />
-                      </div>
-                      {q.revisionNotes && (
-                        <div
-                          style={{
-                            marginTop: '6px',
-                            padding: '6px 8px',
-                            borderRadius: '6px',
-                            background: 'rgba(244, 63, 94, 0.12)',
-                            border: '1px solid rgba(244, 63, 94, 0.35)',
-                            fontSize: '11px',
-                            color: '#fda4af',
-                          }}
-                        >
-                          <strong>Catatan Revisi{q.reviewedBy ? ` (${q.reviewedBy})` : ''}:</strong> {q.revisionNotes}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '11px', color: 'var(--muted-fg)', lineHeight: 1.4 }}>
-                        <div>
-                          Dijawab: <strong style={{ color: '#34d399' }}>{q.answeredCount}</strong>
-                        </div>
-                        <div>
-                          Dilewati: <strong style={{ color: '#fbbf24' }}>{q.skippedCount}</strong>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '5px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          className="button button-secondary"
-                          style={{ height: '28px', padding: '0 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                          onClick={() => {
-                            setPreviewSlideIdx(0);
-                            setPreviewQuestion(q);
-                          }}
-                          title="Pratinjau Soal"
-                        >
-                          <Eye style={{ width: 12, height: 12 }} />
-                          <span>Preview</span>
-                        </button>
-
-                        {onEditQuestion && (
-                          <button
-                            type="button"
-                            className="button button-secondary"
-                            style={{ height: '28px', padding: '0 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                            onClick={() => onEditQuestion(q)}
-                            title="Edit soal / pembahasan"
-                          >
-                            <Pencil style={{ width: 12, height: 12 }} />
-                            <span>Edit</span>
-                          </button>
-                        )}
-
-                        {statusUpper === 'DRAFT' && (
-                          <button
-                            type="button"
-                            className="button button-primary"
-                            disabled={isBusy}
-                            onClick={() => void handleQuestionWorkflow(q.id, 'SUBMIT_QC')}
-                            style={{ height: '28px', padding: '0 9px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                          >
-                            <Send style={{ width: 11, height: 11 }} />
-                            <span>{isBusy ? '…' : 'Ajukan QC'}</span>
-                          </button>
-                        )}
-
-                        {statusUpper === 'QC_SANDBOX' && (
-                          <>
-                            <button
-                              type="button"
-                              className="button button-secondary"
-                              disabled={isBusy}
-                              onClick={() => void handleOpenQuestionSandbox(q.id)}
-                              style={{
-                                height: '28px',
-                                padding: '0 8px',
-                                fontSize: '11px',
-                                color: '#93c5fd',
-                                borderColor: 'rgba(59, 130, 246, 0.4)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                              }}
-                            >
-                              <ExternalLink style={{ width: 11, height: 11 }} />
-                              <span>Sandbox</span>
-                            </button>
-                            <button
-                              type="button"
-                              className="button button-primary"
-                              disabled={isBusy}
-                              onClick={() => void handleQuestionWorkflow(q.id, 'APPROVE')}
-                              style={{
-                                height: '28px',
-                                padding: '0 9px',
-                                fontSize: '11px',
-                                background: '#059669',
-                                borderColor: '#10b981',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                              }}
-                            >
-                              <CheckCircle2 style={{ width: 11, height: 11 }} />
-                              <span>ACC &amp; Tayangkan</span>
-                            </button>
-                            <button
-                              type="button"
-                              className="button button-secondary"
-                              disabled={isBusy}
-                              onClick={() => {
-                                setRevisionTargetQuestion(q);
-                                setRevisionNotesDraft(q.revisionNotes || '');
-                              }}
-                              style={{
-                                height: '28px',
-                                padding: '0 8px',
-                                fontSize: '11px',
-                                color: '#fb7185',
-                                borderColor: 'rgba(244, 63, 94, 0.4)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                              }}
-                            >
-                              <AlertTriangle style={{ width: 11, height: 11 }} />
-                              <span>Revisi</span>
-                            </button>
-                          </>
-                        )}
-
-                        {statusUpper === 'NEEDS_REVISION' && (
-                          <button
-                            type="button"
-                            className="button button-primary"
-                            disabled={isBusy}
-                            onClick={() => void handleQuestionWorkflow(q.id, 'RESUBMIT_QC')}
-                            style={{ height: '28px', padding: '0 9px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                          >
-                            <Send style={{ width: 11, height: 11 }} />
-                            <span>{isBusy ? '…' : 'Ajukan Ulang QC'}</span>
-                          </button>
-                        )}
-
-                        {statusUpper === 'READY' && (
-                          <button
-                            type="button"
-                            className="button button-secondary"
-                            disabled={isBusy}
-                            onClick={() => void handleQuestionWorkflow(q.id, 'PULL_TO_DRAFT')}
-                            style={{
-                              height: '28px',
-                              padding: '0 8px',
-                              fontSize: '11px',
-                              color: '#fbbf24',
-                              borderColor: 'rgba(245, 158, 11, 0.35)',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                            }}
-                            title="Tarik dari /latihan kembali ke Draf"
-                          >
-                            <RotateCcw style={{ width: 11, height: 11 }} />
-                            <span>Tarik ke Draf</span>
-                          </button>
-                        )}
-
-                        <button
-                          type="button"
-                          className="button button-secondary"
-                          disabled={removingId === q.id}
-                          style={{
-                            height: '28px',
-                            padding: '0 8px',
-                            fontSize: '11px',
-                            color: '#f87171',
-                            borderColor: 'rgba(248, 113, 113, 0.3)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                          }}
-                          onClick={() => void handleUnassign(q.id)}
-                          title="Keluarkan dari Latihan ke Eksperimen (Bank Soal)"
-                        >
-                          <Trash2 style={{ width: 11, height: 11 }} />
-                          <span>{removingId === q.id ? '…' : 'Keluarkan'}</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      <PracticeTable
+        loading={loading}
+        filteredAssigned={filteredAssigned}
+        selectedTableIds={selectedTableIds}
+        onToggleSelect={(id) => {
+          setSelectedTableIds((prev) =>
+            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+          );
+        }}
+        onToggleSelectAll={() => {
+          if (allFilteredSelected) {
+            const removeSet = new Set(filteredAssigned.map((q) => q.id));
+            setSelectedTableIds((prev) => prev.filter((id) => !removeSet.has(id)));
+          } else {
+            setSelectedTableIds((prev) =>
+              Array.from(new Set([...prev, ...filteredAssigned.map((q) => q.id)])),
+            );
+          }
+        }}
+        allFilteredSelected={allFilteredSelected}
+        busyQuestionId={busyQuestionId}
+        removingId={removingId}
+        onWorkflow={(id, action) => handleQuestionWorkflow(id, action as any)}
+        onOpenSandbox={(id) => handleOpenQuestionSandbox(id)}
+        onUnassign={(id) => handleUnassign(id)}
+        onPreview={(q) => {
+          setPreviewSlideIdx(0);
+          setPreviewQuestion(q);
+        }}
+        onEditQuestion={onEditQuestion}
+        onOpenRevisionModal={(q) => {
+          setRevisionTargetQuestion(q);
+          setRevisionNotesDraft(q.revisionNotes || '');
+        }}
+      />
 
       {/* PICKER MODAL: AMBIL SOAL DARI EKSPERIMEN / BANK SOAL */}
       {pickerOpen && (
