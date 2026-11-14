@@ -308,8 +308,42 @@ export default function StandaloneTasksPage() {
       )}
 
       {modalOpen && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) { setModalTask(null); setCreateOpen(false); } }}>
-        <section className="modal standalone-task-modal" role="dialog" aria-modal="true" aria-labelledby="standalone-task-modal-title">
-          <div className="modal-header"><div><h2 id="standalone-task-modal-title">{modalTask ? 'Edit standalone task' : 'Create standalone task'}</h2><p>Visible to its creator, assignees, and team admins.</p></div><button className="icon-button" type="button" aria-label="Close" disabled={saving} onClick={() => { setModalTask(null); setCreateOpen(false); }}>×</button></div>
+        <section
+          className="modal standalone-task-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="standalone-task-modal-title"
+          style={{
+            borderTop:
+              modalTask?.priority === 'URGENT'
+                ? '2.5px solid rgba(244, 63, 94, 0.8)'
+                : modalTask?.priority === 'HIGH'
+                ? '2.5px solid rgba(245, 158, 11, 0.8)'
+                : '2.5px solid rgba(59, 130, 246, 0.75)',
+          }}
+        >
+          <div className="modal-header">
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  className="modal-dot"
+                  style={{
+                    backgroundColor:
+                      modalTask?.priority === 'URGENT'
+                        ? '#fb7185'
+                        : modalTask?.priority === 'HIGH'
+                        ? '#fbbf24'
+                        : '#60a5fa',
+                  }}
+                />
+                <h2 id="standalone-task-modal-title" style={{ margin: 0 }}>
+                  {modalTask ? 'Edit standalone task' : 'Create standalone task'}
+                </h2>
+              </div>
+              <p style={{ marginTop: '4px' }}>Visible to its creator, assignees, and team admins.</p>
+            </div>
+            <button className="icon-button" type="button" aria-label="Close" disabled={saving} onClick={() => { setModalTask(null); setCreateOpen(false); }}>×</button>
+          </div>
           <form className="form-stack" onSubmit={(event) => void saveTask(event)}>
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <label className="field-label">Task title<input className="field-input" name="title" minLength={2} maxLength={180} required autoFocus disabled={Boolean(modalTask && member && !canEdit(modalTask, member))} defaultValue={modalTask?.title ?? ''} placeholder="e.g. Fix mobile navigation spacing" /></label>

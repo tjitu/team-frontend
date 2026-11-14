@@ -340,13 +340,16 @@ export default function WorkspacesPage() {
             }
           }}
         >
-          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="workspace-modal-title">
+          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="workspace-modal-title" style={{ borderTop: '2.5px solid rgba(59, 130, 246, 0.75)' }}>
             <div className="modal-header">
               <div>
-                <h2 id="workspace-modal-title">
-                  {editing ? 'Edit workspace' : 'New workspace'}
-                </h2>
-                <p>Organize department projects, tasks, and member access.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="modal-dot" style={{ backgroundColor: '#60a5fa' }} />
+                  <h2 id="workspace-modal-title" style={{ margin: 0 }}>
+                    {editing ? 'Edit workspace' : 'New workspace'}
+                  </h2>
+                </div>
+                <p style={{ marginTop: '4px' }}>Organize department projects, tasks, and member access.</p>
               </div>
               <button
                 className="icon-button"
@@ -419,11 +422,14 @@ export default function WorkspacesPage() {
             if (event.target === event.currentTarget) setManaging(null);
           }}
         >
-          <section className="modal project-member-modal" role="dialog" aria-modal="true" aria-labelledby="manage-ws-members-title">
+          <section className="modal project-member-modal" role="dialog" aria-modal="true" aria-labelledby="manage-ws-members-title" style={{ borderTop: '2.5px solid rgba(99, 102, 241, 0.75)' }}>
             <div className="modal-header">
               <div>
-                <h2 id="manage-ws-members-title">{managing.name} members</h2>
-                <p>Assign or remove active team members in this department workspace.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="modal-dot" style={{ backgroundColor: '#818cf8' }} />
+                  <h2 id="manage-ws-members-title" style={{ margin: 0 }}>{managing.name} members</h2>
+                </div>
+                <p style={{ marginTop: '4px' }}>Assign or remove active team members in this department workspace.</p>
               </div>
               <button className="icon-button" aria-label="Close" onClick={() => setManaging(null)}>×</button>
             </div>
