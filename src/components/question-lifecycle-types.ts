@@ -1075,26 +1075,27 @@ ${customInstruction.trim() ? `\n### INSTRUKSI TAMBAHAN DARI PENYUSUN:\n${customI
 ---
 
 ### ATURAN KUALITAS & FORMAT STANDAR BP3 / JITU PTN:
-1. **JSON Output Murni:** Kembalikan **HANYA** JSON Array valid \`[ ... ]\` berisi tepat ${totalSlots} objek butir soal tanpa teks pembuka/penutup di luar JSON.
-2. **Field Metadata Wajib:** Setiap objek butir soal WAJIB menyertakan field \`"subtest"\`, \`"topicId"\`, \`"subtopicId"\`, \`"topic"\`, \`"subtopic"\`, \`"type"\`, dan \`"difficulty"\` persis sesuai pemetaan slot di atas!
+1. **JSON Output Murni (PENTING):** Kembalikan **HANYA** JSON Array valid \`[ ... ]\` berisi tepat ${totalSlots} objek butir soal. **JANGAN bungkus dengan markdown code block (seperti \`\`\`json)** dan tanpa teks pembuka/penutup. Karakter pertama output wajib '[' dan karakter terakhir ']'.
+2. **Field Metadata Wajib:** Setiap objek butir soal WAJIB menyertakan field "subtest", "topicId", "subtopicId", "topic", "subtopic", "type", dan "difficulty" persis sesuai pemetaan slot di atas!
 3. **Ketentuan Tipe PILIHAN_GANDA:**
-   - Field \`"type"\`: bernilai \`"PILIHAN_GANDA"\`.
-   - Field \`"options"\`: berisi tepat 5 opsi (A, B, C, D, E) dengan tepat 1 \`"isCorrect": true\` dan 4 \`"isCorrect": false\`.
-   - Field \`"correctAnswer"\`: bernilai \`null\`.
+   - Field "type": bernilai "PILIHAN_GANDA".
+   - Field "options": berisi tepat 5 opsi (A, B, C, D, E) dengan tepat 1 "isCorrect": true dan 4 "isCorrect": false.
+   - Field "correctAnswer": bernilai null.
 4. **Ketentuan Tipe ISIAN_SINGKAT (Standar SNBT):**
-   - Field \`"type"\`: bernilai \`"ISIAN_SINGKAT"\`.
-   - Field \`"options"\`: bernilai array kosong \`[]\`.
-   - Field \`"correctAnswer"\`: string angka bilangan bulat eksak (contoh: \`"42"\`), tanpa satuan dan bukan desimal.
-   - Pada akhir teks pertanyaan (field \`"content"\`), **WAJIB** cantumkan petunjuk format berikut:
+   - Field "type": bernilai "ISIAN_SINGKAT".
+   - Field "options": bernilai array kosong [].
+   - Field "correctAnswer": string angka bilangan bulat eksak (contoh: "42"), tanpa satuan dan bukan desimal.
+   - Pada akhir teks pertanyaan (field "content"), **WAJIB** cantumkan petunjuk format berikut:
      \`\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]\`
-5. **Format Soal & Rumus:**
-   - Jika soal memuat pernyataan bernomor (1), (2), (3), (4) atau perbandingan P dan Q, wajib pisahkan setiap baris pernyataan dengan newline (\`\\n\`) di dalam \`"content"\`.
-   - Wajib gunakan LaTeX format inline \`$...$\` atau block \`$$...$$\` untuk semua simbol dan rumus matematika.
+5. **Format Soal, Rumus & Escape LaTeX (WAJIB):**
+   - Jika soal memuat pernyataan bernomor (1), (2), (3), (4) atau perbandingan P dan Q, wajib pisahkan setiap baris pernyataan dengan newline (\\n) di dalam "content".
+   - Gunakan format LaTeX inline \`$ ... $\` atau block \`$$ ... $$\` untuk semua simbol dan rumus matematika.
+   - **WAJIB DOUBLE-BACKSLASH:** Seluruh sintaks LaTeX di dalam string JSON WAJIB ditulis dengan double-backslash (contoh: \`\\\\frac{a}{b}\`, \`\\\\sqrt{x}\`, \`\\\\le\`, \`\\\\ge\`), JANGAN gunakan single-backslash agar string JSON valid saat diparse.
 6. **Pembahasan Pedagogis Khas Jitu PTN:**
    - Gunakan gaya bahasa tutor yang ramah, komunikatif, dan lugas (ala kakak pembimbing alumni PTN top).
-   - Array \`"solutionSteps"\` wajib terdiri dari 2–5 langkah terstruktur dengan judul langkah yang jelas.
-   - Cantumkan tag \`<hl>poin kesimpulan kunci</hl>\` maksimal 1 kali pada langkah inti untuk animasi stabilo interaktif.
-   - Sertakan \`"quickTrick"\` (Jurus Cepat 30 detik JITU) dan \`"keyFormula"\` (rumus/konsep inti).
+   - Array "solutionSteps" wajib terdiri dari 2–5 langkah terstruktur dengan judul langkah yang jelas.
+   - Cantumkan tag <hl>poin kesimpulan kunci</hl> maksimal 1 kali pada langkah inti untuk animasi stabilo interaktif.
+   - Sertakan "quickTrick" (Jurus Cepat 30 detik JITU) dan "keyFormula" (rumus/konsep inti).
 
 ---
 

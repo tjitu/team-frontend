@@ -1496,10 +1496,49 @@ ${totalPromptCount > 1 ? '[' : ''}
 ${totalPromptCount > 1 ? ']' : ''}`;
   }, [autoBalanceEnabled, effectiveBalanceSlots, currentPackageLabel, activeTargetConfig, autoBalanceAnalysis.totalInPackage, activeSubtestEntries, totalPromptCount, promptDifficulty, promptQuestionType, selectedSubtopicMeta, promptCustomTopic, promptIncludePassage, promptIncludeTricks]);
 
+  function sanitizeAndParseAiJson(raw: string): any {
+    if (!raw || !raw.trim()) throw new Error('Input JSON kosong.');
+    let cleaned = raw.trim();
+
+    // 1. Strip Markdown Code Fences (```json ... ``` or ``` ...)
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+    // 2. Extract JSON array or object if surrounded by extra conversation / explanations
+    const firstBracket = cleaned.indexOf('[');
+    const firstBrace = cleaned.indexOf('{');
+    let startIndex = -1;
+    let endIndex = -1;
+
+    if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+      startIndex = firstBracket;
+      endIndex = cleaned.lastIndexOf(']');
+    } else if (firstBrace !== -1) {
+      startIndex = firstBrace;
+      endIndex = cleaned.lastIndexOf('}');
+    }
+
+    if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+      cleaned = cleaned.substring(startIndex, endIndex + 1);
+    }
+
+    // 3. Try parsing directly
+    try {
+      return JSON.parse(cleaned);
+    } catch (err: any) {
+      // 4. Auto-heal unescaped backslashes commonly emitted by LLMs for LaTeX (e.g. \frac, \sqrt, \alpha)
+      try {
+        const healed = cleaned.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+        return JSON.parse(healed);
+      } catch {
+        throw err;
+      }
+    }
+  }
+
   const jsonValidation = React.useMemo(() => {
     if (!aiJsonInput.trim()) return null;
     try {
-      const parsed = JSON.parse(aiJsonInput.trim());
+      const parsed = sanitizeAndParseAiJson(aiJsonInput);
       if (Array.isArray(parsed)) {
         return { valid: true, isArray: true, count: parsed.length, message: `${parsed.length} soal terdeteksi dalam format array` };
       } else if (parsed && typeof parsed === 'object') {
@@ -2137,7 +2176,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       return;
     }
     try {
-      let parsed = JSON.parse(aiJsonInput.trim());
+      let parsed = sanitizeAndParseAiJson(aiJsonInput);
       if (Array.isArray(parsed)) parsed = parsed[0];
       if (!parsed || typeof parsed !== 'object') {
         throw new Error('Format JSON tidak valid.');
@@ -2187,7 +2226,7 @@ ${totalPromptCount > 1 ? ']' : ''}`;
       return;
     }
     try {
-      let parsed = JSON.parse(aiJsonInput.trim());
+      let parsed = sanitizeAndParseAiJson(aiJsonInput);
       if (!Array.isArray(parsed)) {
         parsed = [parsed];
       }
