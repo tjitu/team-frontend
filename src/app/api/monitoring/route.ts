@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { TARGET_LATENCY_MS } from '../../monitoring/latency-target';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,12 +80,12 @@ async function checkTarget(
     if (response.status >= 500) {
       state = 'down';
       detail = 'Server mengembalikan error';
-    } else if (!response.ok || latencyMs >= 1_800) {
+    } else if (!response.ok) {
       state = 'degraded';
-      detail = !response.ok ? 'Endpoint merespons dengan status non-2xx' : 'Respons lebih lambat dari 1,8 detik';
-    } else if (latencyMs >= 900) {
+      detail = 'Endpoint merespons dengan status non-2xx';
+    } else if (latencyMs >= TARGET_LATENCY_MS) {
       state = 'degraded';
-      detail = 'Respons melambat';
+      detail = `Respons melewati target ${TARGET_LATENCY_MS} ms`;
     }
 
     return {

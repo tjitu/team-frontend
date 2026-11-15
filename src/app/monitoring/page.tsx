@@ -20,6 +20,7 @@ import {
 import { api, CurrentMember, signInUrl } from '@/lib/api';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import styles from './monitoring.module.css';
+import { TARGET_LATENCY_MS } from './latency-target';
 
 type TargetState = 'up' | 'degraded' | 'down' | 'unconfigured';
 type Target = {
@@ -186,7 +187,7 @@ function LatencyChart({ targets, samples, range }: { targets: Target[]; samples:
   const cutoff = Date.now() - range * 60_000;
   const points = samples.filter((sample) => new Date(sample.checkedAt).getTime() >= cutoff);
   const tracked = targets.filter((target) => target.state !== 'unconfigured');
-  const maxLatency = Math.max(200, ...points.flatMap((sample) => Object.values(sample.values).filter((value): value is number => value !== null)));
+  const maxLatency = Math.max(TARGET_LATENCY_MS, ...points.flatMap((sample) => Object.values(sample.values).filter((value): value is number => value !== null)));
   const plot = { left: 52, right: 748, top: 18, bottom: 208 };
   const chartHeight = plot.bottom - plot.top;
   const chartWidth = plot.right - plot.left;
@@ -195,7 +196,7 @@ function LatencyChart({ targets, samples, range }: { targets: Target[]; samples:
 
   return (
     <div className={styles.chartWrap}>
-      <svg className={styles.chart} viewBox="0 0 780 250" role="img" aria-label={`Grafik waktu respons HTTP selama ${range} menit terakhir`}>
+      <svg className={styles.chart} viewBox="0 0 780 250" role="img" aria-label={`Grafik waktu respons HTTP selama ${range} menit terakhir, target di bawah ${TARGET_LATENCY_MS} milidetik`}>
         {[0, 1, 2, 3].map((row) => {
           const value = maxLatency * (1 - row / 3);
           const yPos = plot.top + (chartHeight / 3) * row;
@@ -206,6 +207,8 @@ function LatencyChart({ targets, samples, range }: { targets: Target[]; samples:
             </g>
           );
         })}
+        <line x1={plot.left} x2={plot.right} y1={y(TARGET_LATENCY_MS)} y2={y(TARGET_LATENCY_MS)} className={styles.latencyTargetLine} />
+        <text x={plot.right - 4} y={y(TARGET_LATENCY_MS) - 6} textAnchor="end" className={styles.latencyTargetLabel}>Target {TARGET_LATENCY_MS} ms</text>
         {tracked.map((target) => {
           const coords = points.flatMap((sample, index) => {
             const value = sample.values[target.id];
@@ -583,7 +586,7 @@ export default function MonitoringPage() {
           <div className={styles.summaryValue}>
             {p95Latency === null ? <span>—</span> : <><span>{p95Latency}</span><small>ms</small></>}
           </div>
-          <div className={styles.summaryFoot}>Sampel {range} menit terakhir pada sesi ini</div>
+          <div className={styles.summaryFoot}>Target &lt; {TARGET_LATENCY_MS} ms · sampel {range} menit terakhir pada sesi ini</div>
         </article>
         <article className={styles.summaryCard}>
           <div className={styles.summaryLabel}><span>Pemeriksaan normal</span><Activity aria-hidden="true" /></div>

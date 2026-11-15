@@ -197,6 +197,8 @@
 .chartWrap { padding: 4px 12px 0; }
 .chart { display: block; width: 100%; height: auto; min-height: 180px; overflow: visible; }
 .gridLine { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 5; }
+.latencyTargetLine { stroke: #fb7185; stroke-width: 1.5; stroke-dasharray: 7 5; opacity: .85; }
+.latencyTargetLabel { fill: #fb7185; font-size: 10px; font-family: inherit; font-weight: 700; }
 .axisLabel { fill: var(--muted-fg); font-size: 10px; font-family: inherit; }
 .chartHint { fill: var(--muted-fg); font-size: 11px; font-family: inherit; }
 .traceLine { animation: trace-reveal .75s ease-out both; }
