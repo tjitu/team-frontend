@@ -2139,7 +2139,11 @@ function ControlCenterContent() {
       void api.get<Tryout[]>('/team/control-center/tryouts', { force: true }).then(setTryouts).catch(() => {});
       setPracticeRefreshKey((k) => k + 1);
       setTryoutWorkspaceRefreshKey((k) => k + 1);
-      setNotice(`Berhasil mengimpor ${successCount} soal ke Draf ${currentPackageLabel}!`);
+      setNotice(
+        successCount === 1
+          ? `Berhasil menambahkan 1 soal dari AI ke Draf ${currentPackageLabel}!`
+          : `Berhasil menambahkan ${successCount} soal dari AI ke Draf ${currentPackageLabel}!`
+      );
     } catch (err: any) {
       setError(`Gagal mengimpor soal: ${err.message || 'Format tidak valid'}`);
     } finally {
@@ -8835,63 +8839,26 @@ function ControlCenterContent() {
                   Batal
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {jsonValidation?.isArray && jsonValidation.count > 1 ? (
-                    <>
-                      <button
-                        type="button"
-                        className="button button-secondary"
-                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        onClick={applyAiJson}
-                        disabled={!aiJsonInput.trim() || !jsonValidation?.valid}
-                      >
-                        Buka Soal Pertama di Form
-                      </button>
-                      <button
-                        type="button"
-                        className="button button-primary"
-                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        onClick={bulkImportQuestions}
-                        disabled={!aiJsonInput.trim() || !jsonValidation?.valid || importingBulk}
-                      >
-                        {importingBulk ? (
-                          <span>Mengimpor {jsonValidation.count} Soal...</span>
-                        ) : (
-                          <>
-                            <Zap style={{ width: 14, height: 14 }} />
-                            <span>Impor Semua ({jsonValidation.count} Soal)</span>
-                          </>
-                        )}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className="button button-secondary"
-                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        onClick={applyAiJson}
-                        disabled={!aiJsonInput.trim() || !jsonValidation?.valid || importingBulk}
-                      >
-                        <span>Terapkan ke Form Editor</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="button button-primary"
-                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        onClick={bulkImportQuestions}
-                        disabled={!aiJsonInput.trim() || !jsonValidation?.valid || importingBulk}
-                      >
-                        {importingBulk ? (
-                          <span>Menyimpan Soal...</span>
-                        ) : (
-                          <>
-                            <Zap style={{ width: 14, height: 14 }} />
-                            <span>Simpan Langsung (1 Soal)</span>
-                          </>
-                        )}
-                      </button>
-                    </>
-                  )}
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    onClick={bulkImportQuestions}
+                    disabled={!aiJsonInput.trim() || !jsonValidation?.valid || importingBulk}
+                  >
+                    {importingBulk ? (
+                      <span>Menyimpan ke Draf...</span>
+                    ) : (
+                      <>
+                        <Zap style={{ width: 14, height: 14 }} />
+                        <span>
+                          {jsonValidation?.isArray && jsonValidation.count > 1
+                            ? `Submit Semua (${jsonValidation.count} Soal)`
+                            : 'Submit Soal'}
+                        </span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             )}
