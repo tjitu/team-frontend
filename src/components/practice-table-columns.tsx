@@ -130,7 +130,7 @@ export function usePracticeColumns({
     }),
     practiceColHelper.display({
       id: 'actions',
-      header: () => <div style={{ width: '152px', marginLeft: 'auto', textAlign: 'left' }}>Aksi &amp; Latihan</div>,
+      header: () => <div className="text-right">Aksi</div>,
       cell: ({ row }) => (
         <PracticeTableActions
           question={row.original}

@@ -4,10 +4,56 @@ import * as React from 'react';
 import { FolderPlus, Layers, X } from 'lucide-react';
 import { ComboboxSelect } from './ui/combobox';
 
+export type QuestionBatchTargetKind = 'FOR_PRACTICE' | 'FOR_TRYOUT' | 'DRAFT';
+
 export type QuestionBatchSummary = {
   batch: string;
   count?: number;
+  targetKind?: QuestionBatchTargetKind;
+  tryoutId?: string | null;
+  tryoutTitle?: string | null;
 };
+
+function inferItemTargetKind(item: {
+  target?: string | null;
+  tryoutId?: string | null;
+  isPracticeAssigned?: boolean;
+}): QuestionBatchTargetKind {
+  const cleanTarget = String(item.target || 'DRAFT').toUpperCase().trim();
+  if (item.tryoutId || cleanTarget === 'FOR_TRYOUT') return 'FOR_TRYOUT';
+  if (item.isPracticeAssigned || cleanTarget === 'FOR_PRACTICE') return 'FOR_PRACTICE';
+  return 'DRAFT';
+}
+
+export function getBatchTargetKindLabel(
+  kind?: QuestionBatchTargetKind,
+  tryoutTitle?: string | null,
+): string {
+  if (kind === 'FOR_PRACTICE') return 'Batch Latihan';
+  if (kind === 'FOR_TRYOUT') {
+    return tryoutTitle ? `Batch Tryout · ${tryoutTitle}` : 'Batch Tryout';
+  }
+  return 'Batch Eksperimen / Bank';
+}
+
+export function isBatchCompatibleWithTarget(
+  entry: QuestionBatchSummary,
+  expectedTarget?: QuestionBatchTargetKind,
+  expectedTryoutId?: string | null,
+): boolean {
+  if (!expectedTarget) return true;
+  const entryKind: QuestionBatchTargetKind = entry.targetKind || 'DRAFT';
+  if (entryKind !== expectedTarget) return false;
+  if (
+    expectedTarget === 'FOR_TRYOUT' &&
+    expectedTryoutId &&
+    entry.tryoutId &&
+    entry.tryoutId !== expectedTryoutId
+  ) {
+    return false;
+  }
+  return true;
+}
 
 /**
  * Merges server batch counts with batches present on loaded client items so newly
@@ -15,33 +61,77 @@ export type QuestionBatchSummary = {
  */
 export function mergeBatchSummaries(
   serverBatches: QuestionBatchSummary[],
-  items: Array<{ batch?: string | null }> = [],
+  items: Array<{
+    batch?: string | null;
+    target?: string | null;
+    tryoutId?: string | null;
+    tryoutTitle?: string | null;
+    isPracticeAssigned?: boolean;
+  }> = [],
 ): QuestionBatchSummary[] {
-  const counts = new Map<string, number>();
+  const map = new Map<string, QuestionBatchSummary>();
 
   for (const entry of serverBatches || []) {
     const clean = String(entry.batch || '').trim();
     if (!clean) continue;
-    counts.set(clean, Number(entry.count) || 0);
+    map.set(clean, {
+      batch: clean,
+      count: Number(entry.count) || 0,
+      targetKind: entry.targetKind || 'DRAFT',
+      tryoutId: entry.tryoutId ?? null,
+      tryoutTitle: entry.tryoutTitle ?? null,
+    });
   }
 
+  const itemCounts = new Map<string, number>();
   for (const item of items || []) {
     const clean = String(item.batch || '').trim();
     if (!clean) continue;
-    if (!counts.has(clean)) {
-      counts.set(clean, 0);
+    itemCounts.set(clean, (itemCounts.get(clean) || 0) + 1);
+    const itemKind = inferItemTargetKind(item);
+    const existing = map.get(clean);
+    if (!existing) {
+      map.set(clean, {
+        batch: clean,
+        count: 1,
+        targetKind: itemKind,
+        tryoutId: item.tryoutId ?? null,
+        tryoutTitle: item.tryoutTitle ?? null,
+      });
+    } else {
+      const nextKind: QuestionBatchTargetKind =
+        existing.targetKind === 'FOR_TRYOUT' || itemKind === 'FOR_TRYOUT'
+          ? 'FOR_TRYOUT'
+          : existing.targetKind === 'FOR_PRACTICE' || itemKind === 'FOR_PRACTICE'
+          ? 'FOR_PRACTICE'
+          : 'DRAFT';
+      map.set(clean, {
+        ...existing,
+        targetKind: nextKind,
+        tryoutId: existing.tryoutId || item.tryoutId || null,
+        tryoutTitle: existing.tryoutTitle || item.tryoutTitle || null,
+      });
     }
   }
 
-  return Array.from(counts.entries())
-    .map(([batch, count]) => ({ batch, count }))
-    .sort((a, b) => a.batch.localeCompare(b.batch, 'id', { numeric: true }));
+  for (const [key, itemCount] of itemCounts.entries()) {
+    const entry = map.get(key);
+    if (entry && (!entry.count || entry.count < itemCount)) {
+      entry.count = itemCount;
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.batch.localeCompare(b.batch, 'id', { numeric: true }),
+  );
 }
 
 type QuestionBatchFieldProps = {
   value: string;
   onChange: (nextBatch: string) => void;
   existingBatches: QuestionBatchSummary[];
+  expectedTarget?: QuestionBatchTargetKind;
+  expectedTryoutId?: string | null;
   label?: string;
   helperText?: string;
   compact?: boolean;
@@ -49,20 +139,33 @@ type QuestionBatchFieldProps = {
 
 /**
  * Reusable batch selector letting question authors either choose an existing batch
- * or switch to inline creation of a new batch name.
+ * or switch to inline creation of a new batch name. Enforces single-target batch exclusivity.
  */
 export function QuestionBatchField({
   value,
   onChange,
   existingBatches,
+  expectedTarget,
+  expectedTryoutId,
   label = 'Batch Soal',
   helperText,
   compact = false,
 }: QuestionBatchFieldProps) {
   const normalizedValue = value.trim();
+
+  const compatibleBatches = React.useMemo(
+    () =>
+      existingBatches.filter((item) =>
+        isBatchCompatibleWithTarget(item, expectedTarget, expectedTryoutId),
+      ),
+    [existingBatches, expectedTarget, expectedTryoutId],
+  );
+
+  const incompatibleCount = existingBatches.length - compatibleBatches.length;
+
   const knownBatchNames = React.useMemo(
-    () => new Set(existingBatches.map((item) => item.batch.trim())),
-    [existingBatches],
+    () => new Set(compatibleBatches.map((item) => item.batch.trim())),
+    [compatibleBatches],
   );
 
   const [mode, setMode] = React.useState<'EXISTING' | 'NEW'>(() =>
@@ -79,27 +182,39 @@ export function QuestionBatchField({
   const comboboxOptions = React.useMemo(() => {
     const opts = [
       { label: '— Tanpa Batch —', value: '' },
-      ...existingBatches.map((entry) => ({
-        value: entry.batch,
-        label:
-          typeof entry.count === 'number' && entry.count > 0
-            ? `${entry.batch} (${entry.count} soal)`
-            : entry.batch,
-      })),
+      ...compatibleBatches.map((entry) => {
+        const kindLabel = getBatchTargetKindLabel(entry.targetKind, entry.tryoutTitle);
+        const countPart =
+          typeof entry.count === 'number' && entry.count > 0 ? `${entry.count} soal` : '0 soal';
+        return {
+          value: entry.batch,
+          label: `${entry.batch} (${countPart} · ${kindLabel})`,
+        };
+      }),
     ];
 
     if (normalizedValue && !knownBatchNames.has(normalizedValue)) {
-      opts.push({ value: normalizedValue, label: `${normalizedValue} (baru)` });
+      const existingAny = existingBatches.find(
+        (b) => b.batch.toLowerCase() === normalizedValue.toLowerCase(),
+      );
+      if (!existingAny) {
+        opts.push({ value: normalizedValue, label: `${normalizedValue} (baru)` });
+      }
     }
 
     return opts;
-  }, [existingBatches, knownBatchNames, normalizedValue]);
+  }, [compatibleBatches, existingBatches, knownBatchNames, normalizedValue]);
 
   const matchingExisting = React.useMemo(() => {
     if (!normalizedValue) return null;
     const lower = normalizedValue.toLowerCase();
     return existingBatches.find((entry) => entry.batch.toLowerCase() === lower) || null;
   }, [existingBatches, normalizedValue]);
+
+  const isMatchingConflict = React.useMemo(() => {
+    if (!matchingExisting) return false;
+    return !isBatchCompatibleWithTarget(matchingExisting, expectedTarget, expectedTryoutId);
+  }, [matchingExisting, expectedTarget, expectedTryoutId]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '6px' : '8px' }}>
@@ -178,33 +293,40 @@ export function QuestionBatchField({
       </div>
 
       {mode === 'EXISTING' ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <ComboboxSelect
-              value={normalizedValue}
-              onValueChange={(nextVal) => onChange(nextVal)}
-              options={comboboxOptions}
-              searchable={true}
-              align="start"
-              fullWidth={true}
-              placeholder={
-                existingBatches.length > 0
-                  ? 'Pilih batch soal yang sudah ada...'
-                  : 'Belum ada batch — klik Buat Batch Baru'
-              }
-              triggerClassName="w-full h-9"
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <ComboboxSelect
+                value={normalizedValue}
+                onValueChange={(nextVal) => onChange(nextVal)}
+                options={comboboxOptions}
+                searchable={true}
+                align="start"
+                fullWidth={true}
+                placeholder={
+                  compatibleBatches.length > 0
+                    ? 'Pilih batch soal yang sejenis...'
+                    : 'Belum ada batch untuk jenis soal ini — klik Buat Batch Baru'
+                }
+                triggerClassName="w-full h-9"
+              />
+            </div>
+            {normalizedValue && (
+              <button
+                type="button"
+                className="button button-secondary"
+                style={{ height: '36px', padding: '0 10px', fontSize: '11px', flexShrink: 0 }}
+                onClick={() => onChange('')}
+                title="Kosongkan batch"
+              >
+                <X style={{ width: 13, height: 13 }} />
+              </button>
+            )}
           </div>
-          {normalizedValue && (
-            <button
-              type="button"
-              className="button button-secondary"
-              style={{ height: '36px', padding: '0 10px', fontSize: '11px', flexShrink: 0 }}
-              onClick={() => onChange('')}
-              title="Kosongkan batch"
-            >
-              <X style={{ width: 13, height: 13 }} />
-            </button>
+          {incompatibleCount > 0 && (
+            <span style={{ fontSize: '10.5px', color: '#a1a1aa' }}>
+              🔒 {incompatibleCount} batch dari jenis soal lain disembunyikan otomatis (1 batch tidak boleh mencampur jenis soal).
+            </span>
           )}
         </div>
       ) : (
@@ -213,7 +335,12 @@ export function QuestionBatchField({
             <input
               type="text"
               className="field-input"
-              style={{ width: '100%', height: '36px', fontSize: '12px' }}
+              style={{
+                width: '100%',
+                height: '36px',
+                fontSize: '12px',
+                borderColor: isMatchingConflict ? 'rgba(239, 68, 68, 0.65)' : undefined,
+              }}
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder="Ketik nama batch baru, misal: Batch 1 - PK & PM"
@@ -230,11 +357,31 @@ export function QuestionBatchField({
               </button>
             )}
           </div>
-          {matchingExisting && (
-            <div style={{ fontSize: '11px', color: '#fbbf24' }}>
-              Nama ini cocok dengan batch yang sudah ada: <strong>{matchingExisting.batch}</strong> — soal akan digabung ke batch tersebut.
-            </div>
-          )}
+          {matchingExisting &&
+            (isMatchingConflict ? (
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: '#fca5a5',
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  borderRadius: '6px',
+                  padding: '6px 9px',
+                  lineHeight: 1.4,
+                }}
+              >
+                ⚠️ Nama batch <strong>{matchingExisting.batch}</strong> sudah terdaftar sebagai{' '}
+                <strong>
+                  {getBatchTargetKindLabel(matchingExisting.targetKind, matchingExisting.tryoutTitle)}
+                </strong>
+                . Batch tidak boleh mencampur jenis soal — silakan gunakan nama batch lain.
+              </div>
+            ) : (
+              <div style={{ fontSize: '11px', color: '#fbbf24' }}>
+                Nama ini cocok dengan batch sejenis yang sudah ada:{' '}
+                <strong>{matchingExisting.batch}</strong> — soal akan digabung ke batch tersebut.
+              </div>
+            ))}
         </div>
       )}
 

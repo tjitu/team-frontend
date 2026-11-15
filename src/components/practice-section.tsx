@@ -18,6 +18,7 @@ import {
   getQuestionStatusBadge,
   getSubtestDisplay,
   normalizeSubtestKey,
+  type PracticeBatchSummary,
   type QuestionStatusType,
   type TryoutCurriculumTopic,
 } from './question-lifecycle-types';
@@ -101,6 +102,7 @@ type SubtestStockStat = {
 type PracticeWorkspaceResponse = {
   assignedQuestions: PracticeAssignedQuestion[];
   pickerPool: PracticePickerQuestion[];
+  batchSummaries?: PracticeBatchSummary[];
   subtestStocks: Record<string, number>;
   subtestStockStats?: Record<string, SubtestStockStat>;
 };
@@ -170,6 +172,8 @@ export function PracticeSection({
   const [pickerSearch, setPickerSearch] = React.useState('');
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [assigning, setAssigning] = React.useState(false);
+  const [assigningBatch, setAssigningBatch] = React.useState<string | null>(null);
+  const [selectedPullBatch, setSelectedPullBatch] = React.useState<string>('');
   const [removingId, setRemovingId] = React.useState<string | null>(null);
 
   const [previewQuestion, setPreviewQuestion] = React.useState<PracticeAssignedQuestion | null>(null);
@@ -204,6 +208,10 @@ export function PracticeSection({
   );
   const pickerPool = React.useMemo(
     () => workspace?.pickerPool ?? [],
+    [workspace],
+  );
+  const batchSummaries = React.useMemo(
+    () => workspace?.batchSummaries ?? [],
     [workspace],
   );
   const stocks = workspace?.subtestStocks ?? {};
@@ -423,6 +431,26 @@ export function PracticeSection({
     }
   }
 
+  async function handleAssignBatch(batchName: string) {
+    setAssigningBatch(batchName);
+    onError('');
+    try {
+      const res = await api.post<{ assignedCount: number; batch?: string | null }>(
+        '/team/control-center/practice/assign',
+        { batch: batchName },
+      );
+      onNotice(
+        `Berhasil menarik ${res.assignedCount ?? 0} soal dari batch "${batchName}" ke menu Latihan (/latihan).`,
+      );
+      await loadWorkspace();
+      onQuestionsChangedRef.current?.();
+    } catch (cause) {
+      onError(getErrorMessage(cause));
+    } finally {
+      setAssigningBatch(null);
+    }
+  }
+
   async function handleUnassign(questionId: string) {
     setRemovingId(questionId);
     onError('');
@@ -456,51 +484,77 @@ export function PracticeSection({
 
   return (
     <section className="control-panel" aria-labelledby="practice-heading">
-      {/* HEADER */}
-      <div className="section-heading control-panel-heading">
-        <div>
-          <span className="section-kicker">Kurasi &amp; Stok Soal</span>
-          <h2 id="practice-heading">Manajemen Soal Latihan (/latihan)</h2>
-          <p>
-            Kelola seluruh soal Latihan mulai dari <strong>Draf → Antrean QC (Sandbox) → Kotak Revisi → Tayang di /latihan</strong>. Soal yang di-ACC ke <strong>Siap (Ready)</strong> otomatis langsung tayang ke siswa di <code>/latihan</code>.
+      {/* COMPACT SINGLE-ROW HEADER */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '12px',
+          flexWrap: 'wrap',
+          marginBottom: '12px',
+        }}
+      >
+        <div style={{ minWidth: '240px', flex: '1 1 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h2 id="practice-heading" style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+              Manajemen Soal Latihan (/latihan)
+            </h2>
+            <span
+              className="pill"
+              style={{
+                fontSize: '10.5px',
+                padding: '2px 8px',
+                background: 'rgba(56, 189, 248, 0.12)',
+                color: '#7dd3fc',
+                border: '1px solid rgba(56, 189, 248, 0.28)',
+                fontWeight: 600,
+              }}
+            >
+              {statusCounts.READY} Tayang · {assignedQuestions.length} Total
+            </span>
+          </div>
+          <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--muted-fg)' }}>
+            Alur kurasi: <strong>Draf → Antrean QC → Siap (Tayang di /latihan)</strong>.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
           <button
             type="button"
             className="button button-secondary"
             onClick={() => void loadWorkspace()}
             disabled={loading}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            title="Muat ulang data soal latihan"
+            style={{
+              width: '32px',
+              height: '32px',
+              padding: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
           >
-            <RefreshCw style={{ width: 14, height: 14 }} />
-            <span>Refresh</span>
+            <RefreshCw style={{ width: 13, height: 13 }} />
           </button>
           <button
             type="button"
             className="button button-secondary"
             onClick={() => setAutoBalanceModalOpen(true)}
             style={{
-              display: 'flex',
+              height: '32px',
+              padding: '0 10px',
+              fontSize: '12px',
+              display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '5px',
+              whiteSpace: 'nowrap',
             }}
           >
-            <Sliders style={{ width: 14, height: 14 }} />
-            <span>Atur Auto-Balance Latihan</span>
+            <Sliders style={{ width: 13, height: 13 }} />
+            <span>Auto-Balance</span>
           </button>
-          {onOpenCreateForPractice && (
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={() => onOpenCreateForPractice()}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Sparkles style={{ width: 14, height: 14 }} />
-              <span>Buat Soal Latihan Baru</span>
-            </button>
-          )}
           <button
             type="button"
             className="button button-secondary"
@@ -510,21 +564,49 @@ export function PracticeSection({
               setPickerBatch('ALL');
               setPickerOpen(true);
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{
+              height: '32px',
+              padding: '0 10px',
+              fontSize: '12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              whiteSpace: 'nowrap',
+            }}
           >
-            <Plus style={{ width: 14, height: 14 }} />
-            <span>Ambil dari Bank / Eksperimen ({pickerPool.filter((q) => !q.isLockedInTryout).length})</span>
+            <Plus style={{ width: 13, height: 13 }} />
+            <span>Ambil dari Bank ({pickerPool.filter((q) => !q.isLockedInTryout).length})</span>
           </button>
+          {onOpenCreateForPractice && (
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => onOpenCreateForPractice()}
+              style={{
+                height: '32px',
+                padding: '0 12px',
+                fontSize: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <Sparkles style={{ width: 13, height: 13 }} />
+              <span>Buat Soal Latihan</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* SUBTEST STOCK CARDS */}
+      {/* 7-COLUMN SINGLE-ROW SUBTEST STOCK STRIP */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '10px',
-          marginBottom: '16px',
+          gridTemplateColumns: 'repeat(7, minmax(115px, 1fr))',
+          gap: '8px',
+          marginBottom: '10px',
+          overflowX: 'auto',
         }}
       >
         {SUBTEST_CARDS.map((card) => {
@@ -532,7 +614,6 @@ export function PracticeSection({
           const totalInPipeline = assignedQuestions.filter((q) => normalizeSubtestKey(q.subtest) === card.key).length;
           const stat = stockStats[card.key];
           const minRemaining = stat ? stat.minRemaining : count;
-          const maxAccessed = stat ? stat.maxAccessed : 0;
           const active = subtestFilter === card.key;
           const isDepletedForTopUser = count === 0 || minRemaining === 0;
           const isLowForTopUser = !isDepletedForTopUser && minRemaining < 5;
@@ -541,110 +622,325 @@ export function PracticeSection({
               key={card.key}
               type="button"
               onClick={() => setSubtestFilter(active ? 'ALL' : card.key)}
+              title={`${card.short} — ${card.label}: ${count} soal tayang (${totalInPipeline} total)`}
               style={{
                 textAlign: 'left',
-                padding: '12px 14px',
-                borderRadius: '10px',
+                padding: '8px 10px',
+                borderRadius: '8px',
                 border: active
                   ? '1px solid #38bdf8'
                   : isDepletedForTopUser
-                    ? '1px solid rgba(248, 113, 113, 0.35)'
+                    ? '1px solid rgba(248, 113, 113, 0.3)'
                     : '1px solid var(--border)',
                 background: active
                   ? 'rgba(56, 189, 248, 0.1)'
                   : isDepletedForTopUser
-                    ? 'rgba(248, 113, 113, 0.05)'
+                    ? 'rgba(248, 113, 113, 0.04)'
                     : 'rgba(255,255,255,0.02)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
+                minWidth: 0,
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#38bdf8' }}>{card.short}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#38bdf8' }}>{card.short}</span>
                 <span
                   style={{
-                    fontSize: '10px',
-                    padding: '1px 6px',
+                    fontSize: '9.5px',
+                    padding: '0px 5px',
                     borderRadius: '999px',
                     background: isDepletedForTopUser
-                      ? 'rgba(239, 68, 68, 0.18)'
+                      ? 'rgba(239, 68, 68, 0.16)'
                       : isLowForTopUser
-                        ? 'rgba(245, 158, 11, 0.18)'
+                        ? 'rgba(245, 158, 11, 0.16)'
                         : 'rgba(16, 185, 129, 0.16)',
                     color: isDepletedForTopUser ? '#f87171' : isLowForTopUser ? '#fbbf24' : '#34d399',
                     fontWeight: 600,
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  {count === 0
-                    ? 'Kosong'
-                    : isDepletedForTopUser
-                      ? 'Habis (Siswa Aktif)'
-                      : isLowForTopUser
-                        ? `Sisa ${minRemaining}`
-                        : 'Aman'}
+                  {count === 0 ? 'Kosong' : isDepletedForTopUser ? 'Habis' : isLowForTopUser ? `Sisa ${minRemaining}` : 'Aman'}
                 </span>
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 700, marginTop: '4px' }}>
-                {count}{' '}
-                <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--muted-fg)' }}>
-                  tayang ({totalInPipeline} total)
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '3px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 800, lineHeight: 1.1 }}>{count}</span>
+                <span style={{ fontSize: '10px', color: 'var(--muted-fg)', whiteSpace: 'nowrap' }}>
+                  tayang ({totalInPipeline})
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--muted-fg)', marginTop: '2px' }}>{card.label}</div>
-              {maxAccessed > 0 && (
-                <div style={{ fontSize: '10px', color: isDepletedForTopUser ? '#fca5a5' : 'var(--muted-fg)', marginTop: '4px' }}>
-                  Siswa teraktif sudah akses {maxAccessed}/{count} soal
-                </div>
-              )}
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: 'var(--muted-fg)',
+                  marginTop: '2px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {card.label}
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* LIFECYCLE STATUS TABS */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-        {STATUS_TABS.map((tab) => {
-          const active = statusFilter === tab.key;
-          const cnt = statusCounts[tab.key] ?? 0;
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setStatusFilter(tab.key)}
-              className={active ? 'button button-primary' : 'button button-secondary'}
-              style={{
-                height: '34px',
-                padding: '0 12px',
-                fontSize: '12px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <span>{tab.label}</span>
-              <span
-                className="pill"
+      {/* COMPACT BATCH SELECTION FIELD */}
+      {batchSummaries.length > 0 && (() => {
+        const activeBatchName =
+          selectedPullBatch && batchSummaries.some((b) => b.batch === selectedPullBatch)
+            ? selectedPullBatch
+            : (batchSummaries.find((b) => b.eligibleCount > 0)?.batch ?? batchSummaries[0]?.batch ?? '');
+        const selectedMeta = batchSummaries.find((b) => b.batch === activeBatchName) ?? null;
+        const isFullyAssigned =
+          Boolean(selectedMeta) &&
+          selectedMeta!.alreadyInPracticeCount >= selectedMeta!.totalInBatch &&
+          selectedMeta!.totalInBatch > 0;
+        const isExclusiveTryoutBatch =
+          Boolean(selectedMeta) &&
+          !isFullyAssigned &&
+          selectedMeta!.eligibleCount === 0 &&
+          selectedMeta!.lockedTryoutCount > 0;
+        const canPull = Boolean(selectedMeta && selectedMeta.eligibleCount > 0);
+        const isBusy = Boolean(selectedMeta && assigningBatch === selectedMeta.batch);
+
+        return (
+          <div
+            style={{
+              marginBottom: '10px',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: '1px solid rgba(56, 189, 248, 0.22)',
+              background: 'rgba(14, 165, 233, 0.04)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '1 1 auto' }}>
+              <label
+                htmlFor="practice-batch-pull-select"
+                style={{ fontSize: '11.5px', fontWeight: 700, color: '#7dd3fc', whiteSpace: 'nowrap' }}
+              >
+                Tarik Batch Soal:
+              </label>
+              <select
+                id="practice-batch-pull-select"
+                className="field-input"
+                value={activeBatchName}
+                onChange={(e) => setSelectedPullBatch(e.target.value)}
                 style={{
-                  fontSize: '10px',
-                  padding: '1px 6px',
-                  background: active ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.08)',
-                  color: active ? '#fff' : 'var(--muted-fg)',
+                  width: 'auto',
+                  minWidth: '260px',
+                  maxWidth: '380px',
+                  height: '30px',
+                  fontSize: '12px',
+                  padding: '0 10px',
                 }}
               >
-                {cnt}
-              </span>
-            </button>
-          );
-        })}
+                {batchSummaries.map((b) => {
+                  const allIn = b.alreadyInPracticeCount >= b.totalInBatch && b.totalInBatch > 0;
+                  const lockedToTryout = !allIn && b.eligibleCount === 0 && b.lockedTryoutCount > 0;
+                  const statusText =
+                    b.eligibleCount > 0
+                      ? `Siap ditarik (+${b.eligibleCount} soal)`
+                      : allIn
+                        ? `✓ Sudah di Latihan (${b.alreadyInPracticeCount} soal)`
+                        : lockedToTryout
+                          ? `🔒 Eksklusif Tryout (${b.lockedTryoutCount} soal)`
+                          : `${b.alreadyInPracticeCount}/${b.totalInBatch} soal`;
+                  return (
+                    <option key={b.batch} value={b.batch}>
+                      {b.batch} — {statusText}
+                    </option>
+                  );
+                })}
+              </select>
+
+              {selectedMeta && (
+                <span
+                  style={{
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    border: isFullyAssigned
+                      ? '1px solid rgba(16, 185, 129, 0.3)'
+                      : isExclusiveTryoutBatch
+                        ? '1px solid rgba(245, 158, 11, 0.3)'
+                        : '1px solid rgba(56, 189, 248, 0.3)',
+                    background: isFullyAssigned
+                      ? 'rgba(16, 185, 129, 0.08)'
+                      : isExclusiveTryoutBatch
+                        ? 'rgba(245, 158, 11, 0.08)'
+                        : 'rgba(56, 189, 248, 0.08)',
+                    color: isFullyAssigned
+                      ? '#34d399'
+                      : isExclusiveTryoutBatch
+                        ? '#fbbf24'
+                        : '#7dd3fc',
+                  }}
+                >
+                  {canPull
+                    ? `${selectedMeta.eligibleCount} soal siap masuk Latihan (Total ${selectedMeta.totalInBatch})`
+                    : isFullyAssigned
+                      ? `✓ Seluruh ${selectedMeta.alreadyInPracticeCount} soal sudah di Latihan`
+                      : isExclusiveTryoutBatch
+                        ? `🔒 Batch khusus Tryout (${selectedMeta.lockedTryoutCount} soal) — tidak bisa ditarik ke Latihan`
+                        : `Total ${selectedMeta.totalInBatch} soal`}
+                </span>
+              )}
+            </div>
+
+            {selectedMeta && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {canPull ? (
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    disabled={isBusy}
+                    onClick={() => void handleAssignBatch(selectedMeta.batch)}
+                    style={{ height: '30px', padding: '0 12px', fontSize: '11.5px', whiteSpace: 'nowrap' }}
+                  >
+                    {isBusy ? 'Menarik…' : `+ Tarik Batch (${selectedMeta.eligibleCount} Soal)`}
+                  </button>
+                ) : isFullyAssigned ? (
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => setBatchFilter(selectedMeta.batch)}
+                    style={{ height: '30px', padding: '0 10px', fontSize: '11.5px', whiteSpace: 'nowrap' }}
+                  >
+                    Filter di Tabel ({selectedMeta.alreadyInPracticeCount})
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    disabled
+                    style={{ height: '30px', padding: '0 10px', fontSize: '11.5px', opacity: 0.65, whiteSpace: 'nowrap' }}
+                  >
+                    🔒 Milik Tryout
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* UNIFIED STATUS TABS & COMPACT FILTER TOOLBAR */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '10px',
+          flexWrap: 'wrap',
+          marginBottom: '10px',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {STATUS_TABS.map((tab) => {
+            const active = statusFilter === tab.key;
+            const cnt = statusCounts[tab.key] ?? 0;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setStatusFilter(tab.key)}
+                className={active ? 'button button-primary' : 'button button-secondary'}
+                style={{
+                  height: '30px',
+                  padding: '0 10px',
+                  fontSize: '11.5px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                }}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className="pill"
+                  style={{
+                    fontSize: '10px',
+                    padding: '0px 5px',
+                    background: active ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.08)',
+                    color: active ? '#fff' : 'var(--muted-fg)',
+                  }}
+                >
+                  {cnt}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', flex: '1 1 360px', justifyContent: 'flex-end' }}>
+          <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: '300px' }}>
+            <Search
+              style={{
+                width: 13,
+                height: 13,
+                position: 'absolute',
+                left: 10,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--muted-fg)',
+              }}
+            />
+            <input
+              type="search"
+              className="field-input"
+              placeholder="Cari ID, soal, topik, atau batch…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ paddingLeft: '30px', width: '100%', height: '30px', fontSize: '12px' }}
+            />
+          </div>
+
+          <select
+            className="field-input"
+            value={subtestFilter}
+            onChange={(e) => setSubtestFilter(e.target.value)}
+            style={{ width: 'auto', minWidth: '150px', height: '30px', fontSize: '12px', padding: '0 8px' }}
+          >
+            <option value="ALL">Semua Subtes ({assignedQuestions.length})</option>
+            {SUBTEST_CARDS.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.short} — {c.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="field-input"
+            value={batchFilter}
+            onChange={(e) => setBatchFilter(e.target.value)}
+            style={{ width: 'auto', minWidth: '140px', height: '30px', fontSize: '12px', padding: '0 8px' }}
+          >
+            <option value="ALL">Semua Batch</option>
+            {assignedBatchOptions.batches.map((item) => (
+              <option key={item.batch} value={item.batch}>
+                Batch: {item.batch} ({item.count})
+              </option>
+            ))}
+            {assignedBatchOptions.noBatchCount > 0 && (
+              <option value="__NONE__">Tanpa Batch ({assignedBatchOptions.noBatchCount})</option>
+            )}
+          </select>
+        </div>
       </div>
 
       {/* BULK QC BAR */}
       {selectedTableIds.length > 0 && (
         <div
           style={{
-            marginBottom: '12px',
-            padding: '10px 14px',
-            borderRadius: '10px',
+            marginBottom: '10px',
+            padding: '8px 12px',
+            borderRadius: '8px',
             border: '1px solid rgba(56, 189, 248, 0.35)',
             background: 'rgba(14, 165, 233, 0.1)',
             display: 'flex',
@@ -657,13 +953,13 @@ export function PracticeSection({
           <span style={{ fontSize: '12px', fontWeight: 600, color: '#e0f2fe' }}>
             {selectedTableIds.length} soal Latihan dipilih
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {selectedTableIds.length < filteredAssigned.length && (
               <button
                 type="button"
                 className="button button-secondary"
                 onClick={() => setSelectedTableIds(filteredAssigned.map((q) => q.id))}
-                style={{ height: '30px', fontSize: '11px' }}
+                style={{ height: '28px', fontSize: '11px', padding: '0 8px' }}
               >
                 Pilih semua ({filteredAssigned.length})
               </button>
@@ -673,7 +969,7 @@ export function PracticeSection({
               className="button button-secondary"
               disabled={bulkBusy !== null}
               onClick={() => void handleBulkStatusChange('QC_SANDBOX')}
-              style={{ height: '30px', fontSize: '11px', color: '#93c5fd', borderColor: 'rgba(59, 130, 246, 0.4)' }}
+              style={{ height: '28px', fontSize: '11px', padding: '0 8px', color: '#93c5fd', borderColor: 'rgba(59, 130, 246, 0.4)' }}
             >
               {bulkBusy === 'QC_SANDBOX' ? 'Memproses…' : 'Geser ke Antrean QC'}
             </button>
@@ -682,7 +978,7 @@ export function PracticeSection({
               className="button button-primary"
               disabled={bulkBusy !== null}
               onClick={() => void handleBulkStatusChange('READY')}
-              style={{ height: '30px', fontSize: '11px', background: '#059669', borderColor: '#10b981' }}
+              style={{ height: '28px', fontSize: '11px', padding: '0 8px', background: '#059669', borderColor: '#10b981' }}
             >
               {bulkBusy === 'READY' ? 'Memproses…' : 'ACC & Tayangkan di /latihan'}
             </button>
@@ -691,7 +987,7 @@ export function PracticeSection({
               className="button button-secondary"
               disabled={bulkBusy !== null}
               onClick={() => void handleBulkStatusChange('DRAFT')}
-              style={{ height: '30px', fontSize: '11px' }}
+              style={{ height: '28px', fontSize: '11px', padding: '0 8px' }}
             >
               {bulkBusy === 'DRAFT' ? 'Memproses…' : 'Tarik ke Draf'}
             </button>
@@ -699,69 +995,13 @@ export function PracticeSection({
               type="button"
               className="button button-secondary"
               onClick={() => setSelectedTableIds([])}
-              style={{ height: '30px', fontSize: '11px' }}
+              style={{ height: '28px', fontSize: '11px', padding: '0 8px' }}
             >
               Batal Pilih
             </button>
           </div>
         </div>
       )}
-
-      {/* FILTER BAR */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: '1 1 240px' }}>
-          <Search
-            style={{
-              width: 14,
-              height: 14,
-              position: 'absolute',
-              left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--muted-fg)',
-            }}
-          />
-          <input
-            type="search"
-            className="field-input"
-            placeholder="Cari ID soal, pertanyaan, topik, catatan revisi, atau batch…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ paddingLeft: '34px', width: '100%' }}
-          />
-        </div>
-
-        <select
-          className="field-input"
-          value={subtestFilter}
-          onChange={(e) => setSubtestFilter(e.target.value)}
-          style={{ width: 'auto', minWidth: '200px' }}
-        >
-          <option value="ALL">Semua Subtes ({assignedQuestions.length})</option>
-          {SUBTEST_CARDS.map((c) => (
-            <option key={c.key} value={c.key}>
-              {c.short} — {c.label}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="field-input"
-          value={batchFilter}
-          onChange={(e) => setBatchFilter(e.target.value)}
-          style={{ width: 'auto', minWidth: '175px' }}
-        >
-          <option value="ALL">Semua Batch</option>
-          {assignedBatchOptions.batches.map((item) => (
-            <option key={item.batch} value={item.batch}>
-              Batch: {item.batch} ({item.count})
-            </option>
-          ))}
-          {assignedBatchOptions.noBatchCount > 0 && (
-            <option value="__NONE__">Tanpa Batch ({assignedBatchOptions.noBatchCount})</option>
-          )}
-        </select>
-      </div>
 
       {/* ASSIGNED QUESTIONS TABLE WITH FULL QC WORKFLOW */}
       <PracticeTable

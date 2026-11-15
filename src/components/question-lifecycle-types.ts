@@ -144,9 +144,20 @@ export type SubtestStockStat = {
   maxAccessed: number;
 };
 
+export type PracticeBatchSummary = {
+  batch: string;
+  totalInBatch: number;
+  eligibleCount: number;
+  alreadyInPracticeCount: number;
+  lockedTryoutCount: number;
+  notReadyCount: number;
+  subtestBreakdown: Record<string, number>;
+};
+
 export type PracticeWorkspaceResponse = {
   assignedQuestions: PracticeAssignedQuestion[];
   pickerPool: PracticePickerQuestion[];
+  batchSummaries?: PracticeBatchSummary[];
   subtestStocks: Record<string, number>;
   subtestStockStats?: Record<string, SubtestStockStat>;
 };
@@ -155,8 +166,10 @@ export type TryoutSubtestSummary = {
   id: string;
   name: string;
   durationMinutes: number;
+  targetQuestionCount?: number;
   order: number;
   questionCount: number;
+  readyCount?: number;
 };
 
 export type TryoutAssignedQuestion = {
@@ -262,14 +275,20 @@ export type TryoutWorkspaceResponse = {
     description?: string | null;
     solutionPrice: number;
     batch: string;
+    releaseDate?: string | null;
     status: string;
     curationStatus?: TryoutCurationStatus;
+    questionsReleased?: boolean;
+    questionsReleasedAt?: string | null;
+    breakSeconds?: number;
     revisionNotes?: string | null;
     reviewedBy?: string | null;
     reviewedAt?: string | null;
     isPublic: boolean;
     questionCount: number;
+    readyQuestionCount?: number;
     totalDurationMinutes?: number;
+    totalTargetQuestions?: number;
   };
   subtests: TryoutSubtestSummary[];
   assignedQuestions: TryoutAssignedQuestion[];
@@ -277,6 +296,14 @@ export type TryoutWorkspaceResponse = {
   batchSummaries: TryoutBatchSummary[];
   curriculumTopics?: TryoutCurriculumTopic[];
 };
+
+export function formatTryoutBatchLabel(batch?: string | null): string {
+  const raw = String(batch || '').toUpperCase().trim();
+  if (raw === 'SNBT_2027') return 'SNBT 2027';
+  if (raw === 'SNBT') return 'SNBT';
+  if (raw === 'MANDIRI') return 'MANDIRI';
+  return raw || 'SNBT 2027';
+}
 
 export const LIFECYCLE_SUBTESTS = [
   { value: 'PENALARAN_UMUM', code: 'PU', label: 'Penalaran Umum' },

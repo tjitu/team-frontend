@@ -45,8 +45,12 @@ type TryoutMeta = {
   title: string;
   description?: string | null;
   batch: string;
+  releaseDate?: string | null;
   status: string;
   curationStatus?: TryoutCurationStatus;
+  questionsReleased?: boolean;
+  questionsReleasedAt?: string | null;
+  breakSeconds?: number;
   revisionNotes?: string | null;
   reviewedBy?: string | null;
   reviewedAt?: string | null;
@@ -55,12 +59,14 @@ type TryoutMeta = {
   questionCount: number;
   readyQuestionCount?: number;
   totalDurationMinutes?: number;
+  totalTargetQuestions?: number;
 };
 
 type TryoutSubtestSummary = {
   id: string;
   name: string;
   durationMinutes: number;
+  targetQuestionCount?: number;
   order: number;
   questionCount: number;
   readyCount?: number;
@@ -189,6 +195,7 @@ export function TryoutQuestionsSection({
 
   const [assigning, setAssigning] = React.useState(false);
   const [assigningBatchName, setAssigningBatchName] = React.useState<string | null>(null);
+  const [selectedPullBatch, setSelectedPullBatch] = React.useState<string>('');
   const [removingId, setRemovingId] = React.useState<string | null>(null);
   const [removingBatch, setRemovingBatch] = React.useState(false);
   const [previewQuestion, setPreviewQuestion] = React.useState<TryoutAssignedQuestion | null>(null);
@@ -283,7 +290,7 @@ export function TryoutQuestionsSection({
   const pickerBatchOptions = React.useMemo(() => {
     const map = new Map<string, number>();
     for (const q of pickerPool) {
-      if (q.isLockedInOtherTryout) continue;
+      if (q.isLockedInOtherTryout || q.isInPractice) continue;
       const b = (q.batch || '').trim();
       if (!b) continue;
       map.set(b, (map.get(b) || 0) + 1);
@@ -296,7 +303,7 @@ export function TryoutQuestionsSection({
       if (pickerSourceFilter === 'POOL_ONLY' && !q.isInPoolTryout) {
         return false;
       }
-      if (pickerSourceFilter === 'POOL_AND_BANK' && !q.isInPoolTryout && !q.isInBank) {
+      if (pickerSourceFilter === 'POOL_AND_BANK' && (!q.isInPoolTryout && !q.isInBank || q.isInPractice)) {
         return false;
       }
       if (pickerSubtest !== 'ALL' && normalizeSubtestKey(q.subtest) !== pickerSubtest) {
@@ -317,17 +324,23 @@ export function TryoutQuestionsSection({
   }, [pickerPool, pickerSourceFilter, pickerSubtest, pickerBatch, pickerSearch]);
 
   const selectableFilteredIds = React.useMemo(
-    () => filteredPicker.filter((q) => !q.isLockedInOtherTryout).map((q) => q.id),
+    () => filteredPicker.filter((q) => !q.isLockedInOtherTryout && !q.isInPractice).map((q) => q.id),
     [filteredPicker],
   );
 
   const availablePoolAndBankCount = React.useMemo(
-    () => pickerPool.filter((q) => !q.isLockedInOtherTryout && (q.isInPoolTryout || q.isInBank)).length,
+    () =>
+      pickerPool.filter(
+        (q) => !q.isLockedInOtherTryout && !q.isInPractice && (q.isInPoolTryout || q.isInBank),
+      ).length,
     [pickerPool],
   );
 
   const assignableBatches = React.useMemo(
-    () => batchSummaries.filter((b) => b.eligibleCount > 0 || b.alreadyHereCount > 0),
+    () =>
+      batchSummaries.filter(
+        (b) => b.eligibleCount > 0 || b.alreadyHereCount > 0 || b.practiceCount > 0 || b.lockedOtherCount > 0,
+      ),
     [batchSummaries],
   );
 
@@ -630,6 +643,10 @@ export function TryoutQuestionsSection({
           tryoutMeta?.totalDurationMinutes ??
           subtests.reduce((acc, s) => acc + (Number(s.durationMinutes) || 0), 0)
         }
+        totalTargetQuestions={
+          tryoutMeta?.totalTargetQuestions ??
+          subtests.reduce((acc, s) => acc + (Number(s.targetQuestionCount) || 20), 0)
+        }
         jituMainUrl={jituMainUrl}
         onUpdated={async () => {
           await loadWorkspace();
@@ -640,10 +657,11 @@ export function TryoutQuestionsSection({
         onOpenAutoBalance={() => setAutoBalanceModalOpen(true)}
       />
 
-      {/* SUBTEST TIMER CONFIGURATOR (195M DEFAULT + 1M BUFFER) */}
+      {/* SUBTEST TIMER & QUOTA CONFIGURATOR */}
       <TryoutSubtestTimerPanel
         tryoutId={tryoutId}
         subtests={subtests}
+        breakSeconds={tryoutMeta?.breakSeconds ?? 60}
         onSaved={async () => {
           await loadWorkspace();
           onQuestionsChangedRef.current?.();
@@ -652,138 +670,166 @@ export function TryoutQuestionsSection({
         onNotice={onNotice}
       />
 
-      {/* QUICK 1-BATCH PICKER PANEL */}
-      {assignableBatches.length > 0 && (
-        <div
-          style={{
-            marginBottom: '16px',
-            padding: '14px 16px',
-            borderRadius: '12px',
-            border: '1px solid rgba(56, 189, 248, 0.28)',
-            background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(15, 23, 42, 0.45))',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers style={{ width: 16, height: 16, color: '#38bdf8' }} />
-              <strong style={{ fontSize: '13px', color: '#e0f2fe' }}>Pilih Langsung 1 Batch ke Tryout Ini</strong>
-              <span style={{ fontSize: '12px', color: 'var(--muted-fg)' }}>
-                Klik 1 tombol untuk memasukkan seluruh soal bebas dari satu batch langsung ke subtesnya.
-              </span>
-            </div>
-          </div>
+      {/* COMPACT BATCH SELECTION FIELD FOR TRYOUT */}
+      {assignableBatches.length > 0 && (() => {
+        const activeBatchName =
+          selectedPullBatch && assignableBatches.some((b) => b.batch === selectedPullBatch)
+            ? selectedPullBatch
+            : (assignableBatches.find((b) => b.eligibleCount > 0)?.batch ?? assignableBatches[0]?.batch ?? '');
+        const selectedMeta = assignableBatches.find((b) => b.batch === activeBatchName) ?? null;
+        const breakdownParts = selectedMeta
+          ? Object.entries(selectedMeta.subtestBreakdown)
+              .map(([code, cnt]) => `${code}:${cnt}`)
+              .join(' · ')
+          : '';
+        const isAllHere = Boolean(selectedMeta && selectedMeta.eligibleCount === 0 && selectedMeta.alreadyHereCount > 0);
+        const isLockedPractice = Boolean(
+          selectedMeta && selectedMeta.eligibleCount === 0 && selectedMeta.alreadyHereCount === 0 && selectedMeta.practiceCount > 0,
+        );
+        const isLockedOtherTryout = Boolean(
+          selectedMeta &&
+            selectedMeta.eligibleCount === 0 &&
+            selectedMeta.alreadyHereCount === 0 &&
+            selectedMeta.practiceCount === 0 &&
+            selectedMeta.lockedOtherCount > 0,
+        );
+        const canPull = Boolean(selectedMeta && selectedMeta.eligibleCount > 0);
 
+        return (
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+              marginBottom: '12px',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              background: 'rgba(14, 165, 233, 0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
               gap: '10px',
+              flexWrap: 'wrap',
             }}
           >
-            {assignableBatches.map((b) => {
-              const breakdownParts = Object.entries(b.subtestBreakdown)
-                .map(([code, cnt]) => `${code}:${cnt}`)
-                .join(' · ');
-              const isAllHere = b.eligibleCount === 0 && b.alreadyHereCount > 0;
-              return (
-                <div
-                  key={b.batch}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '1 1 auto' }}>
+              <Layers style={{ width: 14, height: 14, color: '#38bdf8', flexShrink: 0 }} />
+              <label
+                htmlFor="tryout-batch-pull-select"
+                style={{ fontSize: '11.5px', fontWeight: 700, color: '#e0f2fe', whiteSpace: 'nowrap' }}
+              >
+                Tarik Batch Soal:
+              </label>
+              <select
+                id="tryout-batch-pull-select"
+                className="field-input"
+                value={activeBatchName}
+                onChange={(e) => setSelectedPullBatch(e.target.value)}
+                style={{
+                  width: 'auto',
+                  minWidth: '260px',
+                  maxWidth: '380px',
+                  height: '30px',
+                  fontSize: '12px',
+                  padding: '0 10px',
+                }}
+              >
+                {assignableBatches.map((b) => {
+                  const allHere = b.eligibleCount === 0 && b.alreadyHereCount > 0;
+                  const lockedPrac = b.eligibleCount === 0 && b.alreadyHereCount === 0 && b.practiceCount > 0;
+                  const statusLabel =
+                    b.eligibleCount > 0
+                      ? `Siap ditarik (+${b.eligibleCount} soal)`
+                      : allHere
+                        ? `✓ Sudah di Tryout ini (${b.alreadyHereCount} soal)`
+                        : lockedPrac
+                          ? `🔒 Eksklusif Latihan (${b.practiceCount} soal)`
+                          : `🔒 Terikat di Tryout lain (${b.lockedOtherCount} soal)`;
+                  return (
+                    <option key={b.batch} value={b.batch}>
+                      {b.batch} — {statusLabel}
+                    </option>
+                  );
+                })}
+              </select>
+
+              {selectedMeta && (
+                <span
                   style={{
-                    padding: '10px 12px',
-                    borderRadius: '10px',
-                    border: isAllHere ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid var(--border)',
-                    background: isAllHere ? 'rgba(16, 185, 129, 0.06)' : 'rgba(15, 23, 42, 0.6)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: '8px',
+                    fontSize: '11px',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    border: isAllHere
+                      ? '1px solid rgba(16, 185, 129, 0.3)'
+                      : isLockedPractice || isLockedOtherTryout
+                        ? '1px solid rgba(245, 158, 11, 0.3)'
+                        : '1px solid rgba(56, 189, 248, 0.3)',
+                    background: isAllHere
+                      ? 'rgba(16, 185, 129, 0.08)'
+                      : isLockedPractice || isLockedOtherTryout
+                        ? 'rgba(245, 158, 11, 0.08)'
+                        : 'rgba(56, 189, 248, 0.08)',
+                    color: isAllHere
+                      ? '#34d399'
+                      : isLockedPractice || isLockedOtherTryout
+                        ? '#fbbf24'
+                        : '#7dd3fc',
                   }}
                 >
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                      <span
-                        className="pill"
-                        style={{
-                          fontSize: '11px',
-                          background: 'rgba(245, 158, 11, 0.14)',
-                          color: '#fbbf24',
-                          border: '1px solid rgba(245, 158, 11, 0.3)',
-                          fontWeight: 700,
-                        }}
-                      >
-                        Batch: {b.batch}
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
-                        Total {b.totalInBatch} soal
-                      </span>
-                    </div>
+                  {canPull
+                    ? `${selectedMeta.eligibleCount} soal siap masuk Tryout${breakdownParts ? ` (${breakdownParts})` : ''}`
+                    : isAllHere
+                      ? `✓ ${selectedMeta.alreadyHereCount} soal sudah di Tryout ini`
+                      : isLockedPractice
+                        ? `🔒 Batch khusus Latihan (${selectedMeta.practiceCount} soal FOR_PRACTICE) — tidak bisa ditarik ke Tryout`
+                        : `🔒 Terikat di paket Tryout lain (${selectedMeta.lockedOtherCount} soal)`}
+                </span>
+              )}
+            </div>
 
-                    <div style={{ fontSize: '11px', color: 'var(--muted-fg)', marginTop: '6px', lineHeight: 1.45 }}>
-                      {b.eligibleCount > 0 ? (
-                        <>
-                          <strong style={{ color: '#38bdf8' }}>{b.eligibleCount} soal dapat dimasukkan</strong>
-                          {breakdownParts ? ` (${breakdownParts})` : ''}
-                        </>
-                      ) : (
-                        <span style={{ color: '#34d399', fontWeight: 600 }}>
-                          ✓ {b.alreadyHereCount} soal sudah di Tryout ini
-                        </span>
-                      )}
-                      {b.alreadyHereCount > 0 && b.eligibleCount > 0 && (
-                        <div>· {b.alreadyHereCount} sudah masuk di Tryout ini</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {b.eligibleCount > 0 ? (
-                      <button
-                        type="button"
-                        className="button button-primary"
-                        disabled={assigningBatchName !== null}
-                        onClick={() => void handleAssignEntireBatch(b.batch)}
-                        style={{
-                          width: '100%',
-                          height: '30px',
-                          fontSize: '11px',
-                          color: '#000',
-                          fontWeight: 700,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '5px',
-                        }}
-                      >
-                        <Plus style={{ width: 12, height: 12 }} />
-                        <span>
-                          {assigningBatchName === b.batch
-                            ? 'Memasukkan Batch…'
-                            : `Masukkan 1 Batch (${b.eligibleCount} Soal)`}
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="button button-secondary"
-                        onClick={() => setBatchFilter(b.batch)}
-                        style={{ width: '100%', height: '30px', fontSize: '11px' }}
-                      >
-                        Filter Batch Ini ({b.alreadyHereCount})
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {selectedMeta && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {canPull ? (
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    disabled={assigningBatchName !== null}
+                    onClick={() => void handleAssignEntireBatch(selectedMeta.batch)}
+                    style={{ height: '30px', padding: '0 12px', fontSize: '11.5px', whiteSpace: 'nowrap' }}
+                  >
+                    {assigningBatchName === selectedMeta.batch
+                      ? 'Memasukkan…'
+                      : `+ Masukkan Batch (${selectedMeta.eligibleCount} Soal)`}
+                  </button>
+                ) : isAllHere ? (
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => setBatchFilter(selectedMeta.batch)}
+                    style={{ height: '30px', padding: '0 10px', fontSize: '11.5px', whiteSpace: 'nowrap' }}
+                  >
+                    Filter di Tabel ({selectedMeta.alreadyHereCount})
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    disabled
+                    style={{ height: '30px', padding: '0 10px', fontSize: '11.5px', opacity: 0.65, whiteSpace: 'nowrap' }}
+                  >
+                    {isLockedPractice ? '🔒 Milik Latihan' : '🔒 Milik Tryout Lain'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 7 OFFICIAL SUBTEST CARDS */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(155px, 1fr))',
           gap: '10px',
           marginBottom: '16px',
         }}
@@ -791,9 +837,11 @@ export function TryoutQuestionsSection({
         {OFFICIAL_SUBTESTS.map((st) => {
           const matchedSubtest = subtests.find((s) => s.name === st.code);
           const count = assignedQuestions.filter((q) => normalizeSubtestKey(q.subtest) === st.key).length;
+          const targetCount = matchedSubtest?.targetQuestionCount ?? (st.code === 'PU' || st.code === 'LBI' ? 30 : 20);
           const readyInSubtest = assignedQuestions.filter(
             (q) => normalizeSubtestKey(q.subtest) === st.key && String(q.status || '').toUpperCase() === 'READY',
           ).length;
+          const quotaMet = count >= targetCount && targetCount > 0;
           const active = subtestFilter === st.key;
           return (
             <button
@@ -815,10 +863,24 @@ export function TryoutQuestionsSection({
                   {matchedSubtest ? `${matchedSubtest.durationMinutes} mnt` : '—'}
                 </span>
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 700, marginTop: '4px', color: count > 0 ? '#f8fafc' : '#f87171' }}>
-                {count} <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--muted-fg)' }}>soal</span>
+              <div
+                style={{
+                  fontSize: '19px',
+                  fontWeight: 700,
+                  marginTop: '4px',
+                  color: quotaMet ? '#34d399' : count > 0 ? '#f8fafc' : '#f87171',
+                }}
+              >
+                {count} / {targetCount}{' '}
+                <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--muted-fg)' }}>soal</span>
               </div>
-              <div style={{ fontSize: '11px', color: readyInSubtest === count && count > 0 ? '#34d399' : 'var(--muted-fg)', marginTop: '2px' }}>
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: readyInSubtest === count && count > 0 ? '#34d399' : 'var(--muted-fg)',
+                  marginTop: '2px',
+                }}
+              >
                 {readyInSubtest}/{count} Siap · {st.label}
               </div>
             </button>
@@ -1434,6 +1496,7 @@ export function TryoutQuestionsSection({
                     const sub = getSubtestDisplay(q.subtest);
                     const diff = getDifficultyMeta(q.difficulty);
                     const stBadge = getQuestionStatusBadge(q.status);
+                    const isBlocked = q.isLockedInOtherTryout || q.isInPractice;
                     return (
                       <label
                         key={q.id}
@@ -1445,13 +1508,13 @@ export function TryoutQuestionsSection({
                           borderRadius: '10px',
                           border: checked ? '1.5px solid var(--foreground)' : '1px solid var(--border)',
                           background: checked ? 'var(--surface)' : 'var(--card)',
-                          opacity: q.isLockedInOtherTryout ? 0.55 : 1,
-                          cursor: q.isLockedInOtherTryout ? 'not-allowed' : 'pointer',
+                          opacity: isBlocked ? 0.55 : 1,
+                          cursor: isBlocked ? 'not-allowed' : 'pointer',
                         }}
                       >
                         <input
                           type="checkbox"
-                          disabled={q.isLockedInOtherTryout}
+                          disabled={isBlocked}
                           checked={checked}
                           onChange={() => {
                             setSelectedIds((prev) =>
@@ -1497,6 +1560,12 @@ export function TryoutQuestionsSection({
                               <span className="pill" style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.14)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.35)' }}>
                                 <Lock style={{ width: 10, height: 10, marginRight: 3 }} />
                                 Terikat di {q.tryoutTitle}
+                              </span>
+                            )}
+                            {q.isInPractice && (
+                              <span className="pill" style={{ fontSize: '10px', background: 'rgba(168, 85, 247, 0.14)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.35)' }}>
+                                <Lock style={{ width: 10, height: 10, marginRight: 3 }} />
+                                Terkunci di Latihan (FOR_PRACTICE)
                               </span>
                             )}
                           </div>

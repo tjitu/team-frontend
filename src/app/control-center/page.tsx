@@ -69,6 +69,7 @@ import { AutoBalanceAdjusterModal } from '@/components/auto-balance-adjuster-mod
 import { getAutoBalanceConfig, useAutoBalanceConfig } from '@/components/auto-balance-settings';
 import {
   QuestionBatchField,
+  isBatchCompatibleWithTarget,
   mergeBatchSummaries,
   type QuestionBatchSummary,
 } from '@/components/question-batch-field';
@@ -77,6 +78,7 @@ import {
   buildManualBatchPrompt,
   computePackageAutoBalancePlan,
   DIFFICULTY_COMPOSITION_PRESETS,
+  formatTryoutBatchLabel,
   getQuestionStatusBadge,
   getSubtestDisplay,
   getTryoutStatusBadge,
@@ -215,12 +217,16 @@ export type Tryout = {
   title: string;
   description: string | null;
   solutionPrice: number;
-  batch: 'SNBT' | 'MANDIRI';
+  batch: 'SNBT' | 'SNBT_2027' | 'MANDIRI';
   releaseDate: string;
   scheduledStart: string | null;
   scheduledEnd: string | null;
   status: string;
   curationStatus?: TryoutCurationStatus;
+  questionsReleased?: boolean;
+  questionsReleasedAt?: string | null;
+  breakSeconds?: number;
+  totalTargetQuestions?: number;
   revisionNotes?: string | null;
   reviewedBy?: string | null;
   reviewedAt?: string | null;
@@ -472,7 +478,7 @@ type TryoutForm = {
   title: string;
   description: string;
   solutionPrice: string;
-  batch: 'SNBT' | 'MANDIRI';
+  batch: 'SNBT' | 'SNBT_2027' | 'MANDIRI';
   releaseDate: string;
   scheduledStart: string;
   scheduledEnd: string;
@@ -504,7 +510,7 @@ const initialTryoutForm: TryoutForm = {
   title: '',
   description: '',
   solutionPrice: '1',
-  batch: 'SNBT',
+  batch: 'SNBT_2027',
   releaseDate: '',
   scheduledStart: '',
   scheduledEnd: '',
@@ -776,43 +782,63 @@ function ControlCenterContent() {
     submitting: false,
   });
   const [tryoutWorkspaceRefreshKey, setTryoutWorkspaceRefreshKey] = React.useState(0);
-  const [tryoutStatusFilter, setTryoutStatusFilter] = React.useState<'ALL' | 'DRAFT' | 'PUBLISHED'>('ALL');
+  const [tryoutStatusFilter, setTryoutStatusFilter] = React.useState<
+    'ALL' | 'DRAFT' | 'REGISTRATION_OPEN' | 'LIVE_EXAM'
+  >('ALL');
   const [tryoutWorkflowBusyId, setTryoutWorkflowBusyId] = React.useState<string | null>(null);
+
+  const getTryoutStage = React.useCallback((item: Tryout): 'DRAFT' | 'REGISTRATION_OPEN' | 'LIVE_EXAM' => {
+    const isPublished = (item.curationStatus || 'DRAFT').toUpperCase() === 'PUBLISHED';
+    if (!isPublished) return 'DRAFT';
+    const qCount = Number(item.questionCount ?? 0);
+    const readyCount = Number(item.readyQuestionCount ?? 0);
+    const isQuestionsLive = Boolean(item.questionsReleased) && qCount > 0 && readyCount >= qCount;
+    return isQuestionsLive ? 'LIVE_EXAM' : 'REGISTRATION_OPEN';
+  }, []);
 
   const tryoutStatusCounts = React.useMemo(() => {
     const counts = {
       DRAFT: 0,
-      PUBLISHED: 0,
+      REGISTRATION_OPEN: 0,
+      LIVE_EXAM: 0,
     };
     for (const item of tryouts) {
-      const s = (item.curationStatus || 'DRAFT').toUpperCase();
-      if (s === 'PUBLISHED') counts.PUBLISHED += 1;
-      else counts.DRAFT += 1;
+      const stage = getTryoutStage(item);
+      counts[stage] += 1;
     }
     return counts;
-  }, [tryouts]);
+  }, [tryouts, getTryoutStage]);
 
   const filteredTryouts = React.useMemo(() => {
     if (tryoutStatusFilter === 'ALL') return tryouts;
-    if (tryoutStatusFilter === 'PUBLISHED') {
-      return tryouts.filter((t) => (t.curationStatus || 'DRAFT').toUpperCase() === 'PUBLISHED');
-    }
-    return tryouts.filter((t) => (t.curationStatus || 'DRAFT').toUpperCase() !== 'PUBLISHED');
-  }, [tryouts, tryoutStatusFilter]);
+    return tryouts.filter((t) => getTryoutStage(t) === tryoutStatusFilter);
+  }, [tryouts, tryoutStatusFilter, getTryoutStage]);
 
   async function runTryoutWorkflow(
     tryout: Tryout,
-    action: 'APPROVE' | 'UNPUBLISH',
+    action: 'PUBLISH_CATALOG' | 'RELEASE_QUESTIONS' | 'UNRELEASE_QUESTIONS' | 'APPROVE' | 'UNPUBLISH',
   ) {
-    if (action === 'APPROVE') {
+    if (action === 'PUBLISH_CATALOG') {
       const ok = window.confirm(
-        `Publish Paket Tryout "${tryout.title}" ke halaman siswa? Pastikan seluruh soal di dalam paket ini sudah berstatus Siap (Ready).`,
+        `Publish Pendaftaran Paket Tryout "${tryout.title}" ke katalog publik siswa?\n\nSiswa dapat mulai melihat & mendaftar Tryout ini sekarang. Tanggal Release Date otomatis diset ke waktu publish saat ini, dan soal ujian tetap terkunci sampai Anda menekan "Luncurkan Soal".`,
+      );
+      if (!ok) return;
+    }
+    if (action === 'RELEASE_QUESTIONS' || action === 'APPROVE') {
+      const ok = window.confirm(
+        `Luncurkan Soal Ujian untuk "${tryout.title}" sekarang?\n\nPastikan 100% soal sudah Siap (Ready). Begitu diluncurkan, siswa yang sudah terdaftar dapat menekan "Mulai Kerjakan".`,
+      );
+      if (!ok) return;
+    }
+    if (action === 'UNRELEASE_QUESTIONS') {
+      const ok = window.confirm(
+        `Kunci kembali soal ujian "${tryout.title}"? Pendaftaran di katalog publik tetap buka, tetapi siswa belum bisa mulai mengerjakan soal.`,
       );
       if (!ok) return;
     }
     if (action === 'UNPUBLISH') {
       const ok = window.confirm(
-        `Tarik Paket Tryout "${tryout.title}" kembali ke Draf? Tryout akan disembunyikan sementara dari daftar publik siswa.`,
+        `Tarik Paket Tryout "${tryout.title}" kembali ke Draf? Tryout akan disembunyikan sementara dari daftar publik siswa dan akses soal dikunci.`,
       );
       if (!ok) return;
     }
@@ -825,11 +851,14 @@ function ControlCenterContent() {
       });
       const fresh = await api.get<Tryout[]>('/team/control-center/tryouts', { force: true });
       setTryouts(fresh);
-      setNotice(
-        action === 'APPROVE'
-          ? `Paket Tryout "${tryout.title}" resmi Published (Live) untuk siswa!`
-          : `Paket Tryout "${tryout.title}" ditarik kembali ke Draf.`,
-      );
+      const noticeMap: Record<typeof action, string> = {
+        PUBLISH_CATALOG: `Pendaftaran Tryout "${tryout.title}" resmi dibuka di katalog publik siswa (Release Date diperbarui otomatis)!`,
+        RELEASE_QUESTIONS: `Soal Ujian "${tryout.title}" resmi diluncurkan! Siswa terdaftar kini dapat mulai mengerjakan.`,
+        APPROVE: `Paket Tryout "${tryout.title}" resmi Published & Soal Ujian diluncurkan untuk siswa!`,
+        UNRELEASE_QUESTIONS: `Soal Ujian "${tryout.title}" dikunci kembali (pendaftaran katalog tetap buka).`,
+        UNPUBLISH: `Paket Tryout "${tryout.title}" ditarik kembali ke Draf.`,
+      };
+      setNotice(noticeMap[action]);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Gagal memperbarui status tryout.');
     } finally {
@@ -2305,21 +2334,25 @@ function ControlCenterContent() {
   async function saveTryout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true); setError(''); setNotice('');
-    const body = {
+    const body: Record<string, unknown> = {
       title: tryoutForm.title.trim(),
       description: tryoutForm.description.trim() || null,
       solutionPrice: Number(tryoutForm.solutionPrice),
       batch: tryoutForm.batch,
-      releaseDate: new Date(`${tryoutForm.releaseDate}T00:00:00`).toISOString(),
       scheduledStart: new Date(tryoutForm.scheduledStart).toISOString(),
       scheduledEnd: new Date(tryoutForm.scheduledEnd).toISOString(),
       isPublic: tryoutForm.isPublic,
       referralCode: tryoutForm.referralCode.trim() || null,
     };
+    if (editingTryout && tryoutForm.releaseDate) {
+      body.releaseDate = new Date(`${tryoutForm.releaseDate}T00:00:00`).toISOString();
+    }
     try {
       if (editingTryout) await api.patch(`/team/control-center/tryouts/${editingTryout}`, body);
       else await api.post('/team/control-center/tryouts', body);
-      const successMessage = editingTryout ? 'Tryout updated.' : 'Tryout created.';
+      const successMessage = editingTryout
+        ? 'Tryout diperbarui.'
+        : 'Tryout berhasil dibuat (Batch SNBT 2027 & Release Date otomatis mengikuti waktu Publish).';
       setTryoutForm(initialTryoutForm); setEditingTryout(null); setTryoutFormOpen(false);
       await loadSection('tryouts', '', true);
       setNotice(successMessage);
@@ -2714,106 +2747,192 @@ function ControlCenterContent() {
     await loadSection(section, search.trim());
   }
 
-  // TANSTACK TABLE COLUMNS FOR TRYOUTS
+  // TANSTACK TABLE COLUMNS FOR TRYOUTS (COMPACT 4-COLUMN LAYOUT)
   const tryoutColumns = React.useMemo(() => [
     tryoutColHelper.accessor('title', {
-      header: 'Tryout',
+      header: 'Paket Tryout',
       cell: ({ row }) => {
-        const qCount = Number(row.original.questionCount ?? 0);
-        const readyCount = Number(row.original.readyQuestionCount ?? 0);
         const durMins = Number(row.original.totalDurationMinutes ?? 195);
-        const curation = (row.original.curationStatus || 'DRAFT').toUpperCase();
-        const isPublished = curation === 'PUBLISHED';
-        const allReady = qCount > 0 && readyCount >= qCount;
+        const breakSecs = Number(row.original.breakSeconds ?? 60);
+        const price = Number(row.original.solutionPrice ?? 0);
         return (
-          <div>
-            <strong>{row.original.title}</strong>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span
-                className="pill"
+          <div style={{ minWidth: '220px', maxWidth: '340px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <strong
                 style={{
-                  background: isPublished ? 'rgba(16, 185, 129, 0.14)' : 'rgba(245, 158, 11, 0.14)',
-                  color: isPublished ? '#34d399' : '#fbbf24',
-                  border: isPublished ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)',
-                  fontSize: '10px',
-                  fontWeight: 700,
+                  fontSize: '13px',
+                  lineHeight: 1.3,
+                  color: 'var(--foreground)',
                 }}
               >
-                {isPublished ? 'Published (Live)' : 'Draf Paket'}
-              </span>
+                {row.original.title}
+              </strong>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginTop: '4px',
+                fontSize: '11px',
+                color: 'var(--muted-fg)',
+                flexWrap: 'wrap',
+              }}
+            >
               <span
                 style={{
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  background: 'rgba(255,255,255,0.06)',
+                  color: 'var(--foreground)',
+                  fontWeight: 600,
                   fontSize: '10px',
-                  fontWeight: 700,
-                  padding: '1px 7px',
-                  borderRadius: '999px',
-                  background: allReady ? 'rgba(16, 185, 129, 0.14)' : qCount > 0 ? 'rgba(56, 189, 248, 0.14)' : 'rgba(245, 158, 11, 0.14)',
-                  color: allReady ? '#34d399' : qCount > 0 ? '#7dd3fc' : '#fbbf24',
-                  border: allReady ? '1px solid rgba(16, 185, 129, 0.32)' : qCount > 0 ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
                 }}
               >
-                {readyCount}/{qCount} Siap · {durMins}m
+                {formatTryoutBatchLabel(row.original.batch)}
               </span>
-              <small className="text-[var(--muted-fg)]">
-                #{row.original.code} · {row.original.isPublic ? 'Public' : 'Private'}
-              </small>
+              <span>#{row.original.code}</span>
+              <span>·</span>
+              <span>{durMins}m (jeda {breakSecs}s)</span>
+              <span>·</span>
+              <span>{price > 0 ? `${price} koin` : 'Gratis'}</span>
             </div>
           </div>
         );
       },
     }),
-    tryoutColHelper.accessor('batch', {
-      header: 'Batch',
-      cell: ({ getValue }) => <span className="font-semibold text-xs">{getValue()}</span>,
-    }),
-    tryoutColHelper.accessor('scheduledStart', {
-      header: 'Schedule',
-      cell: ({ row }) => (
-        <div>
-          <span>{formatDate(row.original.scheduledStart)}</span>
-          <small className="block text-[var(--muted-fg)]">Ends {formatDate(row.original.scheduledEnd)}</small>
-        </div>
-      ),
-    }),
-    tryoutColHelper.accessor('solutionPrice', {
-      header: 'Solution Price',
-      cell: ({ getValue }) => <span>{getValue()} coins</span>,
+    tryoutColHelper.accessor('questionCount', {
+      header: 'Progres Soal',
+      cell: ({ row }) => {
+        const qCount = Number(row.original.questionCount ?? 0);
+        const readyCount = Number(row.original.readyQuestionCount ?? 0);
+        const targetTotal = Number(row.original.totalTargetQuestions ?? 160);
+        const allReady = qCount > 0 && readyCount >= qCount;
+        return (
+          <div style={{ whiteSpace: 'nowrap' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '6px',
+                background: allReady
+                  ? 'rgba(16, 185, 129, 0.12)'
+                  : qCount > 0
+                    ? 'rgba(56, 189, 248, 0.12)'
+                    : 'rgba(245, 158, 11, 0.12)',
+                color: allReady ? '#34d399' : qCount > 0 ? '#7dd3fc' : '#fbbf24',
+                border: allReady
+                  ? '1px solid rgba(16, 185, 129, 0.3)'
+                  : qCount > 0
+                    ? '1px solid rgba(56, 189, 248, 0.28)'
+                    : '1px solid rgba(245, 158, 11, 0.28)',
+              }}
+            >
+              {qCount} / {targetTotal} Soal
+            </span>
+            <small
+              style={{
+                display: 'block',
+                fontSize: '10.5px',
+                color: allReady ? '#34d399' : 'var(--muted-fg)',
+                marginTop: '3px',
+              }}
+            >
+              {qCount === 0 ? 'Belum ada soal' : `${readyCount}/${qCount} lolos QC`}
+            </small>
+          </div>
+        );
+      },
     }),
     tryoutColHelper.accessor('status', {
-      header: 'Status',
-      cell: ({ getValue }) => (
-        <span className="control-status">{String(getValue()).replaceAll('_', ' ')}</span>
-      ),
+      header: 'Status & Jadwal',
+      cell: ({ row }) => {
+        const stage = getTryoutStage(row.original);
+        const badgeMap = {
+          DRAFT: {
+            label: '1. Draf Internal',
+            bg: 'rgba(245, 158, 11, 0.14)',
+            color: '#fbbf24',
+            border: 'rgba(245, 158, 11, 0.35)',
+          },
+          REGISTRATION_OPEN: {
+            label: '2. Buka Pendaftaran',
+            bg: 'rgba(56, 189, 248, 0.15)',
+            color: '#38bdf8',
+            border: 'rgba(56, 189, 248, 0.38)',
+          },
+          LIVE_EXAM: {
+            label: '3. Soal Dibuka (Live)',
+            bg: 'rgba(16, 185, 129, 0.16)',
+            color: '#34d399',
+            border: 'rgba(16, 185, 129, 0.4)',
+          },
+        }[stage];
+
+        return (
+          <div style={{ whiteSpace: 'nowrap' }}>
+            <span
+              className="pill"
+              style={{
+                display: 'inline-block',
+                background: badgeMap.bg,
+                color: badgeMap.color,
+                border: `1px solid ${badgeMap.border}`,
+                fontSize: '10.5px',
+                fontWeight: 700,
+                padding: '2px 8px',
+              }}
+            >
+              {badgeMap.label}
+            </span>
+            <small
+              style={{
+                display: 'block',
+                fontSize: '10.5px',
+                color: 'var(--muted-fg)',
+                marginTop: '3px',
+              }}
+            >
+              {formatDate(row.original.scheduledStart)} – {formatDate(row.original.scheduledEnd)}
+            </small>
+          </div>
+        );
+      },
     }),
     tryoutColHelper.display({
       id: 'actions',
-      header: () => <div className="text-right">Actions</div>,
+      header: () => <div className="text-right">Aksi</div>,
       cell: ({ row }) => {
-        const curation = (row.original.curationStatus || 'DRAFT').toUpperCase();
-        const isPublished = curation === 'PUBLISHED';
+        const stage = getTryoutStage(row.original);
         const isBusy = tryoutWorkflowBusyId === row.original.id;
         const qCount = Number(row.original.questionCount ?? 0);
         const readyCount = Number(row.original.readyQuestionCount ?? 0);
         const allReady = qCount > 0 && readyCount >= qCount;
 
-        return (
-          <div className="table-action-group" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="table-action-btn"
-              style={{
-                borderColor: 'rgba(56, 189, 248, 0.45)',
-                color: '#38bdf8',
-                background: 'rgba(56, 189, 248, 0.08)',
-              }}
-              onClick={() => {
-                setTableAutoBalanceTryout(row.original);
-              }}
-              title="Atur Auto-Balance komposisi tipe & level serta materi kurikulum paket tryout ini"
-            >
-              <Sliders className="action-icon" /> Auto-Balance
-            </button>
+        const iconBtnStyle: React.CSSProperties = {
+          width: '28px',
+          height: '28px',
+          padding: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        };
 
+        return (
+          <div
+            className="table-action-group"
+            style={{
+              flexWrap: 'nowrap',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              gap: '5px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {/* Primary Workspace Button */}
             <button
               type="button"
               className="table-action-btn"
@@ -2821,6 +2940,9 @@ function ControlCenterContent() {
                 borderColor: 'rgba(56, 189, 248, 0.4)',
                 color: '#7dd3fc',
                 background: 'rgba(56, 189, 248, 0.08)',
+                height: '28px',
+                padding: '0 9px',
+                fontSize: '11.5px',
               }}
               onClick={() => {
                 setTryoutFormOpen(false);
@@ -2829,78 +2951,140 @@ function ControlCenterContent() {
                 setNotice('');
                 setManagingTryoutId(row.original.id);
               }}
-              title="Kelola soal, QC per soal, timer subtes, dan publish tryout ini"
+              title="Kelola soal, QC per soal, timer subtes, dan jeda antar subtes"
             >
               <Layers className="action-icon" /> Kelola Soal
             </button>
 
-            <button
-              type="button"
-              className="table-action-btn"
-              disabled={isBusy || qCount <= 0}
-              onClick={() => void openTryoutSandboxPreview(row.original)}
-              style={{ borderColor: 'rgba(59, 130, 246, 0.4)', color: '#93c5fd' }}
-              title={qCount <= 0 ? 'Tambahkan minimal 1 soal dulu' : 'Uji simulasi full paket Tryout di Sandbox'}
-            >
-              <ExternalLink className="action-icon" /> Sandbox
-            </button>
+            {/* Single Primary Stage Progression Button */}
+            {stage === 'DRAFT' && (
+              <button
+                type="button"
+                className="table-action-btn"
+                disabled={isBusy}
+                title="Tahap 2: Munculkan Tryout ke katalog siswa agar mereka bisa mulai mendaftar"
+                onClick={() => void runTryoutWorkflow(row.original, 'PUBLISH_CATALOG')}
+                style={{
+                  borderColor: 'rgba(56, 189, 248, 0.5)',
+                  color: '#38bdf8',
+                  background: 'rgba(56, 189, 248, 0.12)',
+                  fontWeight: 700,
+                  height: '28px',
+                  padding: '0 9px',
+                  fontSize: '11.5px',
+                }}
+              >
+                <QcCheckIcon className="action-icon" /> Publish
+              </button>
+            )}
 
-            {!isPublished ? (
+            {stage === 'REGISTRATION_OPEN' && (
               <button
                 type="button"
                 className="table-action-btn"
                 disabled={isBusy || !allReady}
                 title={
                   qCount <= 0
-                    ? 'Isi minimal 1 soal terlebih dahulu'
+                    ? 'Tambahkan soal terlebih dahulu di Kelola Soal sebelum meluncurkan soal ujian'
                     : !allReady
-                    ? `Masih ada soal belum Siap (${readyCount}/${qCount} Siap). Selesaikan QC di Kelola Soal.`
-                    : 'Publish Paket Tryout ke halaman siswa'
+                      ? `Selesaikan QC soal (${readyCount}/${qCount} Siap) untuk meluncurkan soal`
+                      : 'Tahap 3: Luncurkan soal ujian agar siswa terdaftar bisa mulai mengerjakan'
                 }
-                onClick={() => void runTryoutWorkflow(row.original, 'APPROVE')}
+                onClick={() => void runTryoutWorkflow(row.original, 'RELEASE_QUESTIONS')}
                 style={{
-                  borderColor: 'rgba(16, 185, 129, 0.45)',
-                  color: '#34d399',
-                  background: 'rgba(16, 185, 129, 0.08)',
+                  borderColor: allReady ? 'rgba(16, 185, 129, 0.5)' : 'var(--border)',
+                  color: allReady ? '#34d399' : 'var(--muted-fg)',
+                  background: allReady ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255,255,255,0.03)',
+                  fontWeight: 700,
+                  height: '28px',
+                  padding: '0 9px',
+                  fontSize: '11.5px',
                 }}
               >
-                <QcCheckIcon className="action-icon" /> Publish
+                <QcSendIcon className="action-icon" /> Luncurkan Soal
               </button>
-            ) : (
+            )}
+
+            {stage === 'LIVE_EXAM' && (
+              <button
+                type="button"
+                className="table-action-btn"
+                disabled={isBusy}
+                onClick={() => void runTryoutWorkflow(row.original, 'UNRELEASE_QUESTIONS')}
+                style={{
+                  borderColor: 'rgba(245, 158, 11, 0.45)',
+                  color: '#fbbf24',
+                  height: '28px',
+                  padding: '0 9px',
+                  fontSize: '11.5px',
+                }}
+                title="Kunci kembali soal ujian (kembali ke Tahap 2: Buka Pendaftaran)"
+              >
+                <QcRestoreIcon className="action-icon" /> Kunci Soal
+              </button>
+            )}
+
+            {/* Compact Icon-Only Secondary Actions */}
+            {stage !== 'DRAFT' && (
               <button
                 type="button"
                 className="table-action-btn"
                 disabled={isBusy}
                 onClick={() => void runTryoutWorkflow(row.original, 'UNPUBLISH')}
-                style={{ borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}
+                style={{ ...iconBtnStyle, color: '#fbbf24', borderColor: 'rgba(245, 158, 11, 0.35)' }}
+                title="Tarik paket kembali ke Tahap 1: Draf Internal"
               >
-                <QcRestoreIcon className="action-icon" /> Tarik ke Draf
+                <QcRestoreIcon className="action-icon" />
               </button>
             )}
 
             <button
               type="button"
               className="table-action-btn"
-              onClick={() => editTryout(row.original)}
-              title="Edit tryout"
+              style={iconBtnStyle}
+              onClick={() => setTableAutoBalanceTryout(row.original)}
+              title="Atur Auto-Balance komposisi tipe & level kesulitan soal"
             >
-              <Edit className="action-icon" /> Edit
+              <Sliders className="action-icon" />
             </button>
+
+            <button
+              type="button"
+              className="table-action-btn"
+              style={iconBtnStyle}
+              disabled={isBusy || qCount <= 0}
+              onClick={() => void openTryoutSandboxPreview(row.original)}
+              title={qCount <= 0 ? 'Tambahkan minimal 1 soal dulu' : 'Uji simulasi Tryout di Sandbox'}
+            >
+              <ExternalLink className="action-icon" />
+            </button>
+
+            <button
+              type="button"
+              className="table-action-btn"
+              style={iconBtnStyle}
+              onClick={() => editTryout(row.original)}
+              title="Edit jadwal & info tryout"
+            >
+              <Edit className="action-icon" />
+            </button>
+
             <button
               type="button"
               className="table-action-btn table-action-btn-danger"
+              style={iconBtnStyle}
               onClick={() => void deleteTryoutItem(row.original)}
               disabled={deletingId === row.original.id}
               aria-label={`Delete tryout ${row.original.title}`}
-              title="Delete tryout"
+              title="Hapus tryout"
             >
-              <Trash2 className="action-icon" /> {deletingId === row.original.id ? 'Deleting…' : 'Delete'}
+              <Trash2 className="action-icon" />
             </button>
           </div>
         );
       },
     }),
-  ], [deletingId, editingTryout, managingTryoutId, tryoutWorkflowBusyId]);
+  ], [deletingId, editingTryout, getTryoutStage, managingTryoutId, tryoutWorkflowBusyId]);
 
   // TANSTACK TABLE COLUMNS FOR PRICING
   const packageColumns = React.useMemo(() => [
@@ -4482,6 +4666,7 @@ function ControlCenterContent() {
                     value={tryoutForm.batch}
                     onValueChange={(val) => setTryoutForm({ ...tryoutForm, batch: val as TryoutForm['batch'] })}
                     options={[
+                      { label: 'SNBT 2027', value: 'SNBT_2027' },
                       { label: 'SNBT', value: 'SNBT' },
                       { label: 'Mandiri', value: 'MANDIRI' },
                     ]}
@@ -4499,18 +4684,26 @@ function ControlCenterContent() {
                     onChange={(event) => setTryoutForm({ ...tryoutForm, solutionPrice: event.target.value })}
                   />
                 </label>
-                <label className="field-label">
-                  Release date
-                  <input
+                <div className="field-label">
+                  <span>Release date (Otomatis)</span>
+                  <div
                     className="field-input"
-                    type="date"
-                    required
-                    value={tryoutForm.releaseDate}
-                    onChange={(event) => setTryoutForm({ ...tryoutForm, releaseDate: event.target.value })}
-                  />
-                </label>
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '12px',
+                      color: 'var(--muted-fg)',
+                      background: 'rgba(255,255,255,0.03)',
+                      cursor: 'default',
+                    }}
+                  >
+                    {editingTryout && tryoutForm.releaseDate
+                      ? `Tercatat: ${tryoutForm.releaseDate} (Diperbarui otomatis saat Publish)`
+                      : 'Otomatis sesuai tanggal Publish ke Publik'}
+                  </div>
+                </div>
                 <label className="field-label">
-                  Starts at
+                  Starts at (Jadwal Mulai)
                   <input
                     className="field-input"
                     type="datetime-local"
@@ -4520,7 +4713,7 @@ function ControlCenterContent() {
                   />
                 </label>
                 <label className="field-label">
-                  Ends at
+                  Ends at (Jadwal Berakhir)
                   <input
                     className="field-input"
                     type="datetime-local"
@@ -4538,14 +4731,34 @@ function ControlCenterContent() {
                     onChange={(event) => setTryoutForm({ ...tryoutForm, description: event.target.value })}
                   />
                 </label>
-                <label className="field-label">
-                  Referral code
-                  <input
-                    className="field-input"
-                    value={tryoutForm.referralCode}
-                    onChange={(event) => setTryoutForm({ ...tryoutForm, referralCode: event.target.value })}
-                  />
-                </label>
+                <div
+                  className="control-form-wide"
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(56, 189, 248, 0.25)',
+                    background: 'rgba(56, 189, 248, 0.05)',
+                    fontSize: '12px',
+                    color: 'var(--muted-fg)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '12px',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div>
+                    <strong style={{ color: '#7dd3fc' }}>Info Kode Referral / Promo:</strong> Kolom <em>Referral Code</em> per-tryout sudah digantikan oleh sistem terpusat <strong>Vouchers &amp; Referral</strong> (mendukung diskon %, komisi afiliasi, dan kuota pemakaian untuk semua paket).
+                  </div>
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    style={{ height: '30px', padding: '0 10px', fontSize: '11px' }}
+                    onClick={() => setSection('vouchers')}
+                  >
+                    Buka Menu Vouchers / Referral
+                  </button>
+                </div>
                 <label className="control-check">
                   <input
                     type="checkbox"
@@ -4586,8 +4799,15 @@ function ControlCenterContent() {
             {(
               [
                 { id: 'ALL', label: `Semua (${tryouts.length})` },
-                { id: 'DRAFT', label: `Draf (${tryoutStatusCounts.DRAFT})` },
-                { id: 'PUBLISHED', label: `Published (${tryoutStatusCounts.PUBLISHED})` },
+                { id: 'DRAFT', label: `Tahap 1: Draf Internal (${tryoutStatusCounts.DRAFT})` },
+                {
+                  id: 'REGISTRATION_OPEN',
+                  label: `Tahap 2: Buka Pendaftaran (${tryoutStatusCounts.REGISTRATION_OPEN})`,
+                },
+                {
+                  id: 'LIVE_EXAM',
+                  label: `Tahap 3: Soal Dibuka (${tryoutStatusCounts.LIVE_EXAM})`,
+                },
               ] as const
             ).map((tab) => {
               const active = tryoutStatusFilter === tab.id;
@@ -4995,14 +5215,31 @@ function ControlCenterContent() {
                             <button
                               key={item.id}
                               type="button"
-                              onClick={() =>
+                              onClick={() => {
+                                const nextTarget = item.id as QuestionForm['target'];
+                                const nextTryoutId = item.id === 'FOR_TRYOUT' ? questionForm.tryoutId : '';
+                                const expectedKind =
+                                  nextTarget === 'FOR_PRACTICE'
+                                    ? 'FOR_PRACTICE'
+                                    : nextTarget === 'FOR_TRYOUT'
+                                    ? 'FOR_TRYOUT'
+                                    : 'DRAFT';
+                                const currentBatchObj = mergedQuestionBatches.find(
+                                  (b) => b.batch.toLowerCase() === questionForm.batch.trim().toLowerCase(),
+                                );
+                                const nextBatch =
+                                  currentBatchObj &&
+                                  !isBatchCompatibleWithTarget(currentBatchObj, expectedKind, nextTryoutId)
+                                    ? ''
+                                    : questionForm.batch;
                                 setQuestionForm({
                                   ...questionForm,
-                                  target: item.id as any,
-                                  tryoutId: item.id === 'FOR_TRYOUT' ? questionForm.tryoutId : '',
+                                  target: nextTarget,
+                                  tryoutId: nextTryoutId,
+                                  batch: nextBatch,
                                   status: editingQuestion ? questionForm.status : 'DRAFT',
-                                })
-                              }
+                                });
+                              }}
                               style={{
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -5193,7 +5430,15 @@ function ControlCenterContent() {
                           value={questionForm.batch}
                           onChange={(nextBatch) => setQuestionForm({ ...questionForm, batch: nextBatch })}
                           existingBatches={mergedQuestionBatches}
-                          helperText="Pilih batch yang sudah ada atau buat batch baru agar soal mudah difilter saat QC, curation Latihan, maupun pemantauan Bank Soal."
+                          expectedTarget={
+                            questionForm.target === 'FOR_PRACTICE'
+                              ? 'FOR_PRACTICE'
+                              : questionForm.target === 'FOR_TRYOUT'
+                              ? 'FOR_TRYOUT'
+                              : 'DRAFT'
+                          }
+                          expectedTryoutId={questionForm.tryoutId || null}
+                          helperText="Pilih batch sejenis yang sudah ada atau buat batch baru. Setiap batch dikunci untuk 1 jenis peruntukan soal (tidak boleh dicampur antara Latihan, Tryout, atau Eksperimen)."
                         />
                       </div>
 
@@ -8838,9 +9083,19 @@ function ControlCenterContent() {
                         key={opt.id}
                         type="button"
                         onClick={() => {
+                          const nextTryoutId = opt.id === 'FOR_TRYOUT' ? createTryoutId : '';
                           setCreateTarget(opt.id);
                           if (opt.id !== 'FOR_TRYOUT') {
                             setCreateTryoutId('');
+                          }
+                          const currentBatchObj = mergedQuestionBatches.find(
+                            (b) => b.batch.toLowerCase() === importBatch.trim().toLowerCase(),
+                          );
+                          if (
+                            currentBatchObj &&
+                            !isBatchCompatibleWithTarget(currentBatchObj, opt.id, nextTryoutId)
+                          ) {
+                            setImportBatch('');
                           }
                           setError('');
                         }}
@@ -9593,8 +9848,16 @@ function ControlCenterContent() {
                       value={importBatch}
                       onChange={setImportBatch}
                       existingBatches={mergedQuestionBatches}
+                      expectedTarget={
+                        createTarget === 'FOR_PRACTICE'
+                          ? 'FOR_PRACTICE'
+                          : createTarget === 'FOR_TRYOUT'
+                          ? 'FOR_TRYOUT'
+                          : 'DRAFT'
+                      }
+                      expectedTryoutId={createTryoutId || null}
                       label="Assign ke Batch Soal"
-                      helperText="Pilih batch yang sudah ada atau buat batch baru — akan otomatis diterapkan ke seluruh soal yang diimpor dari JSON di bawah."
+                      helperText="Pilih batch sejenis atau buat batch baru — setiap batch tidak boleh mencampur jenis soal (Latihan vs Tryout vs Eksperimen)."
                       compact={true}
                     />
                   </div>
