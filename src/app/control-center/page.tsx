@@ -4829,850 +4829,6 @@ function ControlCenterContent() {
             </div>
           </div>
 
-          {/* QUESTION CREATION / EDIT MODAL (Sleek, Modern, High-Focus) */}
-          {questionFormOpen && (
-            <div
-              className="modal-overlay"
-              onClick={() => {
-                if (!saving) {
-                  setQuestionFormOpen(false);
-                  setEditingQuestion(null);
-                  setQuestionForm(initialQuestionForm);
-                }
-              }}
-            >
-              <div
-                className="modal-dialog modal-wide"
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  maxWidth: '940px',
-                }}
-              >
-                <form
-                  onSubmit={saveQuestion}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: '100%',
-                    maxHeight: 'calc(100vh - 48px)',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {/* MODAL HEADER */}
-                  <div className="modal-header">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3>
-                          {editingQuestion ? 'Edit Soal' : 'Buat Soal Baru (Input Manual)'}
-                        </h3>
-                        {editingQuestion && (() => {
-                          const item = questions.find((q) => q.id === editingQuestion);
-                          return item ? (
-                            <span
-                              style={{
-                                fontFamily: 'monospace',
-                                fontSize: '11.5px',
-                                fontWeight: 600,
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                background: 'var(--muted-bg)',
-                                border: '1px solid var(--border)',
-                                color: 'var(--foreground)',
-                              }}
-                            >
-                              {formatQuestionCode(item)}
-                            </span>
-                          ) : null;
-                        })()}
-                      </div>
-                      <small style={{ color: 'var(--muted-fg)' }}>
-                        {editingQuestion
-                          ? 'Perbarui parameter kurikulum, narasi stimulus, kunci jawaban, dan pembahasan bertahap.'
-                          : 'Lengkapi wacana, pertanyaan, kunci jawaban, serta slide deck solusi interaktif.'}
-                      </small>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="modal-close-btn"
-                      onClick={() => {
-                        if (!saving) {
-                          setQuestionFormOpen(false);
-                          setEditingQuestion(null);
-                          setQuestionForm(initialQuestionForm);
-                        }
-                      }}
-                      aria-label="Tutup"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  {/* MODAL BODY (Scrollable) */}
-                  <div className="modal-body" style={{ gap: '16px' }}>
-                    {/* 1. TUJUAN SOAL (3 OPSI) + STATUS LIFECYCLE */}
-                    <div
-                      style={{
-                        padding: '16px',
-                        borderRadius: '12px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid var(--border)',
-                      }}
-                      className="space-y-3"
-                    >
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
-                          <span>🎯</span> Tujuan Penempatan Soal <span className="text-red-400">*</span>
-                        </label>
-                        <div className="flex items-center gap-2">
-                          {(() => {
-                            const statusBadge = getQuestionStatusBadge(editingQuestion ? questionForm.status : 'DRAFT');
-                            return (
-                              <span
-                                className="pill"
-                                style={{
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  background: statusBadge.bg,
-                                  color: statusBadge.color,
-                                  border: `1px solid ${statusBadge.border}`,
-                                }}
-                              >
-                                Status: {statusBadge.label}
-                              </span>
-                            );
-                          })()}
-                          {questionForm.target === 'SOAL_ASLI' && (
-                            <span
-                              className="pill"
-                              style={{
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                background: 'rgba(129, 140, 248, 0.14)',
-                                color: '#c7d2fe',
-                                border: '1px solid rgba(129, 140, 248, 0.35)',
-                              }}
-                            >
-                              Arsip Soal Asli
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {[
-                          {
-                            id: 'FOR_PRACTICE',
-                            label: 'Latihan (Global · 1 Paket)',
-                            desc: 'Langsung masuk daftar Draf di tab Latihan tanpa perlu pilih paket.',
-                            border: '#10b981',
-                            activeBg: 'rgba(16, 185, 129, 0.15)',
-                            activeText: '#a7f3d0',
-                          },
-                          {
-                            id: 'FOR_TRYOUT',
-                            label: 'Tryout (Multi-Paket)',
-                            desc: 'Wajib pilih paket Tryout tujuan; masuk sebagai Draf di paket tersebut.',
-                            border: '#38bdf8',
-                            activeBg: 'rgba(56, 189, 248, 0.15)',
-                            activeText: '#bae6fd',
-                          },
-                          {
-                            id: 'DRAFT',
-                            label: 'Eksperimen (Bank Soal)',
-                            desc: 'Disimpan di Bank Soal sebagai Draf; bisa QC atau dipindah ke paket nanti.',
-                            border: '#f59e0b',
-                            activeBg: 'rgba(245, 158, 11, 0.14)',
-                            activeText: '#fde68a',
-                          },
-                        ].map((item) => {
-                          const isSelected =
-                            item.id === 'DRAFT'
-                              ? questionForm.target !== 'FOR_PRACTICE' &&
-                                questionForm.target !== 'FOR_TRYOUT' &&
-                                questionForm.target !== 'SOAL_ASLI'
-                              : questionForm.target === item.id;
-                          return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() =>
-                                setQuestionForm({
-                                  ...questionForm,
-                                  target: item.id as any,
-                                  tryoutId: item.id === 'FOR_TRYOUT' ? questionForm.tryoutId : '',
-                                  status: editingQuestion ? questionForm.status : 'DRAFT',
-                                })
-                              }
-                              style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-start',
-                                padding: '10px 12px',
-                                borderRadius: '10px',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                                border: isSelected ? `1.5px solid ${item.border}` : '1px solid rgba(255, 255, 255, 0.08)',
-                                background: isSelected ? item.activeBg : 'rgba(255, 255, 255, 0.02)',
-                                color: isSelected ? item.activeText : '#9ca3af',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
-                                <div
-                                  style={{
-                                    width: '10px',
-                                    height: '10px',
-                                    borderRadius: '50%',
-                                    border: isSelected ? `2px solid ${item.border}` : '1.5px solid #6b7280',
-                                    background: isSelected ? item.border : 'transparent',
-                                    flexShrink: 0,
-                                  }}
-                                />
-                                <span style={{ fontSize: '12px', fontWeight: 700, color: isSelected ? item.activeText : '#e5e7eb' }}>
-                                  {item.label}
-                                </span>
-                              </div>
-                              <span style={{ fontSize: '11px', color: isSelected ? item.activeText : '#9ca3af', marginTop: '4px', lineHeight: 1.35 }}>
-                                {item.desc}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {!editingQuestion && (
-                        <p className="text-[11px] text-zinc-400 m-0">
-                          Semua soal baru otomatis masuk dengan status <strong>Draf</strong> agar aman dikurasi dan di-QC di tabel tujuan sebelum tayang ke siswa.
-                        </p>
-                      )}
-
-                      {/* Sub-selection for FOR_TRYOUT (REQUIRED) */}
-                      {questionForm.target === 'FOR_TRYOUT' && (
-                        <div className="pt-3 border-t border-zinc-800 mt-2">
-                          <label className="text-xs font-semibold text-sky-300 block mb-1">
-                            Pilih Paket Tryout Tujuan <span className="text-red-400">*</span>
-                          </label>
-                          <ComboboxSelect
-                            value={questionForm.tryoutId}
-                            onValueChange={(val) => setQuestionForm({ ...questionForm, tryoutId: val })}
-                            placeholder="-- Pilih paket Tryout tujuan --"
-                            options={tryouts.map((t) => ({
-                              label: `${t.title} (#${t.code}) · ${t.readyQuestionCount ?? 0}/${t.questionCount ?? 0} Siap · ${t.batch || 'SNBT'}`,
-                              value: t.id,
-                            }))}
-                            triggerClassName="w-full h-9"
-                          />
-                          <p className="text-[11px] text-zinc-400 mt-1 m-0">
-                            Soal akan langsung terikat sebagai Draf di dalam <strong>Tryouts → Kelola Soal</strong> pada paket yang dipilih (anti-bocor antar paket).
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Sub-selection for SOAL_ASLI (existing archive edits) */}
-                      {questionForm.target === 'SOAL_ASLI' && (
-                        <div className="pt-3 border-t border-zinc-800 mt-2">
-                          <label className="text-xs font-semibold text-indigo-300 block mb-1">
-                            Paket Arsip Soal (UTBK/SNBT)
-                          </label>
-                          <input
-                            type="text"
-                            className="field-input text-xs w-full"
-                            placeholder="Contoh: Soal Asli UTBK SNBT 2024 Pengetahuan Kuantitatif"
-                            value={questionForm.packageId}
-                            onChange={(e) => setQuestionForm({ ...questionForm, packageId: e.target.value })}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* KOTAK REVISI HYBRID BANNER (LLM PROMPT + PASTE JSON + MANUAL) */}
-                    {editingQuestion && (() => {
-                      const editedObj = questions.find((q) => q.id === editingQuestion);
-                      if (!editedObj || (editedObj.status !== 'NEEDS_REVISION' && !editedObj.revisionNotes)) return null;
-                      return (
-                        <KotakRevisiBanner
-                          questionId={editedObj.id}
-                          revisionNotes={editedObj.revisionNotes}
-                          reviewedBy={editedObj.reviewedBy}
-                          reviewedAt={editedObj.reviewedAt}
-                          formState={{
-                            subtest: questionForm.subtest,
-                            difficulty: questionForm.difficulty,
-                            type: questionForm.type,
-                            narration: questionForm.narration,
-                            content: questionForm.content,
-                            correctAnswer: questionForm.correctAnswer,
-                            options: questionForm.options,
-                            keyFormula: questionForm.keyFormula,
-                            quickTrick: questionForm.quickTrick,
-                            staticExplanation: questionForm.staticExplanation,
-                            solutionSteps: questionForm.solutionSteps,
-                          }}
-                          onApplyRevisionJson={applyRevisionJsonToForm}
-                          onResubmitQc={() => void handleSaveAndResubmitQc()}
-                          submittingQc={saving}
-                        />
-                      );
-                    })()}
-
-                    {/* 2. KURIKULUM & FORMAT */}
-                    <div
-                      style={{
-                        padding: '16px',
-                        borderRadius: '12px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid var(--border)',
-                      }}
-                      className="space-y-3.5"
-                    >
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                          <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                            Subtes SNBT <span className="text-red-400">*</span>
-                          </label>
-                          <ComboboxSelect
-                            value={questionForm.subtest}
-                            onValueChange={(val) => {
-                              setQuestionForm({ ...questionForm, subtest: val, subtopicId: '' });
-                            }}
-                            options={[
-                              { label: 'Pengetahuan Kuantitatif', value: 'PENGETAHUAN_KUANTITATIF' },
-                              { label: 'Penalaran Umum', value: 'PENALARAN_UMUM' },
-                              { label: 'Pemahaman Bacaan & Menulis', value: 'PEMAHAMAN_BACAAN_MENULIS' },
-                              { label: 'Pengetahuan & Pemahaman Umum', value: 'PENGETAHUAN_PEMAHAMAN_UMUM' },
-                              { label: 'Literasi Bahasa Indonesia', value: 'LITERASI_INDONESIA' },
-                              { label: 'Literasi Bahasa Inggris', value: 'LITERASI_INGGRIS' },
-                              { label: 'Penalaran Matematika', value: 'PENALARAN_MATEMATIKA' },
-                            ]}
-                            triggerClassName="w-full h-9"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                            Topik & Subtopik (Kurikulum)
-                          </label>
-                          <ComboboxSelect
-                            value={questionForm.subtopicId}
-                            onValueChange={(val) => setQuestionForm({ ...questionForm, subtopicId: val })}
-                            options={[
-                              { label: 'Pilih Subtopik...', value: '' },
-                              ...topics
-                                .filter((t) => t.subtest === questionForm.subtest)
-                                .flatMap((t) =>
-                                  t.subtopics.map((s) => ({
-                                    label: `${t.title} › ${s.title}`,
-                                    value: s.id,
-                                  }))
-                                ),
-                            ]}
-                            triggerClassName="w-full h-9"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                            Tingkat Kesulitan <span className="text-red-400">*</span>
-                          </label>
-                          <ComboboxSelect
-                            value={questionForm.difficulty}
-                            onValueChange={(val) => setQuestionForm({ ...questionForm, difficulty: val as QuestionForm['difficulty'] })}
-                            options={[
-                              { label: 'Mudah (Easy)', value: 'EASY' },
-                              { label: 'Sedang (Medium)', value: 'MEDIUM' },
-                              { label: 'Sulit (Hard / HOTS)', value: 'HARD' },
-                            ]}
-                            triggerClassName="w-full h-9"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Batch Pengelompokan Soal */}
-                      <div className="pt-2 border-t border-zinc-800">
-                        <QuestionBatchField
-                          value={questionForm.batch}
-                          onChange={(nextBatch) => setQuestionForm({ ...questionForm, batch: nextBatch })}
-                          existingBatches={mergedQuestionBatches}
-                          helperText="Pilih batch yang sudah ada atau buat batch baru agar soal mudah difilter saat QC, curation Latihan, maupun pemantauan Bank Soal."
-                        />
-                      </div>
-
-                      {/* Format Tipe Soal: Pilihan Ganda vs Isian Singkat */}
-                      <div className="pt-2 border-t border-zinc-800 flex items-center justify-between flex-wrap gap-2">
-                        <div>
-                          <label className="text-xs font-semibold text-zinc-300 block">
-                            Tipe Format Soal <span className="text-red-400">*</span>
-                          </label>
-                          <span className="text-[11px] text-zinc-400">
-                            Isian Singkat hanya diujikan pada subtes PK dan Penalaran Matematika
-                          </span>
-                        </div>
-
-                        <div className="inline-flex rounded-lg border border-zinc-700/80 p-0.5 bg-zinc-900">
-                          <button
-                            type="button"
-                            onClick={() => setQuestionForm({ ...questionForm, type: 'MULTIPLE_CHOICE' })}
-                            style={{
-                              padding: '5px 14px',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              border: 'none',
-                              background: questionForm.type === 'MULTIPLE_CHOICE' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
-                              color: questionForm.type === 'MULTIPLE_CHOICE' ? '#93c5fd' : '#9ca3af',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            🔘 Pilihan Ganda (A-E)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setQuestionForm({
-                                ...questionForm,
-                                type: 'SHORT_ANSWER',
-                                answerFormatGuide: questionForm.answerFormatGuide || 'Bilangan Bulat Non-Negatif (0-9999)',
-                              });
-                            }}
-                            style={{
-                              padding: '5px 14px',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              border: 'none',
-                              background: questionForm.type === 'SHORT_ANSWER' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
-                              color: questionForm.type === 'SHORT_ANSWER' ? '#fcd34d' : '#9ca3af',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            ✍️ Isian Singkat (BPPP)
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 3. KONTEN & STIMULUS */}
-                    <div
-                      style={{
-                        padding: '16px',
-                        borderRadius: '12px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid var(--border)',
-                      }}
-                      className="space-y-3.5"
-                    >
-                      <div>
-                        <label className="text-xs font-semibold text-zinc-300 block mb-1">
-                          Teks Wacana / Stimulus Soal <span className="text-[11px] text-zinc-400 font-normal">(Opsional)</span>
-                        </label>
-                        <textarea
-                          className="field-input text-xs w-full"
-                          rows={2}
-                          placeholder="Wacana bacaan panjang, pengantar narasi cerita, artikel kontekstual, atau data tabel..."
-                          value={questionForm.narration}
-                          onChange={(e) => setQuestionForm({ ...questionForm, narration: e.target.value })}
-                          style={{ minHeight: '65px' }}
-                        />
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between mb-1">
-                          <label className="text-xs font-semibold text-zinc-300 block">
-                            Teks Pertanyaan Soal <span className="text-red-400">*</span>
-                          </label>
-                          <span className="text-[11px] text-zinc-400 font-mono">
-                            Mendukung LaTeX: $x^2 + y^2 = r^2$
-                          </span>
-                        </div>
-                        <textarea
-                          className="field-input text-xs w-full font-sans leading-relaxed"
-                          rows={4}
-                          required
-                          placeholder="Tuliskan pertanyaan inti soal di sini..."
-                          value={questionForm.content}
-                          onChange={(e) => setQuestionForm({ ...questionForm, content: e.target.value })}
-                          style={{ minHeight: '90px' }}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                        <div>
-                          <label className="text-xs font-semibold text-zinc-300 block mb-1">
-                            URL Gambar Diagram / Grafik <span className="text-[11px] text-zinc-400 font-normal">(Opsional)</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="field-input text-xs w-full"
-                            placeholder="https://... (URL gambar ilustrasi jika ada)"
-                            value={questionForm.imageUrl}
-                            onChange={(e) => setQuestionForm({ ...questionForm, imageUrl: e.target.value })}
-                          />
-                        </div>
-                        {questionForm.imageUrl.trim() && (
-                          <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900 border border-zinc-800">
-                            <img
-                              src={questionForm.imageUrl.trim()}
-                              alt="Preview Diagram"
-                              className="h-10 w-16 object-contain rounded bg-black/40 border border-zinc-700"
-                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                            />
-                            <span className="text-[11px] text-zinc-400 truncate">Preview Gambar Terpasang</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 4. KUNCI JAWABAN */}
-                    {questionForm.type === 'SHORT_ANSWER' ? (
-                      <div
-                        style={{
-                          padding: '16px',
-                          borderRadius: '12px',
-                          background: 'rgba(245, 158, 11, 0.05)',
-                          border: '1px solid rgba(245, 158, 11, 0.3)',
-                        }}
-                        className="space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
-                            <span>✍️</span> Kunci Jawaban Isian Singkat
-                          </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-medium">
-                            Standar Resmi BPPP SNBT
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-                          <div>
-                            <label className="text-xs font-semibold text-zinc-200 block mb-1">
-                              Kunci Nilai Angka Akhir <span className="text-red-400">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              className="field-input font-mono text-sm font-bold tracking-wider w-full"
-                              placeholder="Contoh: 42 atau 1500"
-                              required={questionForm.type === 'SHORT_ANSWER'}
-                              value={questionForm.correctAnswer}
-                              onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
-                            />
-                            <span className="text-[11px] text-zinc-400 block mt-1">
-                              Tuliskan angka definitif tanpa satuan atau variabel (contoh: <code>42</code>, bukan <code>42 cm</code>).
-                            </span>
-                          </div>
-
-                          <div className="flex flex-col justify-between">
-                            <label className="text-xs font-semibold text-zinc-200 block mb-1">
-                              Format Petunjuk Resmi
-                            </label>
-                            <button
-                              type="button"
-                              className="button button-secondary text-xs h-9 flex items-center justify-center gap-1.5"
-                              onClick={() => {
-                                let content = questionForm.content.trim();
-                                const guideTag = `[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: ${questionForm.correctAnswer || '42'}]`;
-                                if (content.includes('[PETUNJUK FORMAT:')) {
-                                  content = content.replace(/\[PETUNJUK FORMAT:[^\]]+\]/g, guideTag);
-                                } else {
-                                  content = content ? `${content}\n\n${guideTag}` : guideTag;
-                                }
-                                setQuestionForm({ ...questionForm, content });
-                              }}
-                            >
-                              <span>⚡ Sisipkan Format ke Teks Soal</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          padding: '16px',
-                          borderRadius: '12px',
-                          background: 'rgba(255, 255, 255, 0.02)',
-                          border: '1px solid var(--border)',
-                        }}
-                        className="space-y-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
-                            Pilihan Jawaban (A-E)
-                          </span>
-                          <span className="text-xs text-zinc-400">
-                            Klik huruf lingkaran untuk menandai kunci benar
-                          </span>
-                        </div>
-
-                        <div className="space-y-2">
-                          {questionForm.options.map((opt, idx) => {
-                            const letters = ['A', 'B', 'C', 'D', 'E'];
-                            const letter = letters[idx] || String(idx + 1);
-                            const isKey = opt.isCorrect;
-                            return (
-                              <div
-                                key={idx}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '10px',
-                                  padding: '6px 12px',
-                                  borderRadius: '8px',
-                                  border: isKey ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
-                                  background: isKey ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)',
-                                  transition: 'all 0.15s ease',
-                                }}
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newOpts = questionForm.options.map((o, i) => ({
-                                      ...o,
-                                      isCorrect: i === idx,
-                                    }));
-                                    setQuestionForm({ ...questionForm, options: newOpts });
-                                  }}
-                                  style={{
-                                    width: '28px',
-                                    height: '28px',
-                                    borderRadius: '50%',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '12px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    border: isKey ? 'none' : '1px solid rgba(255, 255, 255, 0.2)',
-                                    background: isKey ? '#10b981' : 'rgba(255, 255, 255, 0.05)',
-                                    color: isKey ? '#ffffff' : '#9ca3af',
-                                    flexShrink: 0,
-                                    transition: 'all 0.15s ease',
-                                  }}
-                                  title={`Tandai ${letter} sebagai Kunci Jawaban Benar`}
-                                >
-                                  {letter}
-                                </button>
-                                <input
-                                  type="text"
-                                  className="field-input flex-1 text-xs"
-                                  placeholder={`Isi pilihan ${letter}... (dukung LaTeX $...$)`}
-                                  required={questionForm.type === 'MULTIPLE_CHOICE'}
-                                  value={opt.content}
-                                  onChange={(e) => {
-                                    const newOpts = [...questionForm.options];
-                                    newOpts[idx] = { ...newOpts[idx], content: e.target.value };
-                                    setQuestionForm({ ...questionForm, options: newOpts });
-                                  }}
-                                />
-                                {isKey && (
-                                  <span className="text-[11px] font-bold text-emerald-400 shrink-0 px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30">
-                                    ✓ Kunci Benar
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 5. SOLUTION DECK & PEMBAHASAN */}
-                    <div
-                      style={{
-                        padding: '16px',
-                        borderRadius: '12px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid var(--border)',
-                      }}
-                      className="space-y-3.5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5 text-purple-400" /> Solution Deck & Pembahasan Bertahap
-                          </span>
-                          <p className="text-[11px] text-zinc-400 mt-0.5 m-0">
-                            Disajikan sebagai slide interaktif yang membimbing pemahaman siswa langkah demi langkah.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className="button button-secondary text-xs h-7 px-2.5"
-                          onClick={() => {
-                            const nextNum = questionForm.solutionSteps.length + 1;
-                            setQuestionForm({
-                              ...questionForm,
-                              solutionSteps: [
-                                ...questionForm.solutionSteps,
-                                { stepNumber: nextNum, category: 'EKSEKUSI', title: '', content: '' },
-                              ],
-                            });
-                          }}
-                        >
-                          + Tambah Slide Langkah
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs font-semibold text-purple-300 block mb-1">
-                            📐 Rumus Kunci (Key Formula)
-                          </label>
-                          <input
-                            type="text"
-                            className="field-input text-xs w-full font-mono"
-                            placeholder="e.g. A = \frac{1}{2} \times a \times t"
-                            value={questionForm.keyFormula}
-                            onChange={(e) => setQuestionForm({ ...questionForm, keyFormula: e.target.value })}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-amber-300 block mb-1">
-                            💡 Trik Jitu 10 Detik (Quick Trick)
-                          </label>
-                          <input
-                            type="text"
-                            className="field-input text-xs w-full"
-                            placeholder="Cara cepat eliminasi opsi / pola trik kilat..."
-                            value={questionForm.quickTrick}
-                            onChange={(e) => setQuestionForm({ ...questionForm, quickTrick: e.target.value })}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Steps List */}
-                      <div className="space-y-2.5 pt-1">
-                        {questionForm.solutionSteps.map((step, sIdx) => (
-                          <div
-                            key={sIdx}
-                            style={{
-                              padding: '12px 14px',
-                              borderRadius: '10px',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              background: 'rgba(255, 255, 255, 0.02)',
-                            }}
-                            className="space-y-2"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[11px] font-bold text-sky-400 px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/30">
-                                  Slide {sIdx + 1}
-                                </span>
-                                <span className="text-xs text-zinc-400">
-                                  {sIdx === 0 ? 'Tahap Analisis' : sIdx === 1 ? 'Tahap Eksekusi' : 'Tahap Kesimpulan'}
-                                </span>
-                              </div>
-                              {questionForm.solutionSteps.length > 1 && (
-                                <button
-                                  type="button"
-                                  className="text-xs text-red-400 hover:text-red-300 transition-colors"
-                                  onClick={() => {
-                                    const newSteps = questionForm.solutionSteps.filter((_, i) => i !== sIdx);
-                                    setQuestionForm({ ...questionForm, solutionSteps: newSteps });
-                                  }}
-                                >
-                                  Hapus Slide
-                                </button>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                              <input
-                                type="text"
-                                className="field-input text-xs"
-                                placeholder="Kategori (e.g. IDENTIFIKASI)"
-                                value={step.category}
-                                onChange={(e) => {
-                                  const newSteps = [...questionForm.solutionSteps];
-                                  newSteps[sIdx] = { ...newSteps[sIdx], category: e.target.value };
-                                  setQuestionForm({ ...questionForm, solutionSteps: newSteps });
-                                }}
-                              />
-                              <input
-                                type="text"
-                                className="field-input text-xs sm:col-span-2"
-                                placeholder="Judul langkah (e.g. Analisis Variabel dan Rumus Utama)"
-                                value={step.title}
-                                onChange={(e) => {
-                                  const newSteps = [...questionForm.solutionSteps];
-                                  newSteps[sIdx] = { ...newSteps[sIdx], title: e.target.value };
-                                  setQuestionForm({ ...questionForm, solutionSteps: newSteps });
-                                }}
-                              />
-                            </div>
-
-                            <textarea
-                              className="field-input text-xs w-full"
-                              rows={2}
-                              placeholder="Uraian penjelasan detail slide ini (Mendukung Markdown & rumus LaTeX)..."
-                              value={step.content}
-                              onChange={(e) => {
-                                const newSteps = [...questionForm.solutionSteps];
-                                newSteps[sIdx] = { ...newSteps[sIdx], content: e.target.value };
-                                setQuestionForm({ ...questionForm, solutionSteps: newSteps });
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-zinc-400 block mb-1">
-                          Penjelasan Statis Lengkap (Versi Utuh / PDF Export)
-                        </label>
-                        <textarea
-                          className="field-input text-xs w-full"
-                          rows={2}
-                          placeholder="Versi teks penjelasan konvensional tanpa per-slide..."
-                          value={questionForm.staticExplanation}
-                          onChange={(e) => setQuestionForm({ ...questionForm, staticExplanation: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* MODAL FOOTER */}
-                  <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-                    <button
-                      type="button"
-                      className="button button-secondary"
-                      onClick={() => {
-                        setQuestionForm(initialQuestionForm);
-                        setEditingQuestion(null);
-                        setQuestionFormOpen(false);
-                      }}
-                    >
-                      Batal
-                    </button>
-
-                    <div className="flex items-center gap-3 flex-wrap">
-                      {error && <span className="text-xs text-red-400">{error}</span>}
-                      {editingQuestion && questionForm.status === 'NEEDS_REVISION' && (
-                        <button
-                          type="button"
-                          className="button button-secondary"
-                          disabled={saving}
-                          onClick={() => void handleSaveAndResubmitQc()}
-                        >
-                          {saving ? 'Mengirim…' : 'Simpan & Kirim Ulang ke QC'}
-                        </button>
-                      )}
-                      <button
-                        type="submit"
-                        className="button button-primary"
-                        disabled={saving}
-                      >
-                        {saving ? 'Menyimpan…' : editingQuestion ? 'Simpan Perubahan' : 'Buat Soal'}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
           {/* BULK MULTI-SELECT ACTION BAR */}
           {!loading && selectedVisibleQuestions.length > 0 && (
             <div
@@ -9708,15 +8864,33 @@ function ControlCenterContent() {
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      className="button button-primary"
-                      style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                      onClick={applyAiJson}
-                      disabled={!aiJsonInput.trim() || !jsonValidation?.valid}
-                    >
-                      <span>Terapkan ke Form Editor</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        onClick={applyAiJson}
+                        disabled={!aiJsonInput.trim() || !jsonValidation?.valid || importingBulk}
+                      >
+                        <span>Terapkan ke Form Editor</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-primary"
+                        style={{ fontSize: '12px', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        onClick={bulkImportQuestions}
+                        disabled={!aiJsonInput.trim() || !jsonValidation?.valid || importingBulk}
+                      >
+                        {importingBulk ? (
+                          <span>Menyimpan Soal...</span>
+                        ) : (
+                          <>
+                            <Zap style={{ width: 14, height: 14 }} />
+                            <span>Simpan Langsung (1 Soal)</span>
+                          </>
+                        )}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -9768,6 +8942,870 @@ function ControlCenterContent() {
           topics={topics as any}
         />
       )}
+
+      {/* QUESTION CREATION / EDIT MODAL (Sleek, Modern, High-Focus) */}
+      {questionFormOpen && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!saving) {
+              setQuestionFormOpen(false);
+              setEditingQuestion(null);
+              setQuestionForm(initialQuestionForm);
+            }
+          }}
+        >
+          <div
+            className="modal-dialog modal-wide"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '940px',
+            }}
+          >
+            <form
+              onSubmit={saveQuestion}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                maxHeight: 'calc(100vh - 48px)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* MODAL HEADER */}
+              <div className="modal-header">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3>
+                      {editingQuestion ? 'Edit Soal' : questionForm.content ? 'Editor Soal (AI / Review)' : 'Buat Soal Baru (Input Manual)'}
+                    </h3>
+                    {editingQuestion && (() => {
+                      const item = questions.find((q) => q.id === editingQuestion);
+                      return item ? (
+                        <span
+                          style={{
+                            fontFamily: 'monospace',
+                            fontSize: '11.5px',
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: 'var(--muted-bg)',
+                            border: '1px solid var(--border)',
+                            color: 'var(--foreground)',
+                          }}
+                        >
+                          {formatQuestionCode(item)}
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
+                  <small style={{ color: 'var(--muted-fg)' }}>
+                    {editingQuestion
+                      ? 'Perbarui parameter kurikulum, narasi stimulus, kunci jawaban, dan pembahasan bertahap.'
+                      : 'Lengkapi wacana, pertanyaan, kunci jawaban, serta slide deck solusi interaktif.'}
+                  </small>
+                </div>
+
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => {
+                    if (!saving) {
+                      setQuestionFormOpen(false);
+                      setEditingQuestion(null);
+                      setQuestionForm(initialQuestionForm);
+                    }
+                  }}
+                  aria-label="Tutup"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* MODAL BODY (Scrollable) */}
+              <div className="modal-body" style={{ gap: '16px' }}>
+                {notice && (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#34d399',
+                      fontSize: '12.5px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <CheckCircle2 style={{ width: 16, height: 16, flexShrink: 0 }} />
+                    <span>{notice}</span>
+                  </div>
+                )}
+                {/* 1. TUJUAN SOAL (3 OPSI) + STATUS LIFECYCLE */}
+                <div
+                  style={{
+                    padding: '16px',
+                    borderRadius: '12px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border)',
+                  }}
+                  className="space-y-3"
+                >
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                      <span>🎯</span> Tujuan Penempatan Soal <span className="text-red-400">*</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const statusBadge = getQuestionStatusBadge(editingQuestion ? questionForm.status : 'DRAFT');
+                        return (
+                          <span
+                            className="pill"
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              background: statusBadge.bg,
+                              color: statusBadge.color,
+                              border: `1px solid ${statusBadge.border}`,
+                            }}
+                          >
+                            Status: {statusBadge.label}
+                          </span>
+                        );
+                      })()}
+                      {questionForm.target === 'SOAL_ASLI' && (
+                        <span
+                          className="pill"
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            background: 'rgba(129, 140, 248, 0.14)',
+                            color: '#c7d2fe',
+                            border: '1px solid rgba(129, 140, 248, 0.35)',
+                          }}
+                        >
+                          Arsip Soal Asli
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {[
+                      {
+                        id: 'FOR_PRACTICE',
+                        label: 'Latihan (Global · 1 Paket)',
+                        desc: 'Langsung masuk daftar Draf di tab Latihan tanpa perlu pilih paket.',
+                        border: '#10b981',
+                        activeBg: 'rgba(16, 185, 129, 0.15)',
+                        activeText: '#a7f3d0',
+                      },
+                      {
+                        id: 'FOR_TRYOUT',
+                        label: 'Tryout (Multi-Paket)',
+                        desc: 'Wajib pilih paket Tryout tujuan; masuk sebagai Draf di paket tersebut.',
+                        border: '#38bdf8',
+                        activeBg: 'rgba(56, 189, 248, 0.15)',
+                        activeText: '#bae6fd',
+                      },
+                      {
+                        id: 'DRAFT',
+                        label: 'Eksperimen (Bank Soal)',
+                        desc: 'Disimpan di Bank Soal sebagai Draf; bisa QC atau dipindah ke paket nanti.',
+                        border: '#f59e0b',
+                        activeBg: 'rgba(245, 158, 11, 0.14)',
+                        activeText: '#fde68a',
+                      },
+                    ].map((item) => {
+                      const isSelected =
+                        item.id === 'DRAFT'
+                          ? questionForm.target !== 'FOR_PRACTICE' &&
+                            questionForm.target !== 'FOR_TRYOUT' &&
+                            questionForm.target !== 'SOAL_ASLI'
+                          : questionForm.target === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() =>
+                            setQuestionForm({
+                              ...questionForm,
+                              target: item.id as any,
+                              tryoutId: item.id === 'FOR_TRYOUT' ? questionForm.tryoutId : '',
+                              status: editingQuestion ? questionForm.status : 'DRAFT',
+                            })
+                          }
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            padding: '10px 12px',
+                            borderRadius: '10px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            border: isSelected ? `1.5px solid ${item.border}` : '1px solid rgba(255, 255, 255, 0.08)',
+                            background: isSelected ? item.activeBg : 'rgba(255, 255, 255, 0.02)',
+                            color: isSelected ? item.activeText : '#9ca3af',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+                            <div
+                              style={{
+                                width: '10px',
+                                height: '10px',
+                                borderRadius: '50%',
+                                border: isSelected ? `2px solid ${item.border}` : '1.5px solid #6b7280',
+                                background: isSelected ? item.border : 'transparent',
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: isSelected ? item.activeText : '#e5e7eb' }}>
+                              {item.label}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '11px', color: isSelected ? item.activeText : '#9ca3af', marginTop: '4px', lineHeight: 1.35 }}>
+                            {item.desc}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {!editingQuestion && (
+                    <p className="text-[11px] text-zinc-400 m-0">
+                      Semua soal baru otomatis masuk dengan status <strong>Draf</strong> agar aman dikurasi dan di-QC di tabel tujuan sebelum tayang ke siswa.
+                    </p>
+                  )}
+
+                  {/* Sub-selection for FOR_TRYOUT (REQUIRED) */}
+                  {questionForm.target === 'FOR_TRYOUT' && (
+                    <div className="pt-3 border-t border-zinc-800 mt-2">
+                      <label className="text-xs font-semibold text-sky-300 block mb-1">
+                        Pilih Paket Tryout Tujuan <span className="text-red-400">*</span>
+                      </label>
+                      <ComboboxSelect
+                        value={questionForm.tryoutId}
+                        onValueChange={(val) => setQuestionForm({ ...questionForm, tryoutId: val })}
+                        placeholder="-- Pilih paket Tryout tujuan --"
+                        options={tryouts.map((t) => ({
+                          label: `${t.title} (#${t.code}) · ${t.readyQuestionCount ?? 0}/${t.questionCount ?? 0} Siap · ${t.batch || 'SNBT'}`,
+                          value: t.id,
+                        }))}
+                        triggerClassName="w-full h-9"
+                      />
+                      <p className="text-[11px] text-zinc-400 mt-1 m-0">
+                        Soal akan langsung terikat sebagai Draf di dalam <strong>Tryouts → Kelola Soal</strong> pada paket yang dipilih (anti-bocor antar paket).
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Sub-selection for SOAL_ASLI (existing archive edits) */}
+                  {questionForm.target === 'SOAL_ASLI' && (
+                    <div className="pt-3 border-t border-zinc-800 mt-2">
+                      <label className="text-xs font-semibold text-indigo-300 block mb-1">
+                        Paket Arsip Soal (UTBK/SNBT)
+                      </label>
+                      <input
+                        type="text"
+                        className="field-input text-xs w-full"
+                        placeholder="Contoh: Soal Asli UTBK SNBT 2024 Pengetahuan Kuantitatif"
+                        value={questionForm.packageId}
+                        onChange={(e) => setQuestionForm({ ...questionForm, packageId: e.target.value })}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* KOTAK REVISI HYBRID BANNER (LLM PROMPT + PASTE JSON + MANUAL) */}
+                {editingQuestion && (() => {
+                  const editedObj = questions.find((q) => q.id === editingQuestion);
+                  if (!editedObj || (editedObj.status !== 'NEEDS_REVISION' && !editedObj.revisionNotes)) return null;
+                  return (
+                    <KotakRevisiBanner
+                      questionId={editedObj.id}
+                      revisionNotes={editedObj.revisionNotes}
+                      reviewedBy={editedObj.reviewedBy}
+                      reviewedAt={editedObj.reviewedAt}
+                      formState={{
+                        subtest: questionForm.subtest,
+                        difficulty: questionForm.difficulty,
+                        type: questionForm.type,
+                        narration: questionForm.narration,
+                        content: questionForm.content,
+                        correctAnswer: questionForm.correctAnswer,
+                        options: questionForm.options,
+                        keyFormula: questionForm.keyFormula,
+                        quickTrick: questionForm.quickTrick,
+                        staticExplanation: questionForm.staticExplanation,
+                        solutionSteps: questionForm.solutionSteps,
+                      }}
+                      onApplyRevisionJson={applyRevisionJsonToForm}
+                      onResubmitQc={() => void handleSaveAndResubmitQc()}
+                      submittingQc={saving}
+                    />
+                  );
+                })()}
+
+                {/* 2. KURIKULUM & FORMAT */}
+                <div
+                  style={{
+                    padding: '16px',
+                    borderRadius: '12px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border)',
+                  }}
+                  className="space-y-3.5"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
+                        Subtes SNBT <span className="text-red-400">*</span>
+                      </label>
+                      <ComboboxSelect
+                        value={questionForm.subtest}
+                        onValueChange={(val) => {
+                          setQuestionForm({ ...questionForm, subtest: val, subtopicId: '' });
+                        }}
+                        options={[
+                          { label: 'Pengetahuan Kuantitatif', value: 'PENGETAHUAN_KUANTITATIF' },
+                          { label: 'Penalaran Umum', value: 'PENALARAN_UMUM' },
+                          { label: 'Pemahaman Bacaan & Menulis', value: 'PEMAHAMAN_BACAAN_MENULIS' },
+                          { label: 'Pengetahuan & Pemahaman Umum', value: 'PENGETAHUAN_PEMAHAMAN_UMUM' },
+                          { label: 'Literasi Bahasa Indonesia', value: 'LITERASI_INDONESIA' },
+                          { label: 'Literasi Bahasa Inggris', value: 'LITERASI_INGGRIS' },
+                          { label: 'Penalaran Matematika', value: 'PENALARAN_MATEMATIKA' },
+                        ]}
+                        triggerClassName="w-full h-9"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
+                        Topik & Subtopik (Kurikulum)
+                      </label>
+                      <ComboboxSelect
+                        value={questionForm.subtopicId}
+                        onValueChange={(val) => setQuestionForm({ ...questionForm, subtopicId: val })}
+                        options={[
+                          { label: 'Pilih Subtopik...', value: '' },
+                          ...topics
+                            .filter((t) => t.subtest === questionForm.subtest)
+                            .flatMap((t) =>
+                              t.subtopics.map((s) => ({
+                                label: `${t.title} › ${s.title}`,
+                                value: s.id,
+                              }))
+                            ),
+                        ]}
+                        triggerClassName="w-full h-9"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
+                        Tingkat Kesulitan <span className="text-red-400">*</span>
+                      </label>
+                      <ComboboxSelect
+                        value={questionForm.difficulty}
+                        onValueChange={(val) => setQuestionForm({ ...questionForm, difficulty: val as QuestionForm['difficulty'] })}
+                        options={[
+                          { label: 'Mudah (Easy)', value: 'EASY' },
+                          { label: 'Sedang (Medium)', value: 'MEDIUM' },
+                          { label: 'Sulit (Hard / HOTS)', value: 'HARD' },
+                        ]}
+                        triggerClassName="w-full h-9"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Batch Pengelompokan Soal */}
+                  <div className="pt-2 border-t border-zinc-800">
+                    <QuestionBatchField
+                      value={questionForm.batch}
+                      onChange={(nextBatch) => setQuestionForm({ ...questionForm, batch: nextBatch })}
+                      existingBatches={mergedQuestionBatches}
+                      helperText="Pilih batch yang sudah ada atau buat batch baru agar soal mudah difilter saat QC, curation Latihan, maupun pemantauan Bank Soal."
+                    />
+                  </div>
+
+                  {/* Format Tipe Soal: Pilihan Ganda vs Isian Singkat */}
+                  <div className="pt-2 border-t border-zinc-800 flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <label className="text-xs font-semibold text-zinc-300 block">
+                        Tipe Format Soal <span className="text-red-400">*</span>
+                      </label>
+                      <span className="text-[11px] text-zinc-400">
+                        Isian Singkat hanya diujikan pada subtes PK dan Penalaran Matematika
+                      </span>
+                    </div>
+
+                    <div className="inline-flex rounded-lg border border-zinc-700/80 p-0.5 bg-zinc-900">
+                      <button
+                        type="button"
+                        onClick={() => setQuestionForm({ ...questionForm, type: 'MULTIPLE_CHOICE' })}
+                        style={{
+                          padding: '5px 14px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: 'none',
+                          background: questionForm.type === 'MULTIPLE_CHOICE' ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
+                          color: questionForm.type === 'MULTIPLE_CHOICE' ? '#93c5fd' : '#9ca3af',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        🔘 Pilihan Ganda (A-E)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuestionForm({
+                            ...questionForm,
+                            type: 'SHORT_ANSWER',
+                            answerFormatGuide: questionForm.answerFormatGuide || 'Bilangan Bulat Non-Negatif (0-9999)',
+                          });
+                        }}
+                        style={{
+                          padding: '5px 14px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: 'none',
+                          background: questionForm.type === 'SHORT_ANSWER' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                          color: questionForm.type === 'SHORT_ANSWER' ? '#fcd34d' : '#9ca3af',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        ✍️ Isian Singkat (BPPP)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. KONTEN & STIMULUS */}
+                <div
+                  style={{
+                    padding: '16px',
+                    borderRadius: '12px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border)',
+                  }}
+                  className="space-y-3.5"
+                >
+                  <div>
+                    <label className="text-xs font-semibold text-zinc-300 block mb-1">
+                      Teks Wacana / Stimulus Soal <span className="text-[11px] text-zinc-400 font-normal">(Opsional)</span>
+                    </label>
+                    <textarea
+                      className="field-input text-xs w-full"
+                      rows={2}
+                      placeholder="Wacana bacaan panjang, pengantar narasi cerita, artikel kontekstual, atau data tabel..."
+                      value={questionForm.narration}
+                      onChange={(e) => setQuestionForm({ ...questionForm, narration: e.target.value })}
+                      style={{ minHeight: '65px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-zinc-300 block">
+                        Teks Pertanyaan Soal <span className="text-red-400">*</span>
+                      </label>
+                      <span className="text-[11px] text-zinc-400 font-mono">
+                        Mendukung LaTeX: $x^2 + y^2 = r^2$
+                      </span>
+                    </div>
+                    <textarea
+                      className="field-input text-xs w-full font-sans leading-relaxed"
+                      rows={4}
+                      required
+                      placeholder="Tuliskan pertanyaan inti soal di sini..."
+                      value={questionForm.content}
+                      onChange={(e) => setQuestionForm({ ...questionForm, content: e.target.value })}
+                      style={{ minHeight: '90px' }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                    <div>
+                      <label className="text-xs font-semibold text-zinc-300 block mb-1">
+                        URL Gambar Diagram / Grafik <span className="text-[11px] text-zinc-400 font-normal">(Opsional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="field-input text-xs w-full"
+                        placeholder="https://... (URL gambar ilustrasi jika ada)"
+                        value={questionForm.imageUrl}
+                        onChange={(e) => setQuestionForm({ ...questionForm, imageUrl: e.target.value })}
+                      />
+                    </div>
+                    {questionForm.imageUrl.trim() && (
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-900 border border-zinc-800">
+                        <img
+                          src={questionForm.imageUrl.trim()}
+                          alt="Preview Diagram"
+                          className="h-10 w-16 object-contain rounded bg-black/40 border border-zinc-700"
+                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                        />
+                        <span className="text-[11px] text-zinc-400 truncate">Preview Gambar Terpasang</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. KUNCI JAWABAN */}
+                {questionForm.type === 'SHORT_ANSWER' ? (
+                  <div
+                    style={{
+                      padding: '16px',
+                      borderRadius: '12px',
+                      background: 'rgba(245, 158, 11, 0.05)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                    }}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>✍️</span> Kunci Jawaban Isian Singkat
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-medium">
+                        Standar Resmi BPPP SNBT
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                      <div>
+                        <label className="text-xs font-semibold text-zinc-200 block mb-1">
+                          Kunci Nilai Angka Akhir <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="field-input font-mono text-sm font-bold tracking-wider w-full"
+                          placeholder="Contoh: 42 atau 1500"
+                          required={questionForm.type === 'SHORT_ANSWER'}
+                          value={questionForm.correctAnswer}
+                          onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
+                        />
+                        <span className="text-[11px] text-zinc-400 block mt-1">
+                          Tuliskan angka definitif tanpa satuan atau variabel (contoh: <code>42</code>, bukan <code>42 cm</code>).
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col justify-between">
+                        <label className="text-xs font-semibold text-zinc-200 block mb-1">
+                          Format Petunjuk Resmi
+                        </label>
+                        <button
+                          type="button"
+                          className="button button-secondary text-xs h-9 flex items-center justify-center gap-1.5"
+                          onClick={() => {
+                            let content = questionForm.content.trim();
+                            const guideTag = `[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: ${questionForm.correctAnswer || '42'}]`;
+                            if (content.includes('[PETUNJUK FORMAT:')) {
+                              content = content.replace(/\[PETUNJUK FORMAT:[^\]]+\]/g, guideTag);
+                            } else {
+                              content = content ? `${content}\n\n${guideTag}` : guideTag;
+                            }
+                            setQuestionForm({ ...questionForm, content });
+                          }}
+                        >
+                          <span>⚡ Sisipkan Format ke Teks Soal</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: '16px',
+                      borderRadius: '12px',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid var(--border)',
+                    }}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                        Pilihan Jawaban (A-E)
+                      </span>
+                      <span className="text-xs text-zinc-400">
+                        Klik huruf lingkaran untuk menandai kunci benar
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {questionForm.options.map((opt, idx) => {
+                        const letters = ['A', 'B', 'C', 'D', 'E'];
+                        const letter = letters[idx] || String(idx + 1);
+                        const isKey = opt.isCorrect;
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              border: isKey ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
+                              background: isKey ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newOpts = questionForm.options.map((o, i) => ({
+                                  ...o,
+                                  isCorrect: i === idx,
+                                }));
+                                setQuestionForm({ ...questionForm, options: newOpts });
+                              }}
+                              style={{
+                                width: '28px',
+                                height: '28px',
+                                borderRadius: '50%',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                border: isKey ? 'none' : '1px solid rgba(255, 255, 255, 0.2)',
+                                background: isKey ? '#10b981' : 'rgba(255, 255, 255, 0.05)',
+                                color: isKey ? '#ffffff' : '#9ca3af',
+                                flexShrink: 0,
+                                transition: 'all 0.15s ease',
+                              }}
+                              title={`Tandai ${letter} sebagai Kunci Jawaban Benar`}
+                            >
+                              {letter}
+                            </button>
+                            <input
+                              type="text"
+                              className="field-input flex-1 text-xs"
+                              placeholder={`Isi pilihan ${letter}... (dukung LaTeX $...$)`}
+                              required={questionForm.type === 'MULTIPLE_CHOICE'}
+                              value={opt.content}
+                              onChange={(e) => {
+                                const newOpts = [...questionForm.options];
+                                newOpts[idx] = { ...newOpts[idx], content: e.target.value };
+                                setQuestionForm({ ...questionForm, options: newOpts });
+                              }}
+                            />
+                            {isKey && (
+                              <span className="text-[11px] font-bold text-emerald-400 shrink-0 px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30">
+                                ✓ Kunci Benar
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. SOLUTION DECK & PEMBAHASAN */}
+                <div
+                  style={{
+                    padding: '16px',
+                    borderRadius: '12px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    border: '1px solid var(--border)',
+                  }}
+                  className="space-y-3.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-400" /> Solution Deck & Pembahasan Bertahap
+                      </span>
+                      <p className="text-[11px] text-zinc-400 mt-0.5 m-0">
+                        Disajikan sebagai slide interaktif yang membimbing pemahaman siswa langkah demi langkah.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="button button-secondary text-xs h-7 px-2.5"
+                      onClick={() => {
+                        const nextNum = questionForm.solutionSteps.length + 1;
+                        setQuestionForm({
+                          ...questionForm,
+                          solutionSteps: [
+                            ...questionForm.solutionSteps,
+                            { stepNumber: nextNum, category: 'EKSEKUSI', title: '', content: '' },
+                          ],
+                        });
+                      }}
+                    >
+                      + Tambah Slide Langkah
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-purple-300 block mb-1">
+                        📐 Rumus Kunci (Key Formula)
+                      </label>
+                      <input
+                        type="text"
+                        className="field-input text-xs w-full font-mono"
+                        placeholder="e.g. A = \frac{1}{2} \times a \times t"
+                        value={questionForm.keyFormula}
+                        onChange={(e) => setQuestionForm({ ...questionForm, keyFormula: e.target.value })}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-amber-300 block mb-1">
+                        💡 Trik Jitu 10 Detik (Quick Trick)
+                      </label>
+                      <input
+                        type="text"
+                        className="field-input text-xs w-full"
+                        placeholder="Cara cepat eliminasi opsi / pola trik kilat..."
+                        value={questionForm.quickTrick}
+                        onChange={(e) => setQuestionForm({ ...questionForm, quickTrick: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Steps List */}
+                  <div className="space-y-2.5 pt-1">
+                    {questionForm.solutionSteps.map((step, sIdx) => (
+                      <div
+                        key={sIdx}
+                        style={{
+                          padding: '12px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          background: 'rgba(255, 255, 255, 0.02)',
+                        }}
+                        className="space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-bold text-sky-400 px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/30">
+                              Slide {sIdx + 1}
+                            </span>
+                            <span className="text-xs text-zinc-400">
+                              {sIdx === 0 ? 'Tahap Analisis' : sIdx === 1 ? 'Tahap Eksekusi' : 'Tahap Kesimpulan'}
+                            </span>
+                          </div>
+                          {questionForm.solutionSteps.length > 1 && (
+                            <button
+                              type="button"
+                              className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                              onClick={() => {
+                                const newSteps = questionForm.solutionSteps.filter((_, i) => i !== sIdx);
+                                setQuestionForm({ ...questionForm, solutionSteps: newSteps });
+                              }}
+                            >
+                              Hapus Slide
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            className="field-input text-xs"
+                            placeholder="Kategori (e.g. IDENTIFIKASI)"
+                            value={step.category}
+                            onChange={(e) => {
+                              const newSteps = [...questionForm.solutionSteps];
+                              newSteps[sIdx] = { ...newSteps[sIdx], category: e.target.value };
+                              setQuestionForm({ ...questionForm, solutionSteps: newSteps });
+                            }}
+                          />
+                          <input
+                            type="text"
+                            className="field-input text-xs sm:col-span-2"
+                            placeholder="Judul langkah (e.g. Analisis Variabel dan Rumus Utama)"
+                            value={step.title}
+                            onChange={(e) => {
+                              const newSteps = [...questionForm.solutionSteps];
+                              newSteps[sIdx] = { ...newSteps[sIdx], title: e.target.value };
+                              setQuestionForm({ ...questionForm, solutionSteps: newSteps });
+                            }}
+                          />
+                        </div>
+
+                        <textarea
+                          className="field-input text-xs w-full"
+                          rows={2}
+                          placeholder="Uraian penjelasan detail slide ini (Mendukung Markdown & rumus LaTeX)..."
+                          value={step.content}
+                          onChange={(e) => {
+                            const newSteps = [...questionForm.solutionSteps];
+                            newSteps[sIdx] = { ...newSteps[sIdx], content: e.target.value };
+                            setQuestionForm({ ...questionForm, solutionSteps: newSteps });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-zinc-400 block mb-1">
+                      Penjelasan Statis Lengkap (Versi Utuh / PDF Export)
+                    </label>
+                    <textarea
+                      className="field-input text-xs w-full"
+                      rows={2}
+                      placeholder="Versi teks penjelasan konvensional tanpa per-slide..."
+                      value={questionForm.staticExplanation}
+                      onChange={(e) => setQuestionForm({ ...questionForm, staticExplanation: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* MODAL FOOTER */}
+              <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => {
+                    setQuestionForm(initialQuestionForm);
+                    setEditingQuestion(null);
+                    setQuestionFormOpen(false);
+                  }}
+                >
+                  Batal
+                </button>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  {error && <span className="text-xs text-red-400">{error}</span>}
+                  {editingQuestion && questionForm.status === 'NEEDS_REVISION' && (
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      disabled={saving}
+                      onClick={() => void handleSaveAndResubmitQc()}
+                    >
+                      {saving ? 'Mengirim…' : 'Simpan & Kirim Ulang ke QC'}
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="button button-primary"
+                    disabled={saving}
+                  >
+                    {saving ? 'Menyimpan…' : editingQuestion ? 'Simpan Perubahan' : 'Buat Soal'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 }
