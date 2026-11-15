@@ -1008,6 +1008,123 @@ export function computePackageAutoBalancePlan(params: {
   };
 }
 
+export const PROMPT_SYSTEM_IDENTITY = `Kamu adalah Guru & Tutor Pembahasan UTBK SNBT terbaik di Indonesia di platform Jitu PTN yang ahli menyusun soal berstandar resmi BPPP SNBT Kemendikbudristek sekaligus menjelaskan jawabannya dengan bahasa yang santai, jelas, dan super gampang dipahami oleh anak SMA kelas 12.`;
+
+export function buildQuestionTypeHeading(questionType: string): string {
+  if (questionType === 'ISIAN_SINGKAT') {
+    return 'SOAL ISIAN SINGKAT (STANDAR RESMI BPPP UTBK SNBT)';
+  }
+  if (questionType === 'CAMPURAN') {
+    return 'KOMBINASI PILIHAN GANDA (A-E) DAN ISIAN SINGKAT (STANDAR RESMI UTBK SNBT TERBARU)';
+  }
+  return 'SOAL PILIHAN GANDA 5 OPSI (A, B, C, D, E)';
+}
+
+export function buildTypeSpecificRules(questionType: string): string {
+  if (questionType === 'ISIAN_SINGKAT') {
+    return `KETENTUAN KHUSUS PEMBUATAN SOAL ISIAN SINGKAT (STANDAR BPPP UTBK):
+1. Target Subtes Resmi: Soal isian singkat resmi UTBK SNBT BPPP ditujukan untuk subtes Pengetahuan Kuantitatif (PK) dan Penalaran Matematika (PM).
+2. Pertanyaan Menuntut Jawaban Pasti: Pertanyaan WAJIB dirumuskan secara eksplisit sehingga menghasilkan nilai akhir matematis tunggal dan pasti (tidak ambigu dan bukan berupa rentang jawaban).
+3. PETUNJUK FORMAT MENJAWAB WAJIB DICANTUMKAN PADA TEKS SOAL:
+   Pada akhir teks pertanyaan (field "content"), kamu WAJIB mencantumkan petunjuk format menjawab baku dalam tanda kurung siku berikut:
+   "\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]"
+4. Kunci Jawaban (field "correctAnswer"):
+   Field "correctAnswer" HARUS diisi string angka murni (contoh: "42" atau "1250"), BUKAN kalimat dan TANPA satuan (jangan tulis "42 cm" atau "x = 42").
+5. Field "options": Harus berupa array kosong [] (karena bertipe isian singkat).
+6. Field "type": Bernilai "ISIAN_SINGKAT".`;
+  }
+
+  if (questionType === 'CAMPURAN') {
+    return `KETENTUAN TIPE SOAL CAMPURAN (PILIHAN GANDA & ISIAN SINGKAT):
+1. Untuk butir bertipe "PILIHAN_GANDA":
+   - "type": "PILIHAN_GANDA"
+   - "options": 5 opsi (A, B, C, D, E) dengan tepat 1 "isCorrect": true dan 4 pengecoh logis yang mengeksploitasi miskonsepsi umum siswa.
+   - "correctAnswer": null
+2. Untuk butir bertipe "ISIAN_SINGKAT":
+   - "type": "ISIAN_SINGKAT"
+   - Pada akhir "content", WAJIB sertakan: "\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 25]"
+   - "correctAnswer": String angka bulat murni (contoh: "25") tanpa satuan dan tanpa desimal semu.
+   - "options": Array kosong [].`;
+  }
+
+  return `KETENTUAN KHUSUS SOAL PILIHAN GANDA (A-E):
+1. Opsi Jawaban: Tepat 5 pilihan ganda (A, B, C, D, E) pada array "options".
+2. Tepat 1 opsi "isCorrect": true, dan 4 opsi lainnya "isCorrect": false.
+3. Kualitas Pengecoh (Distraktor): 4 distraktor harus berasal dari miskonsepsi atau kesalahan hitung umum siswa (contoh: tanda aljabar terbalik, lupa mengalikan skalar, salah subtitusi), BUKAN angka asal.
+4. "type": "PILIHAN_GANDA", dan "correctAnswer": null.`;
+}
+
+export function buildPassageInstruction(includePassage = true): string {
+  return includePassage
+    ? '- Untuk subtes berbasis literasi/bahasa (PBM, PPU, LBI, LBE) atau soal kontekstual naratif, cantumkan wacana/stimulus bermutu pada field "narration".'
+    : '- Soal dibuat langsung fokus pertanyaan (kosongkan string "narration" jika tidak memerlukan teks wacana panjang).';
+}
+
+export function buildTrickInstruction(includeTricks = true): string {
+  return includeTricks
+    ? '- Pada bagian "solution", WAJIB cantumkan "keyFormula" (rumus inti + kapan dipakainya), "quickTrick" (tips cepat 30 detik ala kakak tutor), serta array "solutionSteps" berjumlah FLEKSIBEL (2-6 langkah) memakai bahasa ringan yang gampang dipahami siswa SMA (jangan dipaksa selalu 3 langkah).'
+    : '- Pada bagian "solution", sertakan array "solutionSteps" berjumlah FLEKSIBEL (2-6 langkah) menyesuaikan karakteristik soal dengan gaya bahasa tutor yang santai, ringan, dan mudah dipahami anak SMA.';
+}
+
+export function buildJsonStructureExample(firstItem: {
+  subtest: string;
+  topicId?: string;
+  subtopicId?: string;
+  topic?: string;
+  subtopic?: string;
+  difficulty?: string;
+  type?: string;
+  isSingle?: boolean;
+}): string {
+  const isIsian = firstItem.type === 'ISIAN_SINGKAT';
+  const subtest = firstItem.subtest || 'PENALARAN_MATEMATIKA';
+  const topicId = firstItem.topicId || '';
+  const subtopicId = firstItem.subtopicId || '';
+  const topic = firstItem.topic || 'Aljabar & Persamaan';
+  const subtopic = firstItem.subtopic || 'Persamaan Kuadrat';
+  const difficulty = firstItem.difficulty || 'MEDIUM';
+  const type = isIsian ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA';
+  const isSingle = Boolean(firstItem.isSingle);
+
+  return `${isSingle ? '' : '[\n'}  {
+    "subtest": "${subtest}",
+    "topicId": "${topicId}",
+    "subtopicId": "${subtopicId}",
+    "topic": "${topic}",
+    "subtopic": "${subtopic}",
+    "difficulty": "${difficulty}",
+    "type": "${type}",
+    "narration": "Teks wacana atau konteks bacaan jika ada (kosongkan string jika tidak ada)",
+    "content": "${
+      isIsian
+        ? 'Pertanyaan soal yang spesifik dan menuntut angka pasti...\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]'
+        : 'Pertanyaan soal yang jelas, menuntut analisis nalar, dan tidak ambigu...'
+    }",
+    "points": 1,
+    "correctAnswer": ${isIsian ? '"42"' : 'null'},
+    "options": ${
+      isIsian
+        ? '[]'
+        : `[
+      { "content": "Pernyataan / opsi A", "isCorrect": false },
+      { "content": "Pernyataan / opsi B (Kunci Jawaban)", "isCorrect": true },
+      { "content": "Pernyataan / opsi C", "isCorrect": false },
+      { "content": "Pernyataan / opsi D", "isCorrect": false },
+      { "content": "Pernyataan / opsi E", "isCorrect": false }
+    ]`
+    },
+    "staticExplanation": "Ringkasan 1-2 kalimat santai kenapa opsi tersebut benar",
+    "quickTrick": "Tips cepat 30 detik ala kakak tutor (cara baca pola atau eliminasi opsi paling gampang)",
+    "keyFormula": "Rumus inti yang dipakai + 1 kalimat sederhana kapan rumus ini digunakan",
+    "solutionSteps": [
+      { "order": 1, "category": "Pahami Soal", "title": "Cari Tahu Apa yang Ditanya", "content": "Dari soal kita tahu:\\n- **Info 1:** ...\\n- **Info 2:** ...\\n\\n==Inti ide awal supaya langkah berikutnya terasa gampang.==" },
+      { "order": 2, "category": "Tahap 1", "title": "Langkah Awal (Sesuaikan Judul)", "content": "Kalimat jembatan singkat kenapa kita hitung bagian ini:\\n$$...$$\\nDari sini ketemu **$x = ...$**." },
+      { "order": 3, "category": "Tahap 2", "title": "Langkah Lanjutan (Tambah/Kurangi Step Sesuai Soal)", "content": "Sekarang tinggal masukkan angka tadi:\\n$$...$$\\nHasilnya langsung mengarah ke ==poin penentu jawaban==." },
+      { "order": 4, "category": "Kesimpulan", "title": "Jadi Jawabannya...", "content": "Semua kondisi soal sudah terpenuhi oleh ==hasil/opsi akhir yang tepat==.\\n\\n✅ Jadi, jawaban yang benar adalah **...**." }
+    ]
+  }${isSingle ? '' : '\n]'}`;
+}
+
 export function buildAutoBalancedBatchPrompt(params: {
   packageLabel: string;
   slots: AutoBalanceSlot[];
@@ -1016,19 +1133,16 @@ export function buildAutoBalancedBatchPrompt(params: {
   difficultyRatio?: DifficultyComposition;
   targetIsianPct?: number;
   existingTotalInPackage?: number;
+  includePassage?: boolean;
+  includeTricks?: boolean;
 }): string {
   const {
     packageLabel,
     slots,
     customInstruction = '',
-    difficultyRatio,
-    targetIsianPct = 15,
-    existingTotalInPackage,
+    includePassage = true,
+    includeTricks = true,
   } = params;
-
-  const normRatio = normalizeDifficultyComposition(difficultyRatio);
-  const resolvedIsianPct = Math.max(0, Math.min(100, Math.round(targetIsianPct)));
-  const resolvedPgPct = 100 - resolvedIsianPct;
 
   const totalSlots = slots.length;
   const pgSlots = slots.filter((s) => s.questionType === 'PILIHAN_GANDA');
@@ -1042,99 +1156,191 @@ export function buildAutoBalancedBatchPrompt(params: {
     { EASY: 0, MEDIUM: 0, HARD: 0 },
   );
 
+  const resolvedQuestionType =
+    pgSlots.length > 0 && isianSlots.length > 0
+      ? 'CAMPURAN'
+      : isianSlots.length > 0
+      ? 'ISIAN_SINGKAT'
+      : 'PILIHAN_GANDA';
+
+  const questionTypeHeading = buildQuestionTypeHeading(resolvedQuestionType);
+
   const slotLines = slots
     .map(
       (s) =>
-        `  - Butir #${s.index}: Subtes="${s.subtest}" (${s.subtestShort}) | Tipe="${s.questionType}" | Topik="${s.topicTitle}" | Subtopik="${s.subtopicTitle}" | topicId="${s.topicId}" | subtopicId="${s.subtopicId}" | Difficulty="${s.difficulty}"`,
+        `- Butir #${s.index}: Subtes="${s.subtest}" (${s.subtestShort}) | Tipe="${s.questionType}" | Topik="${s.topicTitle}" | Subtopik="${s.subtopicTitle}" | topicId="${s.topicId}" | subtopicId="${s.subtopicId}" | Difficulty="${s.difficulty}"`,
     )
     .join('\n');
 
-  return `### IDENTITAS & PERAN SISTEM (ROLEPLAY)
-Kamu adalah **Senior Assessment Specialist, Psychometrician, & Master Author Soal UTBK-SNBT di Jitu PTN**.
-**Jitu PTN** adalah platform edukasi edtech terdepan di Indonesia yang mengkhususkan diri pada persiapan seleksi masuk Perguruan Tinggi Negeri (UTBK-SNBT). Jitu berfokus pada penalaran konseptual kritis (Higher-Order Thinking Skills / HOTS), eliminasi hafalan buta, dan penyajian pembahasan interaktif bertahap yang ramah siswa SMA (student-friendly, santai, komunikatif, tidak kaku, dengan trik cerdas "Jurus Jitu").
+  const targetSubtests = Array.from(new Set(slots.map((s) => s.subtestShort || s.subtest))).join(', ');
+  const firstSlot = slots[0];
 
-Seluruh butir soal yang kamu susun mengacu ketat pada standar resmi **Balai Pengelolaan Pengujian Pendidikan (BP3 / SNPMB Kemendikbudristek)** dengan karakteristik:
-1. Stimulus bacaan/data autentik, relevan dengan fenomena nyata, dan tidak membosankan.
-2. Logika inferensi yang presisi, bebas dari multitafsir atau ambiguitas kalimat.
-3. Distraktor (opsi pengecoh) yang masuk akal dan berbasis miskonsepsi umum siswa, bukan angka/kata acak.
-4. Daya beda psikometri tinggi yang secara efektif membedakan siswa berkemampuan tinggi dan rendah.
+  return `${PROMPT_SYSTEM_IDENTITY}
 
----
+TUGAS UTAMA:
+Buatkan ${totalSlots} butir ${questionTypeHeading} yang 100% orisinal, terkalibrasi akurat, dan memenuhi standar kisi-kisi resmi BPPP SNBT untuk paket: "${packageLabel}".
 
-### MISI PEMBUATAN BATCH SOAL (AUTO-BALANCE)
-Buat tepat **${totalSlots} butir soal UTBK-SNBT baru** dalam format JSON Array untuk paket: **"${packageLabel}"**.
-Komposisi batch yang wajib dipenuhi:
-- **Tipe Soal:** ${pgSlots.length} Pilihan Ganda (A-E) · ${isianSlots.length} Isian Singkat
-- **Tingkat Kesulitan:** ${slotDiffSummary.EASY} Mudah (Easy) · ${slotDiffSummary.MEDIUM} Sedang (Medium) · ${slotDiffSummary.HARD} Sulit (Hard HOTS)
+SPESIFIKASI & DISTRIBUSI SOAL:
+- Mode Penyusunan: Auto-Balance Berdasarkan Gap Kurikulum & Target Komposisi
+- Tipe Soal: ${pgSlots.length} Pilihan Ganda (A-E) · ${isianSlots.length} Isian Singkat
+- Tingkat Kesulitan: ${slotDiffSummary.EASY} Mudah · ${slotDiffSummary.MEDIUM} Sedang · ${slotDiffSummary.HARD} Sulit HOTS
+Total Keseluruhan: ${totalSlots} butir soal
 
----
-
-### DAFTAR SLOT BUTIR (WAJIB DIIKUTI PERSIS DARI BUTIR #1 SAMPAI #${totalSlots}):
+DAFTAR SLOT BUTIR (WAJIB DIIKUTI PERSIS SESUAI PEMETAAN DARI BUTIR #1 SAMPAI #${totalSlots}):
 ${slotLines}
-${customInstruction.trim() ? `\n### INSTRUKSI TAMBAHAN DARI PENYUSUN:\n${customInstruction.trim()}\n` : ''}
----
 
-### ATURAN KUALITAS & FORMAT STANDAR BP3 / JITU PTN:
-1. **JSON Output Murni (PENTING):** Kembalikan **HANYA** JSON Array valid \`[ ... ]\` berisi tepat ${totalSlots} objek butir soal. **JANGAN bungkus dengan markdown code block (seperti \`\`\`json)** dan tanpa teks pembuka/penutup. Karakter pertama output wajib '[' dan karakter terakhir ']'.
-2. **Field Metadata Wajib:** Setiap objek butir soal WAJIB menyertakan field "subtest", "topicId", "subtopicId", "topic", "subtopic", "type", dan "difficulty" persis sesuai pemetaan slot di atas!
-3. **Ketentuan Tipe PILIHAN_GANDA:**
-   - Field "type": bernilai "PILIHAN_GANDA".
-   - Field "options": berisi tepat 5 opsi (A, B, C, D, E) dengan tepat 1 "isCorrect": true dan 4 "isCorrect": false.
-   - **Kualitas Distraktor (Pengecoh):** 4 opsi salah WAJIB dirancang berdasarkan miskonsepsi atau kekeliruan umum siswa (contoh: tanda aljabar terbalik, lupa membalik tanda pertidaksamaan saat dibagi negatif, salah rumus turunan), BUKAN angka atau kata acak tanpa dasar.
-   - Field "correctAnswer": bernilai null.
-4. **Ketentuan Tipe ISIAN_SINGKAT (Standar SNBT):**
-   - Field "type": bernilai "ISIAN_SINGKAT".
-   - Field "options": bernilai array kosong [].
-   - Field "correctAnswer": string angka bilangan bulat eksak (contoh: "42"), tanpa satuan dan bukan desimal.
-   - Pada akhir teks pertanyaan (field "content"), **WAJIB** cantumkan petunjuk format berikut:
-     \`\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]\`
-5. **Format Soal, Rumus & Escape LaTeX (WAJIB):**
-   - Jika soal memuat pernyataan bernomor (1), (2), (3), (4) atau perbandingan P dan Q, wajib pisahkan setiap baris pernyataan dengan newline (\\n) di dalam "content".
-   - Gunakan format LaTeX inline \`$ ... $\` atau block \`$$ ... $$\` untuk semua simbol dan rumus matematika.
-   - **WAJIB DOUBLE-BACKSLASH:** Seluruh sintaks LaTeX di dalam string JSON WAJIB ditulis dengan double-backslash (contoh: \`\\\\frac{a}{b}\`, \`\\\\sqrt{x}\`, \`\\\\le\`, \`\\\\ge\`), JANGAN gunakan single-backslash agar string JSON valid saat diparse.
-6. **Pembahasan Pedagogis Khas Jitu PTN:**
-   - Gunakan gaya bahasa tutor yang ramah, komunikatif, dan lugas (ala kakak pembimbing alumni PTN top).
-   - Array "solutionSteps" wajib terdiri dari 2–5 langkah terstruktur. Setiap langkah WAJIB menyertakan:
-     * "order": nomor urut langkah (1, 2, 3, dst.)
-     * "category": label tab navigasi ringkas 1–2 kata (contoh: "Pahami Soal", "Cek (1)", "Hitung x", "Kesimpulan")
-     * "title": judul ringkas langkah yang menjelaskan fokus aksi
-     * "content": uraian penjelasan langkah demi langkah
-   - **Animasi Stabilo Interaktif:** Gunakan sintaks stabilo ==poin kesimpulan kunci== maksimal 1–2 kali pada langkah inti untuk memicu efek animasi stabilo kuning di aplikasi siswa.
-   - Sertakan "staticExplanation" (ringkasan santai 1–2 kalimat kenapa opsi benar), "quickTrick" (Jurus Cepat 30 detik JITU), dan "keyFormula" (rumus/konsep inti).
+PARAMETER SOAL:
+- Target Subtes: ${targetSubtests}
+- Notasi Matematika/Sains: Seluruh rumus, variabel matematika, pecahan, dan persamaan WAJIB ditulis dengan format LaTeX inline yang valid (contoh: $f(x) = ax^2 + bx + c$, $\\frac{a}{b}$, $\\sqrt{D}$, $x \\le 4$).
+- Escape Karakter Backslash LaTeX (PENTING): Seluruh sintaks LaTeX di dalam string JSON WAJIB di-escape ganda (contoh: \\\\frac{a}{b}, \\\\sqrt{D}, \\\\le, \\\\ge) agar string JSON valid saat diparse.
+- Kerapian Baris Teks Soal ("content" & "narration"): Gunakan newline ("\\n" dan "\\n\\n" dalam string JSON) untuk memisahkan paragraf serta daftar pernyataan bernomor (1), (2), (3), (4) atau perbandingan P dan Q agar setiap pernyataan turun ke baris baru dan mudah dibaca (contoh: "Pertanyaan?\\n\\n(1) ...\\n(2) ...\\n\\nPilih jawaban...").
+${buildPassageInstruction(includePassage)}
+${buildTrickInstruction(includeTricks)}
+${customInstruction.trim() ? `\n- Catatan / Instruksi Khusus Penyusun:\n${customInstruction.trim()}` : ''}
 
----
+${buildTypeSpecificRules(resolvedQuestionType)}
 
-### CONTOH FORMAT JSON ARRAY VALID:
-\`\`\`json
-[
-  {
-    "subtest": "${slots[0]?.subtest || 'PENALARAN_UMUM'}",
-    "topicId": "${slots[0]?.topicId || ''}",
-    "subtopicId": "${slots[0]?.subtopicId || ''}",
-    "topic": "${slots[0]?.topicTitle || 'Topik Inti'}",
-    "subtopic": "${slots[0]?.subtopicTitle || 'Subtopik Inti'}",
-    "difficulty": "${slots[0]?.difficulty || 'MEDIUM'}",
-    "type": "${slots[0]?.questionType || 'PILIHAN_GANDA'}",
-    "narration": "Stimulus bacaan atau konteks naratif jika diperlukan, atau null",
-    "content": "Pertanyaan utama soal...",
-    "options": [
-      { "order": 1, "content": "Opsi A", "isCorrect": false },
-      { "order": 2, "content": "Opsi B", "isCorrect": true },
-      { "order": 3, "content": "Opsi C", "isCorrect": false },
-      { "order": 4, "content": "Opsi D", "isCorrect": false },
-      { "order": 5, "content": "Opsi E", "isCorrect": false }
-    ],
-    "correctAnswer": null,
-    "staticExplanation": "Opsi B tepat karena premis kedua langsung menegaskan kondisi tersebut.",
-    "quickTrick": "Jurus Cepat JITU: Perhatikan eliminasi langsung dari pola angka...",
-    "keyFormula": "Konsep atau Teorema Utama",
-    "solutionSteps": [
-      { "order": 1, "category": "Pahami Soal", "title": "Pahami Masalah", "content": "Identifikasi data penting dari soal..." },
-      { "order": 2, "category": "Eksekusi", "title": "Eksekusi Solusi", "content": "Lakukan perhitungan matematis / penalaran inferensial..." },
-      { "order": 3, "category": "Kesimpulan", "title": "Kesimpulan Akhir", "content": "Maka jawaban yang benar adalah ==Opsi B==." }
-    ]
+${SOLUTION_FORMATTING_RULES}
+
+PRINSIP KOGNITIF & FORMAT MENJAWAB:
+- Siswa tidak boleh dirugikan akibat format jawaban; format isian harus sangat jelas sehingga tidak ada kebingungan antara angka desimal vs bilangan bulat atau penggunaan satuan.
+- Soal harus menguji daya nalar dan pemecahan masalah (Problem Solving / HOTS), bukan sekadar mengingat rumus tanpa pemahaman konsep.
+- Stimulus bacaan/data autentik, relevan dengan fenomena nyata, dan bebas dari multitafsir atau ambiguitas kalimat.
+
+FORMAT KELUARAN (OUTPUT RAW JSON MURNI):
+- Berikan HANYA teks raw JSON murni langsung di dalam balasan obrolan (tanpa bungkus markdown code block seperti \`\`\`json dan tanpa teks pembuka/penutup).
+- Karakter pertama respons wajib '[' dan karakter terakhir ']'.
+- Seluruh rumus matematika / LaTeX di dalam string JSON WAJIB di-escape ganda (contoh: \\\\frac, \\\\sqrt, \\\\le, \\\\ge) agar string JSON valid saat diparse.
+
+STRUKTUR JSON YANG WAJIB DIPATUHI:
+${buildJsonStructureExample({
+  subtest: firstSlot?.subtest || 'PENALARAN_MATEMATIKA',
+  topicId: firstSlot?.topicId || '',
+  subtopicId: firstSlot?.subtopicId || '',
+  topic: firstSlot?.topicTitle || 'Aljabar & Persamaan',
+  subtopic: firstSlot?.subtopicTitle || 'Persamaan Kuadrat',
+  difficulty: firstSlot?.difficulty || 'MEDIUM',
+  type: firstSlot?.questionType || 'PILIHAN_GANDA',
+  isSingle: false,
+})}`;
+}
+
+export function buildManualBatchPrompt(params: {
+  packageLabel: string;
+  totalCount: number;
+  activeSubtestEntries: Array<[string, number]>;
+  promptDifficulty: string;
+  normalizedDifficultyComposition: { easyPct: number; mediumPct: number; hardPct: number };
+  promptQuestionType: string;
+  selectedSubtopicMeta?: {
+    topicTitle: string;
+    subtopicTitle: string;
+    subtestLabel: string;
+    patterns: string[];
+    topicId?: string;
+    subtopicId?: string;
+  } | null;
+  promptCustomTopic?: string;
+  includePassage?: boolean;
+  includeTricks?: boolean;
+}): string {
+  const {
+    packageLabel,
+    totalCount,
+    activeSubtestEntries,
+    promptDifficulty,
+    normalizedDifficultyComposition,
+    promptQuestionType,
+    selectedSubtopicMeta,
+    promptCustomTopic = '',
+    includePassage = true,
+    includeTricks = true,
+  } = params;
+
+  const subtestBreakdown =
+    activeSubtestEntries.length > 0
+      ? activeSubtestEntries
+          .map(([subId, count]) => {
+            const subMeta = LIFECYCLE_SUBTESTS.find((item) => item.value === subId);
+            return `- ${subMeta?.label || subId}: ${count} butir soal`;
+          })
+          .join('\n')
+      : '- Penalaran Matematika (PM): 5 butir soal';
+
+  const targetSubtestNames =
+    activeSubtestEntries.length > 0
+      ? activeSubtestEntries
+          .map(([subId]) => LIFECYCLE_SUBTESTS.find((item) => item.value === subId)?.label || subId)
+          .join(', ')
+      : 'Penalaran Matematika (PM)';
+
+  const diffText =
+    promptDifficulty === 'EASY'
+      ? 'Mudah (Konseptual & Fundamental Dasar)'
+      : promptDifficulty === 'HARD'
+      ? 'Sulit (HOTS - High Order Thinking Skills, Analitis & Multi-Tahap)'
+      : promptDifficulty === 'MIXED'
+      ? `Campuran Berimbang (${normalizedDifficultyComposition.easyPct}% Mudah, ${normalizedDifficultyComposition.mediumPct}% Sedang, ${normalizedDifficultyComposition.hardPct}% Sulit HOTS)`
+      : 'Sedang (Standar Resmi UTBK SNBT BPPP Kemendikbudristek)';
+
+  let topicLine = '- Fokus Topik: Standar kisi-kisi resmi SNBT terbaru';
+  if (selectedSubtopicMeta) {
+    topicLine = `- Fokus Materi Kurikulum: ${selectedSubtopicMeta.topicTitle} › ${selectedSubtopicMeta.subtopicTitle} (${selectedSubtopicMeta.subtestLabel})`;
+    if (selectedSubtopicMeta.patterns.length > 0) {
+      topicLine += `\n- Pola Soal Kurikulum: ${selectedSubtopicMeta.patterns.join(' | ')}`;
+    }
+    if (promptCustomTopic.trim()) {
+      topicLine += `\n- Catatan Spesifik Materi: ${promptCustomTopic.trim()}`;
+    }
+  } else if (promptCustomTopic.trim()) {
+    topicLine = `- Fokus Topik / Kisi-kisi Khusus: ${promptCustomTopic.trim()}`;
   }
-]
-\`\`\`
-Pastikan seluruh string JSON ter-escape dengan benar (misal backslash LaTeX ditulis ganda \`\\\\\`) agar valid ketika di-parse.`;
+
+  const questionTypeHeading = buildQuestionTypeHeading(promptQuestionType);
+  const primarySubtestId = activeSubtestEntries[0]?.[0] || 'PENALARAN_MATEMATIKA';
+
+  return `${PROMPT_SYSTEM_IDENTITY}
+
+TUGAS UTAMA:
+Buatkan ${totalCount} butir ${questionTypeHeading} yang 100% orisinal, terkalibrasi akurat, dan memenuhi standar kisi-kisi resmi BPPP SNBT untuk paket: "${packageLabel}".
+
+SPESIFIKASI & DISTRIBUSI SOAL:
+${subtestBreakdown}
+Total Keseluruhan: ${totalCount} butir soal
+
+PARAMETER SOAL:
+- Target Subtes: ${targetSubtestNames}
+- Tingkat Kesulitan: ${diffText}
+${topicLine}
+- Notasi Matematika/Sains: Seluruh rumus, variabel matematika, pecahan, dan persamaan WAJIB ditulis dengan format LaTeX inline yang valid (contoh: $f(x) = ax^2 + bx + c$, $\\frac{a}{b}$, $\\sqrt{D}$, $x \\le 4$).
+- Escape Karakter Backslash LaTeX (PENTING): Seluruh sintaks LaTeX di dalam string JSON WAJIB di-escape ganda (contoh: \\\\frac{a}{b}, \\\\sqrt{D}, \\\\le, \\\\ge) agar string JSON valid saat diparse.
+- Kerapian Baris Teks Soal ("content" & "narration"): Gunakan newline ("\\n" dan "\\n\\n" dalam string JSON) untuk memisahkan paragraf serta daftar pernyataan bernomor (1), (2), (3), (4) atau perbandingan P dan Q agar setiap pernyataan turun ke baris baru dan mudah dibaca (contoh: "Pertanyaan?\\n\\n(1) ...\\n(2) ...\\n\\nPilih jawaban...").
+${buildPassageInstruction(includePassage)}
+${buildTrickInstruction(includeTricks)}
+
+${buildTypeSpecificRules(promptQuestionType)}
+
+${SOLUTION_FORMATTING_RULES}
+
+PRINSIP KOGNITIF & FORMAT MENJAWAB:
+- Siswa tidak boleh dirugikan akibat format jawaban; format isian harus sangat jelas sehingga tidak ada kebingungan antara angka desimal vs bilangan bulat atau penggunaan satuan.
+- Soal harus menguji daya nalar dan pemecahan masalah (Problem Solving / HOTS), bukan sekadar mengingat rumus tanpa pemahaman konsep.
+- Stimulus bacaan/data autentik, relevan dengan fenomena nyata, dan bebas dari multitafsir atau ambiguitas kalimat.
+
+FORMAT KELUARAN (OUTPUT RAW JSON MURNI):
+- Berikan HANYA teks raw JSON murni langsung di dalam balasan obrolan (tanpa bungkus markdown code block seperti \`\`\`json dan tanpa teks pembuka/penutup).
+- Karakter pertama respons wajib '[' (atau '{' jika hanya 1 butir) dan karakter terakhir ']' (atau '}').
+- Seluruh rumus matematika / LaTeX di dalam string JSON WAJIB di-escape ganda (contoh: \\\\frac, \\\\sqrt, \\\\le, \\\\ge) agar string JSON valid saat diparse.
+
+STRUKTUR JSON YANG WAJIB DIPATUHI:
+${buildJsonStructureExample({
+  subtest: primarySubtestId,
+  topicId: selectedSubtopicMeta?.topicId || '',
+  subtopicId: selectedSubtopicMeta?.subtopicId || '',
+  topic: selectedSubtopicMeta?.topicTitle || 'Aljabar & Persamaan',
+  subtopic: selectedSubtopicMeta?.subtopicTitle || 'Persamaan Kuadrat',
+  difficulty: promptDifficulty === 'MIXED' ? 'MEDIUM' : promptDifficulty,
+  type: promptQuestionType === 'ISIAN_SINGKAT' ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA',
+  isSingle: totalCount <= 1,
+})}`;
 }
