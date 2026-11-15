@@ -185,7 +185,7 @@ export function PracticeSection({
   const loadWorkspace = React.useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.get<PracticeWorkspaceResponse>('/team/control-center/practice');
+      const data = await api.get<PracticeWorkspaceResponse>('/team/control-center/practice', { force: true });
       setWorkspace(data);
     } catch (cause) {
       onErrorRef.current(getErrorMessage(cause));
