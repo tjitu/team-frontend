@@ -53,6 +53,7 @@ import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
 import { PixelCoin } from '@/components/pixel-coin';
+import { PtnTargetDisplay } from '@/components/ptn-target-display';
 
 import {
   AlertTriangle as QcAlertIcon,
@@ -3158,7 +3159,7 @@ function ControlCenterContent() {
     }),
     userColHelper.accessor('target', {
       header: 'Target PTN',
-      cell: ({ getValue }) => <span className="text-xs">{getValue() || '—'}</span>,
+      cell: ({ getValue }) => <PtnTargetDisplay target={getValue()} compact />,
     }),
     userColHelper.accessor('tokenBalance', {
       header: 'Coins & Streak',
@@ -8252,7 +8253,7 @@ function ControlCenterContent() {
                 </div>
                 <div className="user-modal-stat">
                   <span className="user-modal-stat-label">Target PTN / Prodi</span>
-                  <strong className="user-modal-stat-value">{selectedUserForModal.target || 'Not set'}</strong>
+                  <PtnTargetDisplay target={selectedUserForModal.target} emptyLabel="Not set" />
                 </div>
                 <div className="user-modal-stat">
                   <span className="user-modal-stat-label">Daily Streak</span>
