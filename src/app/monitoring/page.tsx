@@ -15,6 +15,7 @@ import {
   Radio,
   RefreshCw,
   Server,
+  ShieldAlert,
   ShieldCheck,
 } from 'lucide-react';
 import { api, CurrentMember, signInUrl } from '@/lib/api';
@@ -85,8 +86,16 @@ type Sample = {
   states?: Record<string, TargetState>;
 };
 type Incident = { id: string; checkedAt: string; target: string; state: TargetState; message: string };
-type DatabaseTrendValue = { cpu: number | null; ram: number | null; disk: number | null };
+type DatabaseTrendValue = {
+  cpu: number | null;
+  ram: number | null;
+  disk: number | null;
+  networkIn: number | null;
+  networkOut: number | null;
+  waitingConnections: number | null;
+};
 type DatabaseTrendSample = { checkedAt: string; values: Record<string, DatabaseTrendValue> };
+type AnomalySignal = { id: string; severity: 'warning' | 'critical'; title: string; detail: string };
 type AccessState = 'checking' | 'allowed' | 'denied' | 'error';
 type Scope = 'all' | 'Main' | 'Team Platform';
 type Range = 5 | 15 | 30;
@@ -417,6 +426,9 @@ export default function MonitoringPage() {
           cpu: database.cpuBusyPct,
           ram: database.ramUsedPct,
           disk: database.diskUsedPct,
+          networkIn: database.networkReceivedBytesPerSecond,
+          networkOut: database.networkSentBytesPerSecond,
+          waitingConnections: database.metrics?.waitingConnections ?? null,
         }])),
       };
       setDatabaseSamples((items) => {
@@ -539,6 +551,153 @@ export default function MonitoringPage() {
         : unconfiguredCount > 0 ? `${unconfiguredCount} target perlu dikonfigurasi`
           : 'Semua layanan normal';
   const orderedIncidents = incidents.filter((incident) => scope === 'all' || targets.some((target) => target.name === incident.target)).slice(0, 6);
+  const anomalySignals = useMemo<AnomalySignal[]>(() => {
+    const signals: AnomalySignal[] = [];
+    const currentCheckTime = snapshot ? new Date(snapshot.checkedAt).getTime() : Number.POSITIVE_INFINITY;
+
+    for (const target of visibleTargets) {
+      if (target.state === 'down') {
+        signals.push({
+          id: `${target.id}-down`,
+          severity: 'critical',
+          title: 'Health check gagal',
+          detail: `${target.name}: ${target.detail}. Ini menunjukkan gangguan layanan, belum membuktikan serangan.`,
+        });
+        continue;
+      }
+
+      if (target.httpStatus === 429) {
+        signals.push({
+          id: `${target.id}-rate-limit`,
+          severity: 'warning',
+          title: 'Rate limit terpicu',
+          detail: `${target.name} membalas HTTP 429. Periksa pola request dan aturan limit pada CDN/API.`,
+        });
+        continue;
+      }
+
+      const history = samples
+        .filter((sample) => new Date(sample.checkedAt).getTime() < currentCheckTime)
+        .flatMap((sample) => {
+          const value = sample.values[target.id];
+          return value !== null && value !== undefined && Number.isFinite(value) ? [value] : [];
+        })
+        .slice(-10);
+      const baseline = history.length >= 3 ? percentile(history, 0.5) : null;
+      const latency = target.latencyMs;
+      const isSpike = latency !== null && baseline !== null && baseline >= 50
+        && latency >= Math.max(TARGET_LATENCY_MS, baseline * 3)
+        && latency - baseline >= 300;
+
+      if (isSpike) {
+        signals.push({
+          id: `${target.id}-latency-spike`,
+          severity: latency >= TARGET_LATENCY_MS * 2 ? 'critical' : 'warning',
+          title: 'Lonjakan latensi tidak biasa',
+          detail: `${target.name}: ${latency} ms, sekitar ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(latency / (baseline ?? 1))}× median sesi (${baseline} ms).`,
+        });
+      } else if (latency !== null && latency >= TARGET_LATENCY_MS * 2) {
+        signals.push({
+          id: `${target.id}-latency-high`,
+          severity: 'critical',
+          title: 'Latensi sangat tinggi',
+          detail: `${target.name}: ${latency} ms, melewati dua kali target ${TARGET_LATENCY_MS} ms.`,
+        });
+      } else if (target.state === 'degraded' || (latency !== null && latency >= TARGET_LATENCY_MS)) {
+        signals.push({
+          id: `${target.id}-degraded`,
+          severity: 'warning',
+          title: 'Health check menyimpang',
+          detail: `${target.name}: ${target.detail}${latency === null ? '' : ` (${latency} ms)`}.`,
+        });
+      }
+    }
+
+    const scopedDatabases = (databaseSnapshot?.databases ?? []).filter((database) => (
+      scope === 'all'
+      || (scope === 'Main' && database.id === 'jitu-ptn')
+      || (scope === 'Team Platform' && database.id === 'team-platform')
+    ));
+
+    for (const database of scopedDatabases) {
+      if (database.state === 'down') {
+        signals.push({
+          id: `${database.id}-observatory-down`,
+          severity: 'critical',
+          title: 'Koneksi Observatory gagal',
+          detail: `${database.name}: ${database.detail}. Status metrik tidak mengonfirmasi database diserang.`,
+        });
+        continue;
+      }
+
+      const checks: Array<{ key: 'cpuBusyPct' | 'ramUsedPct' | 'diskUsedPct'; label: string; warningAt: number; criticalAt: number }> = [
+        { key: 'cpuBusyPct', label: 'CPU database tinggi', warningAt: 85, criticalAt: 95 },
+        { key: 'ramUsedPct', label: 'RAM database hampir penuh', warningAt: 90, criticalAt: 97 },
+        { key: 'diskUsedPct', label: 'Disk database hampir penuh', warningAt: 90, criticalAt: 97 },
+      ];
+
+      for (const check of checks) {
+        const value = database[check.key];
+        if (value === null || value < check.warningAt) continue;
+        signals.push({
+          id: `${database.id}-${check.key}`,
+          severity: value >= check.criticalAt ? 'critical' : 'warning',
+          title: check.label,
+          detail: `${database.name}: ${Math.round(value)}% terpakai. Beban tinggi dapat terjadi karena lonjakan trafik maupun pekerjaan normal.`,
+        });
+      }
+
+      const waitingConnections = database.metrics?.waitingConnections ?? null;
+      if (waitingConnections !== null && waitingConnections >= 5) {
+        signals.push({
+          id: `${database.id}-waiting-connections`,
+          severity: waitingConnections >= 15 ? 'critical' : 'warning',
+          title: 'Antrean koneksi database',
+          detail: `${database.name}: ${waitingConnections} koneksi sedang menunggu.`,
+        });
+      }
+
+      for (const [metric, label] of [
+        ['networkIn', 'Jaringan masuk'],
+        ['networkOut', 'Jaringan keluar'],
+      ] as const) {
+        const currentRate = metric === 'networkIn'
+          ? database.networkReceivedBytesPerSecond
+          : database.networkSentBytesPerSecond;
+        const history = databaseSamples
+          .filter((sample) => new Date(sample.checkedAt).getTime() < new Date(database.checkedAt).getTime())
+          .flatMap((sample) => {
+            const value = sample.values?.[database.id]?.[metric];
+            return value !== null && value !== undefined && Number.isFinite(value) ? [value] : [];
+          })
+          .slice(-10);
+        const networkBaseline = history.length >= 4 ? percentile(history, 0.5) : null;
+        if (currentRate === null || networkBaseline === null || networkBaseline <= 0) continue;
+        if (currentRate >= Math.max(512 * 1024, networkBaseline * 5)) {
+          signals.push({
+            id: `${database.id}-${metric}-spike`,
+            severity: 'warning',
+            title: `Lonjakan ${label.toLowerCase()} DB`,
+            detail: `${database.name}: ${formatRate(currentRate, 'B/s')} dibanding median sesi ${formatRate(networkBaseline, 'B/s')}.`,
+          });
+        }
+      }
+    }
+
+    const severityRank = { critical: 0, warning: 1 };
+    return signals.sort((a, b) => severityRank[a.severity] - severityRank[b.severity]);
+  }, [databaseSamples, databaseSnapshot, samples, scope, snapshot, visibleTargets]);
+  const databaseTelemetryReady = databaseSnapshot?.databases.some((database) => database.metrics !== null) ?? false;
+  const anomalyTone = !snapshot ? 'checking'
+    : anomalySignals.some((signal) => signal.severity === 'critical') ? 'critical'
+      : anomalySignals.length > 0 ? 'warning'
+        : databaseTelemetryReady ? 'normal'
+          : 'checking';
+  const anomalyStatus = !snapshot ? 'Menunggu health check'
+    : anomalyTone === 'critical' ? 'Anomali prioritas tinggi'
+      : anomalyTone === 'warning' ? `${anomalySignals.length} sinyal perlu dicek`
+        : databaseTelemetryReady ? 'Tidak ada anomali terpantau'
+          : 'Sinyal parsial · menunggu metrik DB';
 
   if (access === 'checking') {
     return <div className={styles.statePage}><LoaderCircle className={styles.spinner} aria-hidden="true" /><p>Memeriksa akses monitoring…</p></div>;
@@ -593,6 +752,37 @@ export default function MonitoringPage() {
           <div className={styles.summaryValue}><span>{normalCheckRate === null ? '—' : `${normalCheckRate}%`}</span></div>
           <div className={styles.summaryFoot}>{checkStats.total ? `${checkStats.normal} dari ${checkStats.total} check pada ${range} menit` : 'Menunggu sampel health check'}</div>
         </article>
+      </section>
+
+      <section className={`${styles.anomalyPanel} ${styles[`anomaly_${anomalyTone}`]}`} aria-labelledby="anomaly-title" aria-live="polite">
+        <div className={styles.anomalyHeader}>
+          <span className={styles.anomalyIcon}><ShieldAlert aria-hidden="true" /></span>
+          <div className={styles.anomalyHeading}>
+            <h2 id="anomaly-title">Deteksi anomali & indikasi serangan</h2>
+            <p>Evaluasi health check HTTP dan metrik resource Supabase.</p>
+          </div>
+          <span className={styles.anomalyBadge}>{anomalyStatus}</span>
+        </div>
+        {anomalySignals.length > 0 ? (
+          <ul className={styles.anomalyList}>
+            {anomalySignals.slice(0, 5).map((signal) => (
+              <li className={styles[`anomalySignal_${signal.severity}`]} key={signal.id}>
+                <strong>{signal.title}</strong><span>{signal.detail}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className={styles.anomalyEmpty}>
+            {!snapshot
+              ? 'Menunggu health check pertama untuk mengevaluasi kondisi layanan.'
+              : databaseTelemetryReady
+                ? 'Belum ada lonjakan atau kondisi berisiko pada sinyal yang dipantau.'
+                : 'Tidak ada anomali dari HTTP. Metrik database belum tersedia untuk deteksi resource.'}
+          </p>
+        )}
+        <p className={styles.anomalyNote}>
+          Indikasi ini bukan konfirmasi DDoS. Request rate, IP sumber, dan event WAF/CDN belum masuk ke dashboard.
+        </p>
       </section>
 
       <div className={styles.toolbar}>

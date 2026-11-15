@@ -156,6 +156,31 @@
 .summaryValue small { color: var(--muted-fg); font-size: 12px; font-weight: 550; letter-spacing: 0; }
 .summaryFoot { margin-top: 8px; color: var(--muted-fg); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.anomalyPanel { margin: 0 0 15px; padding: 13px 15px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.anomaly_normal { border-color: color-mix(in srgb, var(--monitor-green) 28%, var(--border)); }
+.anomaly_warning { border-color: color-mix(in srgb, var(--monitor-amber) 48%, var(--border)); background: color-mix(in srgb, var(--monitor-amber) 4%, var(--card)); }
+.anomaly_critical { border-color: color-mix(in srgb, var(--monitor-red) 52%, var(--border)); background: color-mix(in srgb, var(--monitor-red) 5%, var(--card)); }
+.anomaly_checking { border-color: var(--border); background: var(--muted-bg); }
+.anomalyHeader { display: flex; align-items: center; gap: 10px; }
+.anomalyIcon { display: grid; width: 32px; height: 32px; flex: 0 0 auto; place-items: center; border: 1px solid color-mix(in srgb, var(--monitor-green) 25%, var(--border)); border-radius: 8px; color: var(--monitor-green); }
+.anomalyIcon svg { width: 17px; height: 17px; }
+.anomaly_warning .anomalyIcon { border-color: color-mix(in srgb, var(--monitor-amber) 35%, var(--border)); color: var(--monitor-amber); }
+.anomaly_critical .anomalyIcon { border-color: color-mix(in srgb, var(--monitor-red) 35%, var(--border)); color: var(--monitor-red); }
+.anomalyHeading { min-width: 0; flex: 1 1 auto; }
+.anomalyHeading h2 { margin: 0; font-size: 13px; font-weight: 650; }
+.anomalyHeading p { margin: 4px 0 0; color: var(--muted-fg); font-size: 10px; }
+.anomalyBadge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid color-mix(in srgb, var(--monitor-green) 28%, var(--border)); border-radius: 99px; background: color-mix(in srgb, var(--monitor-green) 9%, var(--card)); color: var(--monitor-green); font-size: 9px; font-weight: 650; }
+.anomaly_warning .anomalyBadge { border-color: color-mix(in srgb, var(--monitor-amber) 34%, var(--border)); background: color-mix(in srgb, var(--monitor-amber) 10%, var(--card)); color: var(--monitor-amber); }
+.anomaly_critical .anomalyBadge { border-color: color-mix(in srgb, var(--monitor-red) 36%, var(--border)); background: color-mix(in srgb, var(--monitor-red) 10%, var(--card)); color: var(--monitor-red); }
+.anomaly_checking .anomalyBadge { border-color: var(--border); background: var(--muted-bg); color: var(--muted-fg); }
+.anomalyList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 12px 0 0; padding: 0; list-style: none; }
+.anomalyList li { display: flex; min-width: 0; flex-direction: column; gap: 3px; padding: 8px 10px; border-left: 2px solid var(--monitor-amber); border-radius: 0 6px 6px 0; background: color-mix(in srgb, var(--monitor-amber) 6%, var(--card)); }
+.anomalyList li.anomalySignal_critical { border-left-color: var(--monitor-red); background: color-mix(in srgb, var(--monitor-red) 7%, var(--card)); }
+.anomalyList li strong { font-size: 10px; font-weight: 650; }
+.anomalyList li span { color: var(--muted-fg); font-size: 9px; line-height: 1.45; }
+.anomalyEmpty { margin: 11px 0 0 42px; color: var(--muted-fg); font-size: 10px; }
+.anomalyNote { margin: 10px 0 0 42px; padding-top: 8px; border-top: 1px solid var(--border); color: var(--muted-fg); font-size: 9px; line-height: 1.45; }
+
 .toolbar { justify-content: space-between; gap: 12px; margin: 0 0 14px; }
 .scopeTabs, .rangeTabs { gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--muted-bg); }
 .scopeTabs button, .rangeTabs button {
@@ -314,6 +339,12 @@
   .summaryGrid { gap: 8px; }
   .summaryCard { padding: 12px; }
   .summaryValue { font-size: 23px; }
+  .anomalyPanel { padding: 11px; }
+  .anomalyHeader { align-items: flex-start; flex-wrap: wrap; }
+  .anomalyHeading { flex-basis: calc(100% - 44px); }
+  .anomalyBadge { margin-left: 42px; }
+  .anomalyList { grid-template-columns: minmax(0, 1fr); }
+  .anomalyEmpty, .anomalyNote { margin-left: 0; }
   .toolbar { align-items: flex-start; flex-direction: column; }
   .scopeTabs { width: 100%; }
   .scopeTabs button { flex: 1 1 auto; padding-inline: 7px; }
