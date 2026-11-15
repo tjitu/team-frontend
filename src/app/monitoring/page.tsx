@@ -34,19 +34,67 @@ type Target = {
   detail: string;
 };
 type Snapshot = { checkedAt: string; targets: Target[] };
+type DatabaseMetrics = {
+  cpuIdleSeconds: number | null;
+  cpuTotalSeconds: number | null;
+  cpuCores: number | null;
+  cpuLoad5: number | null;
+  ramTotalBytes: number | null;
+  ramAvailableBytes: number | null;
+  ramUsedBytes: number | null;
+  ramCacheBytes: number | null;
+  swapUsedBytes: number | null;
+  diskTotalBytes: number | null;
+  diskAvailableBytes: number | null;
+  activeConnections: number | null;
+  waitingConnections: number | null;
+  diskReadOps: number | null;
+  diskWriteOps: number | null;
+  diskReadBytes: number | null;
+  diskWriteBytes: number | null;
+  networkReceivedBytes: number | null;
+  networkSentBytes: number | null;
+};
+type DatabaseTarget = {
+  id: string;
+  name: string;
+  ref: string;
+  region: string;
+  checkedAt: string;
+  state: TargetState;
+  detail: string;
+  metrics: DatabaseMetrics | null;
+};
+type DatabaseApiSnapshot = { checkedAt: string; databases: DatabaseTarget[] };
+type DatabaseDisplay = DatabaseTarget & {
+  cpuBusyPct: number | null;
+  ramUsedPct: number | null;
+  diskUsedPct: number | null;
+  diskReadIops: number | null;
+  diskWriteIops: number | null;
+  diskReadBytesPerSecond: number | null;
+  diskWriteBytesPerSecond: number | null;
+  networkReceivedBytesPerSecond: number | null;
+  networkSentBytesPerSecond: number | null;
+};
+type DatabaseSnapshot = { checkedAt: string; databases: DatabaseDisplay[] };
 type Sample = {
   checkedAt: string;
   values: Record<string, number | null>;
   states?: Record<string, TargetState>;
 };
 type Incident = { id: string; checkedAt: string; target: string; state: TargetState; message: string };
+type DatabaseTrendValue = { cpu: number | null; ram: number | null; disk: number | null };
+type DatabaseTrendSample = { checkedAt: string; values: Record<string, DatabaseTrendValue> };
 type AccessState = 'checking' | 'allowed' | 'denied' | 'error';
 type Scope = 'all' | 'Main' | 'Team Platform';
 type Range = 5 | 15 | 30;
 
 const HISTORY_KEY = 'jitu-monitoring-samples-v2';
 const INCIDENT_KEY = 'jitu-monitoring-incidents-v1';
+const DATABASE_HISTORY_KEY = 'jitu-monitoring-database-samples-v1';
 const POLL_INTERVAL = 30_000;
+const DATABASE_POLL_INTERVAL = 60_000;
 const rangeOptions: Range[] = [5, 15, 30];
 const targetColors: Record<string, string> = {
   'main-web': '#76c7c0',
@@ -69,6 +117,40 @@ function timeLabel(value?: string) {
 
 function dateLabel(value: string) {
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+}
+
+function formatBytes(value: number | null, maximumFractionDigits = 1) {
+  if (value === null || !Number.isFinite(value)) return '—';
+  if (value < 1024) return `${Math.round(value)} B`;
+  const units = ['KB', 'MB', 'GB', 'TB', 'PB'];
+  let size = value / 1024;
+  let unit = units[0];
+  for (let index = 1; size >= 1024 && index < units.length; index++) {
+    size /= 1024;
+    unit = units[index];
+  }
+  return `${new Intl.NumberFormat('id-ID', { maximumFractionDigits }).format(size)} ${unit}`;
+}
+
+function formatPercent(value: number | null) {
+  return value === null || !Number.isFinite(value) ? '—' : `${Math.round(value)}%`;
+}
+
+function formatRate(value: number | null, unit: string) {
+  if (value === null || !Number.isFinite(value)) return 'Menunggu sampel';
+  return `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(value)} ${unit}`;
+}
+
+function counterRate(previous: number | null, current: number | null, elapsedSeconds: number) {
+  if (previous === null || current === null || elapsedSeconds < 50 || current < previous) return null;
+  return (current - previous) / elapsedSeconds;
+}
+
+function databaseStateLabel(state: TargetState) {
+  if (state === 'up') return 'Terhubung';
+  if (state === 'degraded') return 'Sebagian metrik';
+  if (state === 'down') return 'Gangguan';
+  return 'Belum diatur';
 }
 
 function readSessionList<T>(key: string): T[] {
@@ -158,6 +240,47 @@ function LatencyChart({ targets, samples, range }: { targets: Target[]; samples:
   );
 }
 
+function DatabaseTrend({
+  samples,
+  databaseId,
+  metric,
+  label,
+  color,
+}: {
+  samples: DatabaseTrendSample[];
+  databaseId: string;
+  metric: keyof DatabaseTrendValue;
+  label: string;
+  color: string;
+}) {
+  const visibleSamples = samples.slice(-30);
+  const points = visibleSamples.flatMap((sample, index) => {
+    const value = sample.values?.[databaseId]?.[metric];
+    return value === null || value === undefined ? [] : [{ index, value }];
+  });
+  const lastIndex = Math.max(1, visibleSamples.length - 1);
+  const path = points.map((point, index) => {
+    const x = 4 + (point.index / lastIndex) * 132;
+    const y = 33 - (Math.max(0, Math.min(100, point.value)) / 100) * 28;
+    return `${index === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(' ');
+  const latest = points[points.length - 1];
+  const latestX = latest ? 4 + (latest.index / lastIndex) * 132 : 136;
+  const y = latest ? 33 - (Math.max(0, Math.min(100, latest.value)) / 100) * 28 : 33;
+
+  return (
+    <div className={styles.databaseTrend}>
+      <div><span>{label}</span><strong>{latest ? formatPercent(latest.value) : 'Menunggu sampel'}</strong></div>
+      <svg viewBox="0 0 140 40" role="img" aria-label={`${label} ${latest ? formatPercent(latest.value) : 'belum tersedia'}`}>
+        <line x1="4" x2="136" y1="33" y2="33" className={styles.databaseTrendBase} />
+        {path && <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}
+        {latest && <circle cx={latestX} cy={y} r="2.5" fill={color} />}
+      </svg>
+      <small>{points.length ? `${points.length} sampel sesi` : 'Perlu sampel berikutnya'}</small>
+    </div>
+  );
+}
+
 export default function MonitoringPage() {
   const [access, setAccess] = useState<AccessState>(() => {
     const cachedMember = api.getCached<CurrentMember>('/team/me');
@@ -166,17 +289,24 @@ export default function MonitoringPage() {
   const [accessMessage, setAccessMessage] = useState('');
   const [member, setMember] = useState<CurrentMember | null>(() => api.getCached<CurrentMember>('/team/me') ?? null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [databaseSnapshot, setDatabaseSnapshot] = useState<DatabaseSnapshot | null>(null);
   const [samples, setSamples] = useState<Sample[]>([]);
+  const [databaseSamples, setDatabaseSamples] = useState<DatabaseTrendSample[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [scope, setScope] = useState<Scope>('all');
   const [range, setRange] = useState<Range>(15);
   const [refreshing, setRefreshing] = useState(false);
+  const [databaseRefreshing, setDatabaseRefreshing] = useState(false);
   const [pollError, setPollError] = useState('');
+  const [databasePollError, setDatabasePollError] = useState('');
   const knownStates = useRef<Record<string, TargetState>>({});
   const checking = useRef(false);
+  const checkingDatabases = useRef(false);
+  const previousDatabaseSnapshot = useRef<DatabaseApiSnapshot | null>(null);
 
   useEffect(() => {
     setSamples(readSessionList<Sample>(HISTORY_KEY));
+    setDatabaseSamples(readSessionList<DatabaseTrendSample>(DATABASE_HISTORY_KEY));
     setIncidents(readSessionList<Incident>(INCIDENT_KEY));
     let active = true;
 
@@ -223,6 +353,80 @@ export default function MonitoringPage() {
 
     void checkAccess();
     return () => { active = false; };
+  }, []);
+
+  const pollDatabases = useCallback(async () => {
+    if (checkingDatabases.current) return;
+    checkingDatabases.current = true;
+    setDatabaseRefreshing(true);
+    setDatabasePollError('');
+    try {
+      const { data: { session }, error: sessionError } = await createSupabaseBrowserClient().auth.getSession();
+      if (sessionError || !session?.access_token) throw new Error('Sesi admin tidak tersedia. Muat ulang halaman dan masuk kembali.');
+
+      const response = await fetch('/api/monitoring/databases', {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) throw new Error('Akses admin untuk Observatory tidak terverifikasi.');
+        throw new Error(response.status === 503 ? 'Team API belum tersedia untuk memverifikasi akses Observatory.' : `Observatory gagal dimuat (${response.status}).`);
+      }
+
+      const next = await response.json() as DatabaseApiSnapshot;
+      const previous = previousDatabaseSnapshot.current;
+      const databases: DatabaseDisplay[] = next.databases.map((database) => {
+        const current = database.metrics;
+        const previousDatabase = previous?.databases.find((item) => item.id === database.id && item.state === 'up' && item.metrics);
+        const prior = previousDatabase?.metrics ?? null;
+        const elapsedSeconds = previousDatabase
+          ? (new Date(database.checkedAt).getTime() - new Date(previousDatabase.checkedAt).getTime()) / 1000
+          : 0;
+        const cpuIdleDelta = counterRate(prior?.cpuIdleSeconds ?? null, current?.cpuIdleSeconds ?? null, elapsedSeconds);
+        const diskTotal = current?.diskTotalBytes ?? null;
+        const diskAvailable = current?.diskAvailableBytes ?? null;
+        const ramTotal = current?.ramTotalBytes ?? null;
+        const ramUsed = current?.ramUsedBytes ?? null;
+
+        return {
+          ...database,
+          cpuBusyPct: cpuIdleDelta !== null && elapsedSeconds > 0 && current?.cpuCores
+            ? Math.max(0, Math.min(100, (1 - cpuIdleDelta / (elapsedSeconds * current.cpuCores)) * 100))
+            : null,
+          ramUsedPct: ramTotal && ramUsed !== null ? Math.max(0, Math.min(100, (ramUsed / ramTotal) * 100)) : null,
+          diskUsedPct: diskTotal && diskAvailable !== null
+            ? Math.max(0, Math.min(100, ((diskTotal - diskAvailable) / diskTotal) * 100))
+            : null,
+          diskReadIops: counterRate(prior?.diskReadOps ?? null, current?.diskReadOps ?? null, elapsedSeconds),
+          diskWriteIops: counterRate(prior?.diskWriteOps ?? null, current?.diskWriteOps ?? null, elapsedSeconds),
+          diskReadBytesPerSecond: counterRate(prior?.diskReadBytes ?? null, current?.diskReadBytes ?? null, elapsedSeconds),
+          diskWriteBytesPerSecond: counterRate(prior?.diskWriteBytes ?? null, current?.diskWriteBytes ?? null, elapsedSeconds),
+          networkReceivedBytesPerSecond: counterRate(prior?.networkReceivedBytes ?? null, current?.networkReceivedBytes ?? null, elapsedSeconds),
+          networkSentBytesPerSecond: counterRate(prior?.networkSentBytes ?? null, current?.networkSentBytes ?? null, elapsedSeconds),
+        };
+      });
+
+      previousDatabaseSnapshot.current = next;
+      setDatabaseSnapshot({ checkedAt: next.checkedAt, databases });
+      const sample: DatabaseTrendSample = {
+        checkedAt: next.checkedAt,
+        values: Object.fromEntries(databases.map((database) => [database.id, {
+          cpu: database.cpuBusyPct,
+          ram: database.ramUsedPct,
+          disk: database.diskUsedPct,
+        }])),
+      };
+      setDatabaseSamples((items) => {
+        const updated = [...items.filter((item) => item.checkedAt !== sample.checkedAt), sample].slice(-60);
+        try { window.sessionStorage.setItem(DATABASE_HISTORY_KEY, JSON.stringify(updated)); } catch { /* session storage is optional */ }
+        return updated;
+      });
+    } catch (error) {
+      setDatabasePollError(error instanceof Error ? error.message : 'Metrik Observatory tidak dapat dimuat.');
+    } finally {
+      setDatabaseRefreshing(false);
+      checkingDatabases.current = false;
+    }
   }, []);
 
   const poll = useCallback(async () => {
@@ -286,6 +490,13 @@ export default function MonitoringPage() {
     return () => window.clearInterval(interval);
   }, [access, poll]);
 
+  useEffect(() => {
+    if (access !== 'allowed') return;
+    void pollDatabases();
+    const interval = window.setInterval(() => void pollDatabases(), DATABASE_POLL_INTERVAL);
+    return () => window.clearInterval(interval);
+  }, [access, pollDatabases]);
+
   const targets = useMemo(() => (snapshot?.targets ?? []).filter((target) => scope === 'all' || target.group === scope), [scope, snapshot]);
   const visibleTargets = useMemo(() => targets.filter((target) => target.state !== 'unconfigured'), [targets]);
   const healthyCount = visibleTargets.filter((target) => target.state === 'up').length;
@@ -342,16 +553,16 @@ export default function MonitoringPage() {
         <div>
           <div className={styles.eyebrow}><span className={styles.eyebrowDot} />PLATFORM HEALTH</div>
           <h1>Monitoring sistem</h1>
-          <p className={styles.subtitle}>Status layanan dan latensi Main serta Team Platform.</p>
+          <p className={styles.subtitle}>Status layanan, latensi, dan resource Supabase untuk Main serta Team Platform.</p>
         </div>
         <div className={styles.headerActions}>
           <span className={`${styles.overallStatus} ${styles[`overall_${overallTone}`]}`} aria-live="polite">
             <i aria-hidden="true" />{overallMessage}
           </span>
-          <span className={styles.pollNote}><Clock3 aria-hidden="true" />Auto-refresh 30 detik</span>
-          <button className={styles.refreshButton} type="button" onClick={() => void poll()} disabled={refreshing}>
-            <RefreshCw className={refreshing ? styles.spinner : ''} aria-hidden="true" />
-            <span>{refreshing ? 'Memeriksa…' : 'Refresh sekarang'}</span>
+          <span className={styles.pollNote}><Clock3 aria-hidden="true" />HTTP 30 dtk · DB 60 dtk</span>
+          <button className={styles.refreshButton} type="button" onClick={() => { void poll(); void pollDatabases(); }} disabled={refreshing || databaseRefreshing}>
+            <RefreshCw className={refreshing || databaseRefreshing ? styles.spinner : ''} aria-hidden="true" />
+            <span>{refreshing || databaseRefreshing ? 'Memeriksa…' : 'Refresh sekarang'}</span>
           </button>
         </div>
       </header>
@@ -411,6 +622,108 @@ export default function MonitoringPage() {
           </div>
           <LatencyChart targets={targets} samples={samples} range={range} />
           <p className={styles.sessionNote}>Grafik merekam sampel selama halaman ini terbuka dan tersimpan di sesi browser ini.</p>
+        </section>
+
+        <section className={`${styles.panel} ${styles.databasePanel}`} aria-labelledby="database-title">
+          <div className={styles.panelHeader}>
+            <div>
+              <h2 id="database-title">Supabase Observatory</h2>
+              <p>CPU, RAM, disk, koneksi, dan I/O untuk database Jitu.</p>
+            </div>
+            <span className={styles.liveTag}><i />SCRAPE 60 DETIK</span>
+          </div>
+          {databasePollError && <div className={styles.errorBanner} role="alert"><AlertTriangle aria-hidden="true" />{databasePollError}</div>}
+          {databaseSnapshot ? (
+            <div className={styles.databaseGrid}>
+              {databaseSnapshot.databases.map((database) => {
+                const metrics = database.metrics;
+                const ramUsed = metrics?.ramUsedBytes ?? null;
+                const ramTotal = metrics?.ramTotalBytes ?? null;
+                const diskUsed = metrics && metrics.diskTotalBytes !== null && metrics.diskAvailableBytes !== null
+                  ? Math.max(0, metrics.diskTotalBytes - metrics.diskAvailableBytes)
+                  : null;
+                const envName = database.id === 'jitu-ptn'
+                  ? 'SUPABASE_METRICS_JITU_PTN_SECRET_KEY'
+                  : 'SUPABASE_METRICS_TEAM_PLATFORM_SECRET_KEY';
+                const details = metrics ? [
+                  { label: 'RAM tersedia', value: formatBytes(metrics.ramAvailableBytes) },
+                  { label: 'Cache + buffers', value: formatBytes(metrics.ramCacheBytes) },
+                  { label: 'Swap terpakai', value: formatBytes(metrics.swapUsedBytes) },
+                  { label: 'Load sistem · 5 menit', value: metrics.cpuLoad5 === null ? '—' : new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(metrics.cpuLoad5) },
+                  { label: 'Koneksi menunggu', value: metrics.waitingConnections === null ? '—' : new Intl.NumberFormat('id-ID').format(metrics.waitingConnections) },
+                  { label: 'Disk IOPS · baca / tulis', value: `${formatRate(database.diskReadIops, 'IOPS')} / ${formatRate(database.diskWriteIops, 'IOPS')}` },
+                  { label: 'Disk throughput · baca / tulis', value: `${formatRate(database.diskReadBytesPerSecond, 'B/s')} / ${formatRate(database.diskWriteBytesPerSecond, 'B/s')}` },
+                  { label: 'Jaringan · masuk / keluar', value: `${formatRate(database.networkReceivedBytesPerSecond, 'B/s')} / ${formatRate(database.networkSentBytesPerSecond, 'B/s')}` },
+                ] : [];
+
+                return (
+                  <article className={styles.databaseCard} key={database.id}>
+                    <div className={styles.databaseCardHeader}>
+                      <div>
+                        <h3>{database.name}</h3>
+                        <span>{database.region} · Primary Database</span>
+                      </div>
+                      <span className={`${styles.databaseStatus} ${styles[`databaseStatus_${database.state}`]}`}>
+                        <i aria-hidden="true" />{databaseStateLabel(database.state)}
+                      </span>
+                    </div>
+                    <p className={styles.databaseMessage}>{database.detail}</p>
+                    {metrics ? (
+                      <>
+                        <div className={styles.databaseKpis}>
+                          <div className={styles.databaseKpi}>
+                            <span>CPU busy</span>
+                            <strong>{formatPercent(database.cpuBusyPct)}</strong>
+                            <small>{database.cpuBusyPct === null ? 'Menunggu sampel CPU berikutnya' : 'Pemakaian CPU saat ini'}</small>
+                            {database.cpuBusyPct !== null && <div className={styles.databaseMeter}><i style={{ width: `${database.cpuBusyPct}%` }} /></div>}
+                          </div>
+                          <div className={styles.databaseKpi}>
+                            <span>RAM terpakai</span>
+                            <strong>{formatPercent(database.ramUsedPct)}</strong>
+                            <small>{formatBytes(ramUsed)} dari {formatBytes(ramTotal)}</small>
+                            {database.ramUsedPct !== null && <div className={styles.databaseMeter}><i style={{ width: `${database.ramUsedPct}%` }} /></div>}
+                          </div>
+                          <div className={styles.databaseKpi}>
+                            <span>Disk terpakai</span>
+                            <strong>{formatPercent(database.diskUsedPct)}</strong>
+                            <small>{formatBytes(diskUsed)} dari {formatBytes(metrics.diskTotalBytes)}</small>
+                            {database.diskUsedPct !== null && <div className={styles.databaseMeter}><i style={{ width: `${database.diskUsedPct}%` }} /></div>}
+                          </div>
+                          <div className={styles.databaseKpi}>
+                            <span>Koneksi aktif</span>
+                            <strong>{metrics.activeConnections === null ? '—' : new Intl.NumberFormat('id-ID').format(metrics.activeConnections)}</strong>
+                            <small>{metrics.waitingConnections === null ? 'Waiting: —' : `${new Intl.NumberFormat('id-ID').format(metrics.waitingConnections)} menunggu`}</small>
+                          </div>
+                        </div>
+                        <div className={styles.databaseTrends}>
+                          <DatabaseTrend samples={databaseSamples} databaseId={database.id} metric="cpu" label="CPU" color="#f5a362" />
+                          <DatabaseTrend samples={databaseSamples} databaseId={database.id} metric="ram" label="RAM" color="#76c7c0" />
+                          <DatabaseTrend samples={databaseSamples} databaseId={database.id} metric="disk" label="Disk" color="#8aafff" />
+                        </div>
+                        <dl className={styles.databaseDetails}>
+                          {details.map((detail) => <div key={detail.label}><dt>{detail.label}</dt><dd>{detail.value}</dd></div>)}
+                        </dl>
+                      </>
+                    ) : database.state === 'unconfigured' ? (
+                      <div className={styles.databaseSetup}>
+                        <strong>Hubungkan feed observability</strong>
+                        <span>Atur environment variable server-only berikut, lalu deploy ulang:</span>
+                        <code>{envName}=sb_secret_…</code>
+                      </div>
+                    ) : (
+                      <div className={styles.databaseUnavailable}><AlertTriangle aria-hidden="true" /><span>{database.detail}</span></div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={styles.loadingRow}><LoaderCircle className={styles.spinner} aria-hidden="true" />{databaseRefreshing ? 'Mengambil metrik Supabase…' : 'Menunggu koneksi ke Supabase Observatory…'}</div>
+          )}
+          <div className={styles.databaseFooter}>
+            <span>Metrics API resmi Supabase · refresh 60 detik</span>
+            <span>{databaseSnapshot ? `Terakhir dicek ${timeLabel(databaseSnapshot.checkedAt)} · ${databaseSamples.length} sampel sesi` : 'Belum ada sampel'}</span>
+          </div>
         </section>
 
         <section className={`${styles.panel} ${styles.healthPanel}`} aria-labelledby="health-title">

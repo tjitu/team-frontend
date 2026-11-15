@@ -187,6 +187,7 @@
 
 .panel { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
 .latencyPanel { grid-column: span 2; }
+.databasePanel { grid-column: span 2; }
 .panelHeader { justify-content: space-between; gap: 14px; padding: 15px 16px 8px; }
 .panelHeader h2 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; }
 .panelHeader p { margin: 4px 0 0; color: var(--muted-fg); font-size: 11px; }
@@ -230,6 +231,44 @@
 .statusDot { width: 6px; height: 6px; box-shadow: none; }
 .loadingRow { display: flex; align-items: center; gap: 8px; min-height: 50px; border-top: 1px solid var(--border); color: var(--muted-fg); font-size: 11px; }
 
+.databaseGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 6px 14px 14px; }
+.databaseCard { min-width: 0; padding: 13px; border: 1px solid var(--border); border-radius: 9px; background: color-mix(in srgb, var(--muted-bg) 48%, var(--card)); }
+.databaseCardHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.databaseCardHeader h3 { margin: 0; color: var(--foreground); font-size: 13px; font-weight: 650; }
+.databaseCardHeader > div > span { display: block; margin-top: 4px; color: var(--muted-fg); font-size: 9px; }
+.databaseStatus { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; padding: 4px 7px; border: 1px solid transparent; border-radius: 99px; font-size: 9px; font-weight: 600; white-space: nowrap; }
+.databaseStatus i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.databaseStatus_up { border-color: color-mix(in srgb, var(--monitor-green) 26%, transparent); background: color-mix(in srgb, var(--monitor-green) 12%, var(--card)); color: var(--monitor-green); }
+.databaseStatus_degraded, .databaseStatus_unconfigured { border-color: color-mix(in srgb, var(--monitor-amber) 30%, transparent); background: color-mix(in srgb, var(--monitor-amber) 12%, var(--card)); color: var(--monitor-amber); }
+.databaseStatus_down { border-color: color-mix(in srgb, var(--monitor-red) 30%, transparent); background: color-mix(in srgb, var(--monitor-red) 12%, var(--card)); color: var(--monitor-red); }
+.databaseMessage { margin: 8px 0 10px; color: var(--muted-fg); font-size: 10px; }
+.databaseKpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; }
+.databaseKpi { display: flex; min-width: 0; min-height: 86px; flex-direction: column; align-items: flex-start; padding: 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--card); }
+.databaseKpi > span { color: var(--muted-fg); font-size: 9px; }
+.databaseKpi strong { margin-top: 7px; color: var(--foreground); font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -.035em; line-height: 1; }
+.databaseKpi small { min-height: 13px; margin-top: 6px; color: var(--muted-fg); font-size: 8px; line-height: 1.4; }
+.databaseMeter { width: 100%; height: 3px; margin-top: 7px; overflow: hidden; border-radius: 99px; background: var(--muted-bg); }
+.databaseMeter i { display: block; height: 100%; border-radius: inherit; background: var(--brand); transition: width .25s ease; }
+.databaseTrends { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 8px; }
+.databaseTrend { min-width: 0; padding: 7px 8px 5px; border: 1px solid var(--border); border-radius: 7px; background: var(--card); }
+.databaseTrend > div { display: flex; justify-content: space-between; gap: 6px; font-size: 8px; }
+.databaseTrend > div span, .databaseTrend small { color: var(--muted-fg); }
+.databaseTrend > div strong { font-size: 8px; font-weight: 600; }
+.databaseTrend svg { display: block; width: 100%; height: 29px; margin-top: 3px; overflow: visible; }
+.databaseTrendBase { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 3; }
+.databaseTrend small { display: block; font-size: 8px; }
+.databaseDetails { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; margin: 8px 0 0; padding-top: 2px; border-top: 1px solid var(--border); }
+.databaseDetails > div { display: flex; min-width: 0; justify-content: space-between; gap: 8px; padding-top: 7px; }
+.databaseDetails dt { flex: 0 0 auto; color: var(--muted-fg); font-size: 9px; }
+.databaseDetails dd { min-width: 0; margin: 0; color: var(--foreground); font-size: 9px; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.databaseSetup, .databaseUnavailable { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 12px; border: 1px dashed var(--border); border-radius: 7px; background: var(--card); }
+.databaseSetup strong { font-size: 11px; font-weight: 600; }
+.databaseSetup span, .databaseUnavailable span { color: var(--muted-fg); font-size: 9px; line-height: 1.45; }
+.databaseSetup code { max-width: 100%; padding: 6px 8px; overflow-wrap: anywhere; border-radius: 5px; background: var(--muted-bg); color: var(--foreground); font-size: 9px; }
+.databaseUnavailable { flex-direction: row; align-items: center; }
+.databaseUnavailable svg { width: 14px; height: 14px; flex: 0 0 auto; color: var(--monitor-amber); }
+.databaseFooter { display: flex; justify-content: space-between; gap: 10px; padding: 9px 15px; border-top: 1px solid var(--border); color: var(--muted-fg); font-size: 9px; }
+
 .incidentCount { padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px; color: var(--muted-fg); font-size: 9px; white-space: nowrap; }
 .incidentList { margin: 0; padding: 3px 14px 8px; list-style: none; }
 .incidentList li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-height: 51px; border-top: 1px solid var(--border); }
@@ -262,6 +301,7 @@
   .summaryGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .panelGrid { grid-template-columns: minmax(0, 1fr); }
   .latencyPanel { grid-column: auto; }
+  .databasePanel { grid-column: auto; }
 }
 
 @media (max-width: 680px) {
@@ -281,6 +321,10 @@
   .targetName { align-items: flex-start; flex-direction: column; gap: 3px; }
   .targetMetrics { min-width: 45px; }
   .statusPill { min-width: 76px; padding-inline: 5px; font-size: 8px; }
+  .databaseGrid { grid-template-columns: minmax(0, 1fr); padding-inline: 10px; }
+  .databaseKpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .databaseDetails { grid-template-columns: minmax(0, 1fr); }
+  .databaseFooter { align-items: flex-start; flex-direction: column; gap: 4px; }
   .incidentList li { grid-template-columns: 23px minmax(0, 1fr); }
   .incidentList time { grid-column: 2; margin-top: -7px; }
   .pageFooter { align-items: flex-start; flex-direction: column; gap: 5px; }
