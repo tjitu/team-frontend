@@ -217,10 +217,10 @@ export type Tryout = {
   description: string | null;
   solutionPrice: number;
   batch: 'SNBT' | 'MANDIRI';
-  releaseDate: string;
   scheduledStart: string | null;
   scheduledEnd: string | null;
   status: string;
+  lifecycleStatus?: 'DRAFT' | 'PUBLIC' | 'LIVE';
   curationStatus?: TryoutCurationStatus;
   revisionNotes?: string | null;
   reviewedBy?: string | null;
@@ -230,6 +230,10 @@ export type Tryout = {
   referralCode: string | null;
   questionCount?: number;
   readyQuestionCount?: number;
+  registrantCount?: number;
+  notStartedCount?: number;
+  inProgressCount?: number;
+  finishedCount?: number;
 };
 
 export type Package = {
@@ -253,6 +257,9 @@ export type User = {
   isBanned?: boolean;
   emailVerified?: boolean;
   isSandbox?: boolean;
+  isPremium?: boolean;
+  isPremiumActive?: boolean;
+  premiumExpiresAt?: string | null;
   createdAt: string;
 };
 
@@ -474,7 +481,6 @@ type TryoutForm = {
   description: string;
   solutionPrice: string;
   batch: 'SNBT' | 'MANDIRI';
-  releaseDate: string;
   scheduledStart: string;
   scheduledEnd: string;
   isPublic: boolean;
@@ -506,7 +512,6 @@ const initialTryoutForm: TryoutForm = {
   description: '',
   solutionPrice: '1',
   batch: 'SNBT',
-  releaseDate: '',
   scheduledStart: '',
   scheduledEnd: '',
   isPublic: true,
@@ -697,6 +702,17 @@ function ControlCenterContent() {
     targetState: true,
     loading: false,
   });
+  const [premiumConfirmModal, setPremiumConfirmModal] = React.useState<{
+    isOpen: boolean;
+    user: User | null;
+    targetState: boolean;
+    loading: boolean;
+  }>({
+    isOpen: false,
+    user: null,
+    targetState: true,
+    loading: false,
+  });
 
   const regularUsers = React.useMemo(() => users.filter((u) => !u.isSandbox), [users]);
   const sandboxUsers = React.useMemo(() => users.filter((u) => Boolean(u.isSandbox)), [users]);
@@ -777,43 +793,47 @@ function ControlCenterContent() {
     submitting: false,
   });
   const [tryoutWorkspaceRefreshKey, setTryoutWorkspaceRefreshKey] = React.useState(0);
-  const [tryoutStatusFilter, setTryoutStatusFilter] = React.useState<'ALL' | 'DRAFT' | 'PUBLISHED'>('ALL');
+  const [tryoutStatusFilter, setTryoutStatusFilter] = React.useState<'ALL' | 'DRAFT' | 'PUBLIC' | 'LIVE'>('ALL');
   const [tryoutWorkflowBusyId, setTryoutWorkflowBusyId] = React.useState<string | null>(null);
+
+  const getTryoutLifecycle = React.useCallback((t: Tryout): 'DRAFT' | 'PUBLIC' | 'LIVE' => {
+    if (t.lifecycleStatus) return t.lifecycleStatus;
+    if ((t.curationStatus || 'DRAFT').toUpperCase() !== 'PUBLISHED' || !t.isPublic) return 'DRAFT';
+    if (t.scheduledStart && new Date(t.scheduledStart).getTime() > Date.now()) return 'PUBLIC';
+    return 'LIVE';
+  }, []);
 
   const tryoutStatusCounts = React.useMemo(() => {
     const counts = {
       DRAFT: 0,
-      PUBLISHED: 0,
+      PUBLIC: 0,
+      LIVE: 0,
     };
     for (const item of tryouts) {
-      const s = (item.curationStatus || 'DRAFT').toUpperCase();
-      if (s === 'PUBLISHED') counts.PUBLISHED += 1;
-      else counts.DRAFT += 1;
+      const s = getTryoutLifecycle(item);
+      counts[s] += 1;
     }
     return counts;
-  }, [tryouts]);
+  }, [tryouts, getTryoutLifecycle]);
 
   const filteredTryouts = React.useMemo(() => {
     if (tryoutStatusFilter === 'ALL') return tryouts;
-    if (tryoutStatusFilter === 'PUBLISHED') {
-      return tryouts.filter((t) => (t.curationStatus || 'DRAFT').toUpperCase() === 'PUBLISHED');
-    }
-    return tryouts.filter((t) => (t.curationStatus || 'DRAFT').toUpperCase() !== 'PUBLISHED');
-  }, [tryouts, tryoutStatusFilter]);
+    return tryouts.filter((t) => getTryoutLifecycle(t) === tryoutStatusFilter);
+  }, [tryouts, tryoutStatusFilter, getTryoutLifecycle]);
 
   async function runTryoutWorkflow(
     tryout: Tryout,
-    action: 'APPROVE' | 'UNPUBLISH',
+    action: 'PUBLISH_CATALOG' | 'UNPUBLISH',
   ) {
-    if (action === 'APPROVE') {
+    if (action === 'PUBLISH_CATALOG') {
       const ok = window.confirm(
-        `Publish Paket Tryout "${tryout.title}" ke halaman siswa? Pastikan seluruh soal di dalam paket ini sudah berstatus Siap (Ready).`,
+        `Publish Tryout "${tryout.title}" ke katalog publik? Siswa sudah dapat mendaftar dan Tryout akan otomatis Live saat Start Date tiba.`,
       );
       if (!ok) return;
     }
     if (action === 'UNPUBLISH') {
       const ok = window.confirm(
-        `Tarik Paket Tryout "${tryout.title}" kembali ke Draf? Tryout akan disembunyikan sementara dari daftar publik siswa.`,
+        `Tarik Paket Tryout "${tryout.title}" kembali ke Draft? Tryout akan disembunyikan sementara dari daftar publik siswa.`,
       );
       if (!ok) return;
     }
@@ -827,9 +847,9 @@ function ControlCenterContent() {
       const fresh = await api.get<Tryout[]>('/team/control-center/tryouts', { force: true });
       setTryouts(fresh);
       setNotice(
-        action === 'APPROVE'
-          ? `Paket Tryout "${tryout.title}" resmi Published (Live) untuk siswa!`
-          : `Paket Tryout "${tryout.title}" ditarik kembali ke Draf.`,
+        action === 'PUBLISH_CATALOG'
+          ? `Tryout "${tryout.title}" berhasil di-publish ke Public!`
+          : `Tryout "${tryout.title}" ditarik kembali ke Draft.`,
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Gagal memperbarui status tryout.');
@@ -2315,7 +2335,6 @@ function ControlCenterContent() {
       description: tryoutForm.description.trim() || null,
       solutionPrice: Number(tryoutForm.solutionPrice),
       batch: tryoutForm.batch,
-      releaseDate: new Date(`${tryoutForm.releaseDate}T00:00:00`).toISOString(),
       scheduledStart: new Date(tryoutForm.scheduledStart).toISOString(),
       scheduledEnd: new Date(tryoutForm.scheduledEnd).toISOString(),
       isPublic: tryoutForm.isPublic,
@@ -2576,7 +2595,7 @@ function ControlCenterContent() {
     setEditingTryout(item.id); setTryoutFormOpen(true); setError(''); setNotice('');
     setTryoutForm({
       title: item.title, description: item.description ?? '', solutionPrice: String(item.solutionPrice), batch: item.batch,
-      releaseDate: item.releaseDate.slice(0, 10), scheduledStart: dateInput(item.scheduledStart), scheduledEnd: dateInput(item.scheduledEnd),
+      scheduledStart: dateInput(item.scheduledStart), scheduledEnd: dateInput(item.scheduledEnd),
       isPublic: item.isPublic, referralCode: item.referralCode ?? ''
     });
   }
@@ -2678,6 +2697,56 @@ function ControlCenterContent() {
     }
   }
 
+  async function handleConfirmPremiumToggle() {
+    if (!premiumConfirmModal.user) return;
+    const targetUser = premiumConfirmModal.user;
+    const nextPremiumState = premiumConfirmModal.targetState;
+
+    setPremiumConfirmModal((prev) => ({ ...prev, loading: true }));
+    setError('');
+    setNotice('');
+    try {
+      const updated = await api.patch<User>(`/team/control-center/users/${targetUser.id}`, {
+        isPremium: nextPremiumState,
+      });
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === targetUser.id
+            ? {
+                ...u,
+                isPremium: updated?.isPremium ?? nextPremiumState,
+                isPremiumActive: updated?.isPremiumActive ?? nextPremiumState,
+                premiumExpiresAt: updated?.premiumExpiresAt ?? null,
+              }
+            : u
+        )
+      );
+      if (selectedUserForModal?.id === targetUser.id) {
+        setSelectedUserForModal((prev) =>
+          prev
+            ? {
+                ...prev,
+                isPremium: updated?.isPremium ?? nextPremiumState,
+                isPremiumActive: updated?.isPremiumActive ?? nextPremiumState,
+                premiumExpiresAt: updated?.premiumExpiresAt ?? null,
+              }
+            : null
+        );
+      }
+
+      setNotice(
+        nextPremiumState
+          ? `Tipe user "${targetUser.name || targetUser.email}" berhasil diubah menjadi Premium.`
+          : `Tipe user "${targetUser.name || targetUser.email}" berhasil diubah menjadi Free.`
+      );
+      setPremiumConfirmModal({ isOpen: false, user: null, targetState: true, loading: false });
+    } catch (cause) {
+      setError(errorMessage(cause));
+      setPremiumConfirmModal((prev) => ({ ...prev, loading: false }));
+    }
+  }
+
   async function updateApplicationStatus(item: CareerApplication, status: CareerApplication['status']) {
     setError(''); setNotice('');
     try {
@@ -2727,9 +2796,14 @@ function ControlCenterContent() {
         const qCount = Number(row.original.questionCount ?? 0);
         const readyCount = Number(row.original.readyQuestionCount ?? 0);
         const durMins = Number(row.original.totalDurationMinutes ?? 195);
-        const curation = (row.original.curationStatus || 'DRAFT').toUpperCase();
-        const isPublished = curation === 'PUBLISHED';
+        const lifecycle = getTryoutLifecycle(row.original);
         const allReady = qCount > 0 && readyCount >= qCount;
+        const lifecycleBadge =
+          lifecycle === 'LIVE'
+            ? { label: 'Live', bg: 'rgba(16, 185, 129, 0.14)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.35)' }
+            : lifecycle === 'PUBLIC'
+              ? { label: 'Public', bg: 'rgba(56, 189, 248, 0.14)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.35)' }
+              : { label: 'Draft', bg: 'rgba(245, 158, 11, 0.14)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.35)' };
         return (
           <div>
             <strong>{row.original.title}</strong>
@@ -2737,14 +2811,14 @@ function ControlCenterContent() {
               <span
                 className="pill"
                 style={{
-                  background: isPublished ? 'rgba(16, 185, 129, 0.14)' : 'rgba(245, 158, 11, 0.14)',
-                  color: isPublished ? '#34d399' : '#fbbf24',
-                  border: isPublished ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)',
+                  background: lifecycleBadge.bg,
+                  color: lifecycleBadge.color,
+                  border: lifecycleBadge.border,
                   fontSize: '10px',
                   fontWeight: 700,
                 }}
               >
-                {isPublished ? 'Published (Live)' : 'Draf Paket'}
+                {lifecycleBadge.label}
               </span>
               <span
                 style={{
@@ -2760,7 +2834,7 @@ function ControlCenterContent() {
                 {readyCount}/{qCount} Siap · {durMins}m
               </span>
               <small className="text-[var(--muted-fg)]">
-                #{row.original.code} · {row.original.isPublic ? 'Public' : 'Private'}
+                #{row.original.code}
               </small>
             </div>
           </div>
@@ -2784,22 +2858,45 @@ function ControlCenterContent() {
       header: 'Solution Price',
       cell: ({ getValue }) => <span>{getValue()} coins</span>,
     }),
+    tryoutColHelper.display({
+      id: 'participants',
+      header: 'Peserta',
+      cell: ({ row }) => {
+        const registrants = Number(row.original.registrantCount ?? 0);
+        const notStarted = Number(row.original.notStartedCount ?? 0);
+        const inProgress = Number(row.original.inProgressCount ?? 0);
+        const finished = Number(row.original.finishedCount ?? 0);
+        return (
+          <div className="text-xs space-y-0.5 tabular-nums">
+            <div className="font-semibold">
+              Registrants: {registrants}
+            </div>
+            <div className="text-[11px] text-[var(--muted-fg)] flex flex-wrap gap-x-2">
+              <span>Belum: {notStarted}</span>
+              <span>Sedang: {inProgress}</span>
+              <span>Selesai: {finished}</span>
+            </div>
+          </div>
+        );
+      },
+    }),
     tryoutColHelper.accessor('status', {
       header: 'Status',
-      cell: ({ getValue }) => (
-        <span className="control-status">{String(getValue()).replaceAll('_', ' ')}</span>
-      ),
+      cell: ({ row }) => {
+        const lifecycle = getTryoutLifecycle(row.original);
+        return (
+          <span className="control-status">{lifecycle}</span>
+        );
+      },
     }),
     tryoutColHelper.display({
       id: 'actions',
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
-        const curation = (row.original.curationStatus || 'DRAFT').toUpperCase();
-        const isPublished = curation === 'PUBLISHED';
+        const lifecycle = getTryoutLifecycle(row.original);
+        const isPublished = lifecycle !== 'DRAFT';
         const isBusy = tryoutWorkflowBusyId === row.original.id;
         const qCount = Number(row.original.questionCount ?? 0);
-        const readyCount = Number(row.original.readyQuestionCount ?? 0);
-        const allReady = qCount > 0 && readyCount >= qCount;
 
         return (
           <div className="table-action-group" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -2854,15 +2951,9 @@ function ControlCenterContent() {
               <button
                 type="button"
                 className="table-action-btn"
-                disabled={isBusy || !allReady}
-                title={
-                  qCount <= 0
-                    ? 'Isi minimal 1 soal terlebih dahulu'
-                    : !allReady
-                    ? `Masih ada soal belum Siap (${readyCount}/${qCount} Siap). Selesaikan QC di Kelola Soal.`
-                    : 'Publish Paket Tryout ke halaman siswa'
-                }
-                onClick={() => void runTryoutWorkflow(row.original, 'APPROVE')}
+                disabled={isBusy}
+                title="Publish Tryout ke katalog publik agar siswa bisa mendaftar"
+                onClick={() => void runTryoutWorkflow(row.original, 'PUBLISH_CATALOG')}
                 style={{
                   borderColor: 'rgba(16, 185, 129, 0.45)',
                   color: '#34d399',
@@ -2879,7 +2970,7 @@ function ControlCenterContent() {
                 onClick={() => void runTryoutWorkflow(row.original, 'UNPUBLISH')}
                 style={{ borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}
               >
-                <QcRestoreIcon className="action-icon" /> Tarik ke Draf
+                <QcRestoreIcon className="action-icon" /> Tarik ke Draft
               </button>
             )}
 
@@ -2905,7 +2996,7 @@ function ControlCenterContent() {
         );
       },
     }),
-  ], [deletingId, editingTryout, managingTryoutId, tryoutWorkflowBusyId]);
+  ], [deletingId, editingTryout, managingTryoutId, tryoutWorkflowBusyId, getTryoutLifecycle]);
 
   // TANSTACK TABLE COLUMNS FOR PRICING
   const packageColumns = React.useMemo(() => [
@@ -3114,6 +3205,37 @@ function ControlCenterContent() {
             {banned ? <XCircle /> : <CheckCircle2 />}
             {banned ? 'Banned' : 'Active'}
           </span>
+        );
+      },
+    }),
+    userColHelper.display({
+      id: 'tier',
+      header: 'Tipe',
+      cell: ({ row }) => {
+        const u = row.original;
+        const isPremium = Boolean(u.isPremiumActive ?? u.isPremium);
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPremiumConfirmModal({
+                isOpen: true,
+                user: u,
+                targetState: !isPremium,
+                loading: false,
+              });
+            }}
+            title={isPremium ? 'Klik untuk ubah tipe user menjadi Free' : 'Klik untuk ubah tipe user menjadi Premium'}
+            className={`text-xs font-semibold px-2.5 py-1 rounded-full border inline-flex items-center gap-1.5 cursor-pointer transition-colors ${
+              isPremium
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/35 hover:bg-amber-500/25'
+                : 'bg-white/[0.04] text-[var(--muted-fg)] border-[var(--border)] hover:text-white'
+            }`}
+          >
+            {isPremium ? <Crown className="w-3 h-3" /> : null}
+            <span>{isPremium ? 'Premium' : 'Free'}</span>
+          </button>
         );
       },
     }),
@@ -4505,16 +4627,6 @@ function ControlCenterContent() {
                   />
                 </label>
                 <label className="field-label">
-                  Release date
-                  <input
-                    className="field-input"
-                    type="date"
-                    required
-                    value={tryoutForm.releaseDate}
-                    onChange={(event) => setTryoutForm({ ...tryoutForm, releaseDate: event.target.value })}
-                  />
-                </label>
-                <label className="field-label">
                   Starts at
                   <input
                     className="field-input"
@@ -4591,8 +4703,9 @@ function ControlCenterContent() {
             {(
               [
                 { id: 'ALL', label: `Semua (${tryouts.length})` },
-                { id: 'DRAFT', label: `Draf (${tryoutStatusCounts.DRAFT})` },
-                { id: 'PUBLISHED', label: `Published (${tryoutStatusCounts.PUBLISHED})` },
+                { id: 'DRAFT', label: `Draft (${tryoutStatusCounts.DRAFT})` },
+                { id: 'PUBLIC', label: `Public (${tryoutStatusCounts.PUBLIC})` },
+                { id: 'LIVE', label: `Live (${tryoutStatusCounts.LIVE})` },
               ] as const
             ).map((tab) => {
               const active = tryoutStatusFilter === tab.id;
@@ -7617,6 +7730,109 @@ function ControlCenterContent() {
                 {sandboxConfirmModal.loading ? 'Menyimpan...' : (
                   sandboxConfirmModal.targetState ? 'Ya, Pindahkan ke Sandbox' : 'Ya, Cabut Akses Sandbox'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP CONFIRMATION MODAL FOR PREMIUM/FREE TIER TOGGLE */}
+      {premiumConfirmModal.isOpen && premiumConfirmModal.user && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            if (!premiumConfirmModal.loading) {
+              setPremiumConfirmModal({ isOpen: false, user: null, targetState: true, loading: false });
+            }
+          }}
+        >
+          <div
+            className="modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '440px' }}
+          >
+            <div className="modal-header">
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Crown style={{ width: 16, height: 16, color: 'var(--muted-fg)', flexShrink: 0 }} />
+                  <span>
+                    {premiumConfirmModal.targetState ? 'Konfirmasi Ubah ke Premium' : 'Konfirmasi Ubah ke Free'}
+                  </span>
+                </h3>
+                <small style={{ color: 'var(--muted-fg)' }}>
+                  Perubahan tipe langganan akun pengguna
+                </small>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                disabled={premiumConfirmModal.loading}
+                onClick={() => setPremiumConfirmModal({ isOpen: false, user: null, targetState: true, loading: false })}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                }}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Avatar
+                    size="sm"
+                    src={premiumConfirmModal.user.image || getCartoonAvatarUrl(premiumConfirmModal.user.email || premiumConfirmModal.user.name || premiumConfirmModal.user.id)}
+                    alt={premiumConfirmModal.user.name || 'User'}
+                  />
+                  <div>
+                    <strong style={{ display: 'block', fontSize: '13px', color: 'var(--foreground)' }}>
+                      {premiumConfirmModal.user.name || 'Anonymous User'}
+                    </strong>
+                    <small style={{ color: 'var(--muted-fg)', fontSize: '11.5px' }}>
+                      {premiumConfirmModal.user.email}
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: '13px', lineHeight: '1.5', color: 'var(--foreground)' }}>
+                {premiumConfirmModal.targetState ? (
+                  <p style={{ margin: 0 }}>
+                    Ubah tipe user ini menjadi <strong>Premium</strong>? Efek akses unlimited latihan dan pembahasan tryout akan langsung aktif.
+                  </p>
+                ) : (
+                  <p style={{ margin: 0 }}>
+                    Ubah tipe user ini menjadi <strong>Free</strong>? Akses premium akan langsung dinonaktifkan.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="button button-secondary"
+                disabled={premiumConfirmModal.loading}
+                onClick={() => setPremiumConfirmModal({ isOpen: false, user: null, targetState: true, loading: false })}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className="button button-primary"
+                disabled={premiumConfirmModal.loading}
+                onClick={() => void handleConfirmPremiumToggle()}
+              >
+                {premiumConfirmModal.loading
+                  ? 'Menyimpan...'
+                  : premiumConfirmModal.targetState
+                    ? 'Ya, Jadikan Premium'
+                    : 'Ya, Jadikan Free'}
               </button>
             </div>
           </div>

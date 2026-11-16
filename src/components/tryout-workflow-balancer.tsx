@@ -31,13 +31,31 @@ type TryoutHeaderMeta = {
   code: number;
   title: string;
   curationStatus?: TryoutCurationStatus;
+  lifecycleStatus?: 'DRAFT' | 'PUBLIC' | 'LIVE';
+  isPublic?: boolean;
+  scheduledStart?: string | null;
   revisionNotes?: string | null;
   reviewedBy?: string | null;
   reviewedAt?: string | null;
   totalDurationMinutes?: number;
   questionCount?: number;
   readyQuestionCount?: number;
+  registrantCount?: number;
+  notStartedCount?: number;
+  inProgressCount?: number;
+  finishedCount?: number;
 };
+
+function resolveTryoutLifecycle(tryout: TryoutHeaderMeta): 'DRAFT' | 'PUBLIC' | 'LIVE' {
+  if (tryout.lifecycleStatus) return tryout.lifecycleStatus;
+  if ((tryout.curationStatus || 'DRAFT').toUpperCase() !== 'PUBLISHED' || tryout.isPublic === false) {
+    return 'DRAFT';
+  }
+  if (tryout.scheduledStart && new Date(tryout.scheduledStart).getTime() > Date.now()) {
+    return 'PUBLIC';
+  }
+  return 'LIVE';
+}
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
@@ -69,30 +87,27 @@ export function TryoutWorkflowHeader({
 
   if (!tryout) return null;
 
-  const isPublished = (tryout.curationStatus || 'DRAFT') === 'PUBLISHED';
+  const lifecycle = resolveTryoutLifecycle(tryout);
+  const isPublished = lifecycle !== 'DRAFT';
   const badge = getTryoutStatusBadge(isPublished ? 'PUBLISHED' : 'DRAFT');
   const pendingCount = Math.max(0, questionCount - readyQuestionCount);
   const allReady = questionCount > 0 && pendingCount === 0;
+  const registrants = Number(tryout.registrantCount ?? 0);
+  const notStarted = Number(tryout.notStartedCount ?? 0);
+  const inProgress = Number(tryout.inProgressCount ?? 0);
+  const finished = Number(tryout.finishedCount ?? 0);
 
-  async function runWorkflow(action: 'APPROVE' | 'UNPUBLISH') {
+  async function runWorkflow(action: 'PUBLISH_CATALOG' | 'UNPUBLISH') {
     if (!tryout) return;
-    if (action === 'APPROVE') {
-      if (!allReady) {
-        onError(
-          questionCount <= 0
-            ? 'Masukkan soal terlebih dahulu sebelum mem-publish paket Tryout.'
-            : `Masih ada ${pendingCount} soal di Tryout ini yang belum lolos QC (belum berstatus Siap / Ready). Selesaikan QC semua soal di tabel bawah terlebih dahulu.`,
-        );
-        return;
-      }
+    if (action === 'PUBLISH_CATALOG') {
       const ok = window.confirm(
-        `Publish Paket Tryout "${tryout.title}" ke halaman siswa? Riwayat percobaan akun Sandbox (QA) pada tryout ini akan dibersihkan otomatis agar leaderboard siswa mulai bersih.`,
+        `Publish Tryout "${tryout.title}" ke katalog publik siswa? Siswa dapat langsung mendaftar; Tryout akan otomatis Live saat Start Date tiba.`,
       );
       if (!ok) return;
     }
     if (action === 'UNPUBLISH') {
       const ok = window.confirm(
-        `Tarik Paket Tryout "${tryout.title}" kembali ke Draf? Tryout akan disembunyikan sementara dari daftar publik siswa.`,
+        `Tarik Paket Tryout "${tryout.title}" kembali ke Draft? Tryout akan disembunyikan sementara dari daftar publik siswa.`,
       );
       if (!ok) return;
     }
@@ -104,9 +119,9 @@ export function TryoutWorkflowHeader({
         action,
       });
       onNotice(
-        action === 'APPROVE'
-          ? 'Paket Tryout berhasil di-publish ke halaman siswa!'
-          : 'Paket Tryout ditarik kembali ke Draf.',
+        action === 'PUBLISH_CATALOG'
+          ? 'Tryout berhasil di-publish ke katalog publik siswa!'
+          : 'Tryout ditarik kembali ke Draft.',
       );
       await onUpdated();
     } catch (cause) {
@@ -154,13 +169,29 @@ export function TryoutWorkflowHeader({
         <span
           className="pill"
           style={{
-            background: badge.bg,
-            color: badge.color,
-            border: `1px solid ${badge.border}`,
+            background:
+              lifecycle === 'LIVE'
+                ? 'rgba(16, 185, 129, 0.14)'
+                : lifecycle === 'PUBLIC'
+                  ? 'rgba(56, 189, 248, 0.14)'
+                  : badge.bg,
+            color:
+              lifecycle === 'LIVE'
+                ? '#34d399'
+                : lifecycle === 'PUBLIC'
+                  ? '#38bdf8'
+                  : badge.color,
+            border: `1px solid ${
+              lifecycle === 'LIVE'
+                ? 'rgba(16, 185, 129, 0.35)'
+                : lifecycle === 'PUBLIC'
+                  ? 'rgba(56, 189, 248, 0.35)'
+                  : badge.border
+            }`,
             fontWeight: 700,
           }}
         >
-          {isPublished ? 'Published (Live)' : 'Draf Paket'}
+          {lifecycle === 'LIVE' ? 'Live' : lifecycle === 'PUBLIC' ? 'Public' : 'Draft'}
         </span>
 
         <span
@@ -179,10 +210,31 @@ export function TryoutWorkflowHeader({
           Durasi Subtes: <strong style={{ color: 'var(--foreground)' }}>{totalDurationMinutes} menit</strong>
           {pendingCount > 0 && (
             <span style={{ color: 'var(--muted-fg)', marginLeft: '6px' }}>
-              · {pendingCount} soal masih perlu di-QC sebelum paket di-publish
+              · {pendingCount} soal belum Ready
             </span>
           )}
         </span>
+
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '4px 10px',
+            borderRadius: '8px',
+            border: '1px solid var(--border)',
+            background: 'rgba(255,255,255,0.02)',
+            fontSize: '11.5px',
+          }}
+        >
+          <span>Registrants: <strong>{registrants}</strong></span>
+          <span style={{ color: 'var(--muted-fg)' }}>·</span>
+          <span>Belum: <strong>{notStarted}</strong></span>
+          <span style={{ color: 'var(--muted-fg)' }}>·</span>
+          <span>Sedang: <strong>{inProgress}</strong></span>
+          <span style={{ color: 'var(--muted-fg)' }}>·</span>
+          <span>Selesai: <strong>{finished}</strong></span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -227,27 +279,21 @@ export function TryoutWorkflowHeader({
           <button
             type="button"
             className="button button-primary"
-            disabled={busyAction !== null || !allReady}
-            title={
-              questionCount <= 0
-                ? 'Masukkan minimal 1 soal terlebih dahulu'
-                : !allReady
-                  ? `Masih ada ${pendingCount} soal yang belum berstatus Siap (Ready)`
-                  : 'Publish paket Tryout ke halaman siswa'
-            }
-            onClick={() => void runWorkflow('APPROVE')}
+            disabled={busyAction !== null}
+            title="Publish Tryout ke katalog publik agar siswa bisa mendaftar"
+            onClick={() => void runWorkflow('PUBLISH_CATALOG')}
             style={{
               height: '34px',
               fontSize: '12px',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              background: allReady ? '#059669' : undefined,
-              borderColor: allReady ? '#10b981' : undefined,
+              background: '#059669',
+              borderColor: '#10b981',
             }}
           >
             <CheckCircle2 style={{ width: 13, height: 13 }} />
-            {busyAction === 'APPROVE' ? 'Mem-publish…' : 'Publish Paket Tryout'}
+            {busyAction === 'PUBLISH_CATALOG' ? 'Mem-publish…' : 'Publish ke Public'}
           </button>
         ) : (
           <button
@@ -266,7 +312,7 @@ export function TryoutWorkflowHeader({
             }}
           >
             <RotateCcw style={{ width: 13, height: 13 }} />
-            {busyAction === 'UNPUBLISH' ? 'Menarik…' : 'Tarik Paket ke Draf'}
+            {busyAction === 'UNPUBLISH' ? 'Menarik…' : 'Tarik ke Draft'}
           </button>
         )}
       </div>

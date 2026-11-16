@@ -107,7 +107,6 @@ type UpcomingTryoutItem = {
   description: string | null;
   solutionPrice: number;
   batch: string;
-  releaseDate: string;
   scheduledStart: string | null;
   scheduledEnd: string | null;
   status: string;
