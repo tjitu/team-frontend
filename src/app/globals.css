@@ -1806,8 +1806,20 @@ input[type="date"] { color-scheme: light; }
 
 /* The shared DataTable uses data-slot attributes; style them here so every
    Control Center section gets the same readable table treatment. */
-.control-panel .data-table-wrapper { display: grid; gap: 12px; }
+.control-panel .data-table-wrapper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+.control-panel .data-table-wrapper > div {
+  min-width: 0;
+  max-width: 100%;
+}
 .control-panel .data-table-wrapper [data-slot="table-container"] {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1817,9 +1829,9 @@ input[type="date"] { color-scheme: light; }
 .control-panel [data-slot="table"] { width: 100%; min-width: 720px; border-collapse: collapse; text-align: left; }
 .control-panel [data-slot="table-header"] { background: color-mix(in srgb, var(--muted-bg) 60%, var(--card)); }
 .control-panel [data-slot="table-head"] {
-  height: 42px;
+  height: 38px;
   border-bottom: 1px solid var(--border);
-  padding: 0 14px;
+  padding: 0 11px;
   color: var(--muted-fg);
   font-size: 11px;
   font-weight: 600;
@@ -1827,11 +1839,11 @@ input[type="date"] { color-scheme: light; }
   white-space: nowrap;
 }
 .control-panel [data-slot="table-head"]:last-child,
-.control-panel [data-slot="table-cell"]:last-child { min-width: 220px; width: auto; white-space: nowrap; text-align: right; }
+.control-panel [data-slot="table-cell"]:last-child { min-width: 165px; width: auto; white-space: nowrap; text-align: right; }
 .control-panel [data-slot="table-cell"] {
-  min-height: 54px;
+  min-height: 46px;
   border-bottom: 1px solid var(--border);
-  padding: 11px 14px;
+  padding: 8px 11px;
   color: var(--foreground);
   font-size: 12px;
   vertical-align: middle;
@@ -5573,18 +5585,21 @@ html.dark .department-chip {
 
 .table-action-stack {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  width: 152px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 220px;
   margin-left: auto;
 }
 
 .table-action-stack .table-action-btn {
-  width: 100%;
-  justify-content: flex-start;
-  padding: 0 11px;
-  gap: 7px;
+  width: auto;
+  justify-content: center;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+  gap: 4px;
   white-space: nowrap;
 }
 

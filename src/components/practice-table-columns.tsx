@@ -107,7 +107,7 @@ export function usePracticeColumns({
       ),
     }),
     practiceColHelper.accessor('status', {
-      header: 'Status QC & Tayang',
+      header: 'Status QC',
       cell: ({ row }) => <PracticeQuestionStatusCell question={row.original} />,
     }),
     practiceColHelper.display({
@@ -120,17 +120,17 @@ export function usePracticeColumns({
       cell: ({ row }) => <PracticeQuestionDifficultyCell difficulty={row.original.difficulty} />,
     }),
     practiceColHelper.accessor('content', {
-      header: 'Cuplikan Soal & Catatan QC',
+      header: 'Cuplikan Soal',
       cell: ({ row }) => <PracticeQuestionContentCell question={row.original} />,
     }),
     practiceColHelper.display({
       id: 'statistics',
-      header: 'Statistik Siswa',
+      header: 'Statistik',
       cell: ({ row }) => <PracticeQuestionStatsCell question={row.original} />,
     }),
     practiceColHelper.display({
       id: 'actions',
-      header: () => <div style={{ width: '152px', marginLeft: 'auto', textAlign: 'left' }}>Aksi &amp; Latihan</div>,
+      header: () => <div style={{ textAlign: 'right' }}>Aksi &amp; QC</div>,
       cell: ({ row }) => (
         <PracticeTableActions
           question={row.original}

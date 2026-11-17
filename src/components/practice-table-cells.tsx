@@ -94,33 +94,35 @@ export function PracticeQuestionStatusCell({ question: q }: { question: Practice
   const statusUpper = String(q.status || 'DRAFT').toUpperCase();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          padding: '3px 9px',
-          borderRadius: '6px',
-          fontSize: '11px',
-          fontWeight: 700,
-          border: `1px solid ${statusBadge.border}`,
-          background: statusBadge.bg,
-          color: statusBadge.color,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {statusBadge.label}
-      </span>
-      {statusUpper === 'READY' ? (
-        <span style={{ fontSize: '10px', color: '#34d399', fontWeight: 600, whiteSpace: 'nowrap' }}>
-          ● Tayang di /latihan
-        </span>
-      ) : (
-        <span style={{ fontSize: '10px', color: 'var(--muted-fg)', whiteSpace: 'nowrap' }}>
-          Belum tayang
-        </span>
+    <span
+      title={statusUpper === 'READY' ? 'Tayang aktif di /latihan' : 'Belum tayang ke siswa'}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '5px',
+        padding: '2px 8px',
+        borderRadius: '6px',
+        fontSize: '10.5px',
+        fontWeight: 650,
+        border: `1px solid ${statusBadge.border}`,
+        background: statusBadge.bg,
+        color: statusBadge.color,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {statusUpper === 'READY' && (
+        <span
+          style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: '#34d399',
+            display: 'inline-block',
+          }}
+        />
       )}
-    </div>
+      {statusUpper === 'READY' ? 'Tayang (Ready)' : statusBadge.label}
+    </span>
   );
 }
 
@@ -128,9 +130,10 @@ export function PracticeQuestionSubtestCell({ question: q }: { question: Practic
   const subDisplay = getSubtestDisplay(q.subtest);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '280px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', maxWidth: '220px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
         <span
+          title={`${subDisplay.code} — ${subDisplay.label}`}
           style={{
             display: 'inline-block',
             fontSize: '10px',
@@ -141,56 +144,58 @@ export function PracticeQuestionSubtestCell({ question: q }: { question: Practic
             color: '#7dd3fc',
             border: '1px solid rgba(56, 189, 248, 0.25)',
             whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
-          {subDisplay.code} — {subDisplay.label}
+          {subDisplay.code}
         </span>
-        {q.topicTitle && (
-          <span
-            style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: '#f4f4f5',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {q.topicTitle}
-          </span>
-        )}
+        <span
+          title={q.topicTitle || subDisplay.label}
+          style={{
+            fontSize: '11.5px',
+            fontWeight: 600,
+            color: '#f4f4f5',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {q.topicTitle || subDisplay.label}
+        </span>
       </div>
-      <div
-        style={{
-          fontSize: '11px',
-          color: '#a1a1aa',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          flexWrap: 'wrap',
-        }}
-      >
-        {q.subtopicTitle ? (
-          <span>› {q.subtopicTitle}</span>
-        ) : !q.topicTitle ? (
-          <span style={{ color: '#52525b', fontStyle: 'italic' }}>Tanpa Topik</span>
-        ) : null}
-        {q.pattern && (
-          <span
-            style={{
-              display: 'inline-block',
-              fontSize: '10px',
-              color: '#d4d4d8',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '4px',
-              padding: '0 5px',
-            }}
-          >
-            {q.pattern}
-          </span>
-        )}
-      </div>
+      {(q.subtopicTitle || q.pattern) && (
+        <div
+          style={{
+            fontSize: '10.5px',
+            color: '#a1a1aa',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+          title={q.subtopicTitle || ''}
+        >
+          {q.subtopicTitle && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>› {q.subtopicTitle}</span>}
+          {q.pattern && (
+            <span
+              style={{
+                display: 'inline-block',
+                fontSize: '9.5px',
+                color: '#d4d4d8',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '4px',
+                padding: '0 4px',
+                flexShrink: 0,
+              }}
+            >
+              {q.pattern}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -232,22 +237,32 @@ export function PracticeQuestionDifficultyCell({ difficulty }: { difficulty: str
 
 export function PracticeQuestionContentCell({ question: q }: { question: PracticeAssignedQuestion }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '380px' }}>
-      <div className="line-clamp-2 overflow-hidden text-xs text-[var(--foreground)]" style={{ lineHeight: '1.45' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '300px', minWidth: '170px' }}>
+      <div
+        style={{
+          fontSize: '11.5px',
+          lineHeight: '1.4',
+          color: 'var(--foreground)',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
         <MathText text={stripMarkdownPreview(q.content)} />
       </div>
       {q.revisionNotes && (
         <div
           style={{
-            padding: '6px 8px',
-            borderRadius: '6px',
+            padding: '4px 7px',
+            borderRadius: '5px',
             background: 'rgba(244, 63, 94, 0.12)',
             border: '1px solid rgba(244, 63, 94, 0.35)',
-            fontSize: '11px',
+            fontSize: '10.5px',
             color: '#fda4af',
           }}
         >
-          <span style={{ fontWeight: 650 }}>Catatan Revisi{q.reviewedBy ? ` (${q.reviewedBy})` : ''}: </span>
+          <span style={{ fontWeight: 650 }}>Revisi{q.reviewedBy ? ` (${q.reviewedBy})` : ''}: </span>
           <span>{q.revisionNotes}</span>
         </div>
       )}
@@ -257,14 +272,14 @@ export function PracticeQuestionContentCell({ question: q }: { question: Practic
 
 export function PracticeQuestionStatsCell({ question: q }: { question: PracticeAssignedQuestion }) {
   return (
-    <div className="cell-stack">
-      <div className="cell-meta-row" style={{ whiteSpace: 'nowrap' }}>
-        <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>Dijawab:</span>
-        <span className="cell-mono font-semibold" style={{ color: '#34d399' }}>{q.answeredCount}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '11px', whiteSpace: 'nowrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <span style={{ color: 'var(--muted-fg)' }}>Dijawab:</span>
+        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#34d399' }}>{q.answeredCount}</span>
       </div>
-      <div className="cell-meta-row" style={{ whiteSpace: 'nowrap' }}>
-        <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>Dilewati:</span>
-        <span className="cell-mono font-semibold" style={{ color: '#fbbf24' }}>{q.skippedCount}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <span style={{ color: 'var(--muted-fg)' }}>Dilewati:</span>
+        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#fbbf24' }}>{q.skippedCount}</span>
       </div>
     </div>
   );

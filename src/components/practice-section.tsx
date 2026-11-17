@@ -457,50 +457,59 @@ export function PracticeSection({
   return (
     <section className="control-panel" aria-labelledby="practice-heading">
       {/* HEADER */}
-      <div className="section-heading control-panel-heading">
-        <div>
-          <span className="section-kicker">Kurasi &amp; Stok Soal</span>
-          <h2 id="practice-heading">Manajemen Soal Latihan (/latihan)</h2>
-          <p>
-            Kelola seluruh soal Latihan mulai dari <strong>Draf → Antrean QC (Sandbox) → Kotak Revisi → Tayang di /latihan</strong>. Soal yang di-ACC ke <strong>Siap (Ready)</strong> otomatis langsung tayang ke siswa di <code>/latihan</code>.
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          flexWrap: 'wrap',
+          marginBottom: '12px',
+        }}
+      >
+        <div style={{ minWidth: 0, flex: '1 1 280px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <h2 id="practice-heading" style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
+              Manajemen Soal Latihan (/latihan)
+            </h2>
+            <span
+              className="pill"
+              style={{
+                fontSize: '10px',
+                padding: '1px 7px',
+                background: 'rgba(56, 189, 248, 0.12)',
+                color: '#38bdf8',
+                border: '1px solid rgba(56, 189, 248, 0.25)',
+              }}
+            >
+              Kurasi &amp; Stok Soal
+            </span>
+          </div>
+          <p style={{ margin: '3px 0 0', fontSize: '11.5px', color: 'var(--muted-fg)', lineHeight: 1.4 }}>
+            Alur kurasi: <strong>Draf → Antrean QC → Revisi → Tayang (/latihan)</strong>.
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', flexShrink: 0 }}>
           <button
             type="button"
             className="button button-secondary"
             onClick={() => void loadWorkspace()}
             disabled={loading}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ height: '32px', padding: '0 10px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
           >
-            <RefreshCw style={{ width: 14, height: 14 }} />
+            <RefreshCw style={{ width: 13, height: 13 }} />
             <span>Refresh</span>
           </button>
           <button
             type="button"
             className="button button-secondary"
             onClick={() => setAutoBalanceModalOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
+            style={{ height: '32px', padding: '0 10px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
           >
-            <Sliders style={{ width: 14, height: 14 }} />
-            <span>Atur Auto-Balance Latihan</span>
+            <Sliders style={{ width: 13, height: 13 }} />
+            <span>Auto-Balance</span>
           </button>
-          {onOpenCreateForPractice && (
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={() => onOpenCreateForPractice()}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Sparkles style={{ width: 14, height: 14 }} />
-              <span>Buat Soal Latihan Baru</span>
-            </button>
-          )}
           <button
             type="button"
             className="button button-secondary"
@@ -510,21 +519,33 @@ export function PracticeSection({
               setPickerBatch('ALL');
               setPickerOpen(true);
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ height: '32px', padding: '0 10px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
           >
-            <Plus style={{ width: 14, height: 14 }} />
-            <span>Ambil dari Bank / Eksperimen ({pickerPool.filter((q) => !q.isLockedInTryout).length})</span>
+            <Plus style={{ width: 13, height: 13 }} />
+            <span>Ambil dari Bank ({pickerPool.filter((q) => !q.isLockedInTryout).length})</span>
           </button>
+          {onOpenCreateForPractice && (
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => onOpenCreateForPractice()}
+              style={{ height: '32px', padding: '0 12px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}
+            >
+              <Sparkles style={{ width: 13, height: 13 }} />
+              <span>Buat Soal Latihan</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* SUBTEST STOCK CARDS */}
+      {/* SUBTEST STOCK CARDS (COMPACT 7-COLUMN SINGLE ROW) */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '10px',
-          marginBottom: '16px',
+          gridTemplateColumns: 'repeat(7, minmax(112px, 1fr))',
+          gap: '8px',
+          overflowX: 'auto',
+          marginBottom: '12px',
         }}
       >
         {SUBTEST_CARDS.map((card) => {
@@ -541,30 +562,32 @@ export function PracticeSection({
               key={card.key}
               type="button"
               onClick={() => setSubtestFilter(active ? 'ALL' : card.key)}
+              title={`${card.short} — ${card.label}${maxAccessed > 0 ? ` (Siswa teraktif akses ${maxAccessed}/${count})` : ''}`}
               style={{
                 textAlign: 'left',
-                padding: '12px 14px',
-                borderRadius: '10px',
+                padding: '8px 10px',
+                borderRadius: '8px',
+                minWidth: 0,
                 border: active
                   ? '1px solid #38bdf8'
                   : isDepletedForTopUser
-                    ? '1px solid rgba(248, 113, 113, 0.35)'
+                    ? '1px solid rgba(248, 113, 113, 0.3)'
                     : '1px solid var(--border)',
                 background: active
                   ? 'rgba(56, 189, 248, 0.1)'
                   : isDepletedForTopUser
-                    ? 'rgba(248, 113, 113, 0.05)'
+                    ? 'rgba(248, 113, 113, 0.04)'
                     : 'rgba(255,255,255,0.02)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
                 <span style={{ fontSize: '11px', fontWeight: 700, color: '#38bdf8' }}>{card.short}</span>
                 <span
                   style={{
-                    fontSize: '10px',
-                    padding: '1px 6px',
+                    fontSize: '9.5px',
+                    padding: '1px 5px',
                     borderRadius: '999px',
                     background: isDepletedForTopUser
                       ? 'rgba(239, 68, 68, 0.18)'
@@ -573,36 +596,43 @@ export function PracticeSection({
                         : 'rgba(16, 185, 129, 0.16)',
                     color: isDepletedForTopUser ? '#f87171' : isLowForTopUser ? '#fbbf24' : '#34d399',
                     fontWeight: 600,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {count === 0
                     ? 'Kosong'
                     : isDepletedForTopUser
-                      ? 'Habis (Siswa Aktif)'
+                      ? 'Habis'
                       : isLowForTopUser
                         ? `Sisa ${minRemaining}`
                         : 'Aman'}
                 </span>
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 700, marginTop: '4px' }}>
-                {count}{' '}
-                <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--muted-fg)' }}>
-                  tayang ({totalInPipeline} total)
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '3px', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '16px', fontWeight: 700, lineHeight: 1.1 }}>{count}</span>
+                <span style={{ fontSize: '10.5px', fontWeight: 500, color: 'var(--muted-fg)' }}>
+                  tayang · {totalInPipeline} total
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--muted-fg)', marginTop: '2px' }}>{card.label}</div>
-              {maxAccessed > 0 && (
-                <div style={{ fontSize: '10px', color: isDepletedForTopUser ? '#fca5a5' : 'var(--muted-fg)', marginTop: '4px' }}>
-                  Siswa teraktif sudah akses {maxAccessed}/{count} soal
-                </div>
-              )}
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: 'var(--muted-fg)',
+                  marginTop: '2px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {card.label}
+              </div>
             </button>
           );
         })}
       </div>
 
       {/* LIFECYCLE STATUS TABS */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
         {STATUS_TABS.map((tab) => {
           const active = statusFilter === tab.key;
           const cnt = statusCounts[tab.key] ?? 0;
@@ -613,12 +643,12 @@ export function PracticeSection({
               onClick={() => setStatusFilter(tab.key)}
               className={active ? 'button button-primary' : 'button button-secondary'}
               style={{
-                height: '34px',
-                padding: '0 12px',
-                fontSize: '12px',
+                height: '30px',
+                padding: '0 10px',
+                fontSize: '11.5px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '5px',
               }}
             >
               <span>{tab.label}</span>
@@ -626,7 +656,7 @@ export function PracticeSection({
                 className="pill"
                 style={{
                   fontSize: '10px',
-                  padding: '1px 6px',
+                  padding: '0 5px',
                   background: active ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.08)',
                   color: active ? '#fff' : 'var(--muted-fg)',
                 }}
