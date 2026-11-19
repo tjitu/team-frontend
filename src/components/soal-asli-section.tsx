@@ -1,5 +1,6 @@
 'use client';
 
+import { readImportedSteps } from './question-solution-layout';
 import React from 'react';
 import {
   Archive,
@@ -240,12 +241,7 @@ export function SoalAsliSection({ onNotice, onError }: SoalAsliSectionProps) {
                   ? data.staticContent
                   : prev.staticExplanation,
               solutionSteps: rawSteps
-                ? rawSteps.map((s: any, idx: number) => ({
-                    stepNumber: Number(s?.stepNumber) || idx + 1,
-                    category: String(s?.category || `Langkah ${idx + 1}`),
-                    title: String(s?.title || `Langkah ${idx + 1}`),
-                    content: String(s?.content || ''),
-                  }))
+                ? readImportedSteps(rawSteps)
                 : prev.solutionSteps,
             }
           : prev,

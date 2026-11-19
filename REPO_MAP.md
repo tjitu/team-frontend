@@ -39,5 +39,5 @@ team-frontend/
 
 * **Auth**: Supabase Auth with SSR cookie management (`@supabase/ssr`).
 * **API Calls**: Sends Supabase JWT bearer token to `NEXT_PUBLIC_TEAM_API_URL` (`http://localhost:3200/api`).
-* **Control Center & Bank Soal**: Auto-balance slot planner (`auto-balance-adjuster-modal.tsx`, `tryout-workflow-balancer.tsx`), curriculum gap analysis, question type (`PG`/`Isian`) composition controls, and QC workflows (`question-lifecycle-types.ts`).
+* **Control Center & Bank Soal**: Auto-balance slot planner (`auto-balance-adjuster-modal.tsx`, `tryout-workflow-balancer.tsx`), curriculum gap analysis, question type (`PG`/`Isian`) composition controls, and QC workflows (`question-lifecycle-types.ts`). Question imports and prompt examples share section grouping and answer-format conventions in `question-solution-layout.ts`.
 * **UI & Styling**: Base UI + TanStack Table + Tailwind CSS using semantic tokens in `src/app/globals.css`, documented in [design.md](file:///C:/JITU-ECOSYSTEM/team-frontend/design.md) and [writing.md](file:///C:/JITU-ECOSYSTEM/team-frontend/writing.md).

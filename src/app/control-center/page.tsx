@@ -1,4 +1,5 @@
 'use client';
+import { readImportedSteps, SHORT_ANSWER_FORMAT_TAG } from '@/components/question-solution-layout';
 import { parseQuestionAnswers, supportsNumericSlot } from '@/components/question-import-answers';
 
 import * as React from 'react';
@@ -1646,7 +1647,7 @@ function ControlCenterContent() {
     // Auto-check if short answer question has format guidance
     let finalContent = questionForm.content.trim();
     if (isShort && !finalContent.includes('[PETUNJUK FORMAT')) {
-      finalContent += '\n\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]';
+      finalContent += '\n\n' + SHORT_ANSWER_FORMAT_TAG;
     }
 
     const body = {
@@ -2021,24 +2022,19 @@ function ControlCenterContent() {
     const sol = parsed.solution || {};
     const rawSteps = Array.isArray(parsed.solutionSteps)
       ? parsed.solutionSteps
+      : Array.isArray(sol.solutionSteps)
+      ? sol.solutionSteps
       : Array.isArray(sol.steps)
       ? sol.steps
       : [];
-    const solSteps = rawSteps.length > 0
-      ? rawSteps.map((s: any, i: number) => ({
-          stepNumber: i + 1,
-          category: s.category || `Langkah ${i + 1}`,
-          title: String(s.title || '').trim(),
-          content: String(s.content || '').trim(),
-        }))
-      : [];
+    const solSteps = readImportedSteps(rawSteps);
 
     const diff = String(parsed.difficulty || fallbackSlot?.difficulty || 'MEDIUM').toUpperCase();
     const validDiff = (diff === 'EASY' || diff === 'HARD') ? diff : 'MEDIUM';
 
     let content = String(parsed.content || '').trim();
     if (isShortAnswer && !content.includes('[PETUNJUK FORMAT')) {
-      content += '\n\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]';
+      content += '\n\n' + SHORT_ANSWER_FORMAT_TAG;
     }
 
     const keyFormula = parsed.keyFormula || sol.keyFormula;
@@ -2222,12 +2218,7 @@ function ControlCenterContent() {
         ? data.steps
         : null;
       const nextSteps = rawSteps && rawSteps.length > 0
-        ? rawSteps.map((s: any, idx: number) => ({
-            stepNumber: Number(s?.stepNumber) || idx + 1,
-            category: String(s?.category || `Langkah ${idx + 1}`),
-            title: String(s?.title || `Langkah ${idx + 1}`),
-            content: String(s?.content || ''),
-          }))
+        ? readImportedSteps(rawSteps)
         : prev.solutionSteps;
 
       return {
@@ -9671,7 +9662,7 @@ function ControlCenterContent() {
                           className="button button-secondary text-xs h-9 flex items-center justify-center gap-1.5"
                           onClick={() => {
                             let content = questionForm.content.trim();
-                            const guideTag = `[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: ${questionForm.correctAnswer || '42'}]`;
+                            const guideTag = SHORT_ANSWER_FORMAT_TAG;
                             if (content.includes('[PETUNJUK FORMAT:')) {
                               content = content.replace(/\[PETUNJUK FORMAT:[^\]]+\]/g, guideTag);
                             } else {

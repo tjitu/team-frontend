@@ -1,3 +1,4 @@
+import { SHORT_ANSWER_FORMAT_TAG, solutionStepsExample } from './question-solution-layout';
 import { supportsNumericSlot } from './question-import-answers';
 
 export type QuestionLifecycleStatus =
@@ -394,7 +395,11 @@ export const SOLUTION_FORMATTING_RULES = [
   '- Contoh metonimia: gaya bahasa yang memakai nama yang berkaitan erat dengan benda untuk menyebut benda itu. Pada "membeli Kijang", nama model mobil mewakili mobilnya. Jelaskan hubungan nama dan benda sebelum memberi label metonimia.',
   '- Susun chapter menurut kegunaan berpikir: memahami konsep, menerapkan konsep pada bukti, lalu menguji opsi dan menyimpulkan. Setiap chapter harus menghasilkan pemahaman atau keputusan yang dipakai pada tahap berikutnya.',
   '- Gabungkan pemeriksaan (1)–(5) yang memakai cara berpikir sama dalam satu chapter. Hindari membagi halaman hanya karena nomor pernyataan atau urutan paragraf.',
-  '- Gunakan 2–6 chapter sesuai kebutuhan penjelasan. Chapter pendek yang hanya mengulang soal atau mengumumkan jawaban digabung dengan tahap terkait. Jumlah baris mengikuti kebutuhan konsep.',
+  '- Satu chapter cukup bila satu cara berpikir menuntaskan soal. Buat chapter berikutnya hanya jika siswa perlu mempelajari konsep, strategi, atau operasi yang berbeda. Chapter pendek yang hanya mengulang soal atau mengumumkan jawaban digabung dengan tahap terkait. Jumlah baris mengikuti kebutuhan konsep.',
+  '- Contoh puisi: jelaskan dahulu bahwa personifikasi memberi tindakan atau perasaan manusia kepada sesuatu yang bukan manusia. Di satu chapter, bandingkan pelaku dan kata kerja dalam SEMUA bait lalu simpulkan dengan kutipan penentu. Terapkan pola kriteria → bukti → keputusan juga saat membandingkan kalimat, data, atau opsi.',
+  '- Sebelum mengirim, baca judul chapter berurutan. Satukan "Cek Bait 1 dan 3" dengan "Cek Bait 2", atau "Cek (1)–(2)" dengan "Cek (3)–(4)". Letakkan kesimpulan singkat di akhir analisis. Periksa kembali apakah alasan sudah cukup untuk diikuti pemula.',
+  '- Pada soal, bacaan, dan pembahasan, tulis satu butir per baris. Awali daftar biasa dengan • dan spasi. Untuk pernyataan bernomor pertahankan (1), (2), dst. di awal baris masing-masing tanpa bullet tambahan. Sisakan satu baris kosong antarparagraf atau bait dan pertahankan baris asli puisi. Biarkan prosa biasa mengalir.',
+  '- Untuk soal baru, letakkan stimulus di narration, pertanyaan di content, dan setiap opsi di field content milik opsi tersebut. Petunjuk format isian hanya sekali pada tag penutup yang disediakan. Jangan tampilkan contoh yang sama dengan kunci.',
   '- Sebelum hitungan, jelaskan apa yang dicari dan mengapa operasi tersebut diperlukan. Terangkan makna simbol, asumsi, dan alasan perubahan rumus sampai pembaca pemula dapat mengikuti.',
   '- Saat menguji opsi, tunjukkan bagian yang cocok atau bertentangan dengan konsep atau bukti, termasuk perbedaan istilah yang mudah tertukar.',
   '- Gunakan paragraf pendek, tabel perbandingan bila membantu, serta baris baru untuk pernyataan. Setiap halaman boleh digulir agar penjelasan tetap utuh.',
@@ -403,7 +408,7 @@ export const SOLUTION_FORMATTING_RULES = [
   '- Keluarkan karakter teks asli dan spasi biasa. Hindari entity HTML seperti &#x20; serta penanda markdown yang belum selesai.',
   '- Gunakan **tebal** untuk istilah penting dan maksimal 1–2 ==sorotan singkat== per chapter. Jelaskan istilah yang ditebalkan saat pertama diperkenalkan.',
   '- keyFormula boleh berisi konsep inti beserta kapan dipakai. quickTrick merangkum jalan cepat yang sudah dijelaskan alasannya pada langkah utama.',
-].join('\\n');
+].join('\n');
 
 export function buildRevisionContextPrompt(params: {
   id: string;
@@ -457,8 +462,8 @@ export function buildRevisionContextPrompt(params: {
     '1. Kembalikan HANYA 1 objek JSON valid (tanpa teks pengantar atau markdown tambahan jika memungkinkan, atau di dalam blok ```json).',
     '2. Gunakan format LaTeX $...$ untuk rumus inline dan $$...$$ di baris baru untuk persamaan inti; pastikan semua backslash di-escape ganda (\\\\) agar valid JSON.',
     '3. Untuk MULTIPLE_CHOICE, pastikan tepat 1 opsi memiliki "isCorrect": true. Untuk SHORT_ANSWER, isi field "correctAnswer".',
-    '4. Jumlah item pada "solutionSteps" fleksibel (2-6 langkah) dengan gaya bahasa ramah anak SMA, mengikuti struktur JSON:',
-    '{"subtest":"...","difficulty":"...","type":"...","narration":"...","content":"...","correctAnswer":"...","options":[{"content":"Opsi A","isCorrect":false},{"content":"Opsi B","isCorrect":true},{"content":"Opsi C","isCorrect":false},{"content":"Opsi D","isCorrect":false},{"content":"Opsi E","isCorrect":false}],"keyFormula":"Rumus inti yang dipakai + 1 kalimat kapan dipakainya","quickTrick":"Tips cepat ala kakak tutor (2-3 kalimat ringan cara ngeh pola/eliminasi opsi)","staticExplanation":"Ringkasan 1-2 kalimat kenapa jawabannya tepat","solutionSteps":[{"stepNumber":1,"category":"Pahami Soal","title":"Cari Tahu Targetnya","content":"Dari soal kita tahu:\\n- **Info 1:** ...\\n- **Info 2:** ...\\n\\n==Inti ide awal supaya gampang lanjut ke hitungan.=="},{"stepNumber":2,"category":"Tahap 1","title":"Langkah Awal (Tambah/Kurangi Step Sesuai Soal)","content":"Supaya gampang, kita hitung bagian ini dulu:\\n$$...$$\\nDari sini ketemu **...**, ==jadi jawabannya tinggal selangkah lagi==."}]}',
+    '4. Jumlah item pada "solutionSteps" fleksibel (1-6 langkah) dengan gaya bahasa ramah anak SMA, mengikuti struktur JSON:',
+    `{"subtest":"...","difficulty":"...","type":"...","narration":"...","content":"...","correctAnswer":"...","options":[{"content":"Opsi A","isCorrect":false},{"content":"Opsi B","isCorrect":true},{"content":"Opsi C","isCorrect":false},{"content":"Opsi D","isCorrect":false},{"content":"Opsi E","isCorrect":false}],"keyFormula":"Rumus inti yang dipakai + 1 kalimat kapan dipakainya","quickTrick":"Tips cepat ala kakak tutor (2-3 kalimat ringan cara ngeh pola/eliminasi opsi)","staticExplanation":"Ringkasan 1-2 kalimat kenapa jawabannya tepat","solutionSteps":${solutionStepsExample()}}`,
   ].join('\n');
 }
 
@@ -486,10 +491,10 @@ export function buildSoalAsliSolutionPrompt(question: SoalAsliQuestionItem, pack
     '',
     SOLUTION_FORMATTING_RULES,
     '',
-    '=== FORMAT OUTPUT WAJIB (JSON VALID, JUMLAH STEP 2-6 ADAPTIF SESUAI SOAL) ===',
-    `{${keyFieldExample},"keyFormula":"Rumus inti + kapan dipakainya","quickTrick":"Trik cepat 30 detik ala kakak tutor","staticExplanation":"Ringkasan singkat kenapa jawaban itu benar","solutionSteps":[{"stepNumber":1,"category":"Pahami Soal","title":"Kenali Info & Targetnya","content":"Dari soal kita punya:\\n- **Info 1:** ...\\n\\n==Strategi paling gampang untuk mulai mengerjakan.=="},{"stepNumber":2,"category":"Tahap 1","title":"Hitung Bagian Inti","content":"Kita cari nilai utamanya dulu:\\n$$...$$\\nDari hitungan ini ketemu **...**."},{"stepNumber":3,"category":"Kesimpulan","title":"Jadi Jawabannya...","content":"${conclusionExample}"}]}`,
+    '=== FORMAT OUTPUT WAJIB (JSON VALID, JUMLAH STEP 1-6 ADAPTIF SESUAI SOAL) ===',
+    `{${keyFieldExample},"keyFormula":"Rumus inti + kapan dipakainya","quickTrick":"Trik cepat 30 detik ala kakak tutor","staticExplanation":"Ringkasan singkat kenapa jawaban itu benar","solutionSteps":${solutionStepsExample(conclusionExample)}}`,
     '',
-    'Catatan: Pakai bahasa yang santai, jelas, tidak berbelit seperti buku kuliahan. Tambah/kurangi jumlah "solutionSteps" (2-6 langkah) sesuai kebutuhan soal agar tiap slide tetap ringkas, dan escape semua backslash LaTeX menjadi \\\\ agar JSON valid.',
+    'Catatan: Pakai bahasa yang santai, jelas, tidak berbelit seperti buku kuliahan. Tambah/kurangi jumlah "solutionSteps" (1-6 langkah) sesuai kebutuhan soal agar setiap tahap penalaran tuntas, dan escape semua backslash LaTeX menjadi \\\\ agar JSON valid.',
   ].filter(Boolean).join('\n');
 }
 
@@ -573,11 +578,7 @@ export function buildBalancedTryoutGapPrompt(params: {
     "keyFormula": "Rumus/konsep inti + kapan dipakainya",
     "quickTrick": "Trik cepat 30 detik ala kakak tutor",
     "staticExplanation": "Ringkasan 1-2 kalimat kenapa B benar",
-    "solutionSteps": [
-      { "stepNumber": 1, "category": "Pahami Soal", "title": "Kenali Info & Targetnya", "content": "Dari soal kita punya:\\n- **Info 1:** ...\\n\\n==Fokus inti langkah pertama.==" },
-      { "stepNumber": 2, "category": "Tahap 1", "title": "Eksekusi Inti", "content": "Kita hitung / telaah bagian utamanya..." },
-      { "stepNumber": 3, "category": "Kesimpulan", "title": "Jadi Jawabannya...", "content": "Jadi jawaban yang tepat adalah **B**." }
-    ]
+    "solutionSteps": ${solutionStepsExample()}
   }
 ]`,
     '',
@@ -1010,7 +1011,7 @@ export function buildTypeSpecificRules(questionType: string): string {
 2. Pertanyaan Menuntut Jawaban Pasti: Pertanyaan WAJIB dirumuskan secara eksplisit sehingga menghasilkan nilai akhir matematis tunggal dan pasti (tidak ambigu dan bukan berupa rentang jawaban).
 3. PETUNJUK FORMAT MENJAWAB WAJIB DICANTUMKAN PADA TEKS SOAL:
    Pada akhir teks pertanyaan (field "content"), kamu WAJIB mencantumkan petunjuk format menjawab baku dalam tanda kurung siku berikut:
-   "\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]"
+   "\\n\\n${SHORT_ANSWER_FORMAT_TAG}"
 4. Kunci Jawaban (field "correctAnswer"):
    Field "correctAnswer" HARUS diisi string angka murni (contoh: "42" atau "1250"), BUKAN kalimat dan TANPA satuan (jangan tulis "42 cm" atau "x = 42").
 5. Field "options": Harus berupa array kosong [] (karena bertipe isian singkat).
@@ -1025,7 +1026,7 @@ export function buildTypeSpecificRules(questionType: string): string {
    - "correctAnswer": null
 2. Untuk butir bertipe "ISIAN_SINGKAT":
    - "type": "ISIAN_SINGKAT"
-   - Pada akhir "content", WAJIB sertakan: "\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 25]"
+   - Pada akhir "content", WAJIB sertakan: "\\n\\n${SHORT_ANSWER_FORMAT_TAG}"
    - "correctAnswer": String angka bulat murni (contoh: "25") tanpa satuan dan tanpa desimal semu.
    - "options": Array kosong [].`;
   }
@@ -1045,8 +1046,8 @@ export function buildPassageInstruction(includePassage = true): string {
 
 export function buildTrickInstruction(includeTricks = true): string {
   return includeTricks
-    ? '- Pada bagian "solution", WAJIB cantumkan "keyFormula" (rumus inti + kapan dipakainya), "quickTrick" (tips cepat 30 detik ala kakak tutor), serta array "solutionSteps" berjumlah FLEKSIBEL (2-6 langkah) memakai bahasa ringan yang gampang dipahami siswa SMA (jangan dipaksa selalu 3 langkah).'
-    : '- Pada bagian "solution", sertakan array "solutionSteps" berjumlah FLEKSIBEL (2-6 langkah) menyesuaikan karakteristik soal dengan gaya bahasa tutor yang santai, ringan, dan mudah dipahami anak SMA.';
+    ? '- Pada bagian "solution", WAJIB cantumkan "keyFormula" (rumus inti + kapan dipakainya), "quickTrick" (tips cepat 30 detik ala kakak tutor), serta array "solutionSteps" berjumlah FLEKSIBEL (1-6 langkah) memakai bahasa ringan yang gampang dipahami siswa SMA (jangan dipaksa selalu 3 langkah).'
+    : '- Pada bagian "solution", sertakan array "solutionSteps" berjumlah FLEKSIBEL (1-6 langkah) menyesuaikan karakteristik soal dengan gaya bahasa tutor yang santai, ringan, dan mudah dipahami anak SMA.';
 }
 
 export function buildJsonStructureExample(firstItem: {
@@ -1080,7 +1081,7 @@ export function buildJsonStructureExample(firstItem: {
     "narration": "Teks wacana atau konteks bacaan jika ada (kosongkan string jika tidak ada)",
     "content": "${
       isIsian
-        ? 'Pertanyaan soal yang spesifik dan menuntut angka pasti...\\n\\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]'
+        ? `Pertanyaan soal yang spesifik dan menuntut angka pasti...\\n\\n${SHORT_ANSWER_FORMAT_TAG}`
         : 'Pertanyaan soal yang jelas, menuntut analisis nalar, dan tidak ambigu...'
     }",
     "points": 1,
@@ -1099,12 +1100,7 @@ export function buildJsonStructureExample(firstItem: {
     "staticExplanation": "Ringkasan 1-2 kalimat santai kenapa opsi tersebut benar",
     "quickTrick": "Tips cepat 30 detik ala kakak tutor (cara baca pola atau eliminasi opsi paling gampang)",
     "keyFormula": "Rumus inti yang dipakai + 1 kalimat sederhana kapan rumus ini digunakan",
-    "solutionSteps": [
-      { "order": 1, "category": "Pahami Soal", "title": "Cari Tahu Apa yang Ditanya", "content": "Dari soal kita tahu:\\n- **Info 1:** ...\\n- **Info 2:** ...\\n\\n==Inti ide awal supaya langkah berikutnya terasa gampang.==" },
-      { "order": 2, "category": "Tahap 1", "title": "Langkah Awal (Sesuaikan Judul)", "content": "Kalimat jembatan singkat kenapa kita hitung bagian ini:\\n$$...$$\\nDari sini ketemu **$x = ...$**." },
-      { "order": 3, "category": "Tahap 2", "title": "Langkah Lanjutan (Tambah/Kurangi Step Sesuai Soal)", "content": "Sekarang tinggal masukkan angka tadi:\\n$$...$$\\nHasilnya langsung mengarah ke ==poin penentu jawaban==." },
-      { "order": 4, "category": "Kesimpulan", "title": "Jadi Jawabannya...", "content": "Semua kondisi soal sudah terpenuhi oleh ==hasil/opsi akhir yang tepat==.\\n\\n✅ Jadi, jawaban yang benar adalah **...**." }
-    ]
+    "solutionSteps": ${solutionStepsExample()}
   }${isSingle ? '' : '\n]'}`;
 }
 
