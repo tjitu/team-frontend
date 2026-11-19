@@ -1,0 +1,74 @@
+.title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  min-width: 12rem;
+}
+
+.metadata {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  color: var(--muted-fg);
+  font-size: 0.6875rem;
+}
+
+.badge {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.live {
+  background: var(--success-tint);
+  color: var(--success);
+}
+
+.public {
+  background: var(--brand-tint);
+  color: var(--brand);
+}
+
+.draft {
+  background: var(--muted-bg);
+  color: var(--muted-fg);
+}
+
+.participants {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 8rem;
+  margin: 0;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.participants > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  white-space: nowrap;
+}
+
+.participants dt {
+  color: var(--muted-fg);
+}
+
+.participants dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.participants > div:first-child dt {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.schedule {
+  min-width: 8rem;
+}
