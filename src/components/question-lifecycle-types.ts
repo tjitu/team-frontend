@@ -389,27 +389,21 @@ export function getQuestionStatusBadge(status?: string | null): {
 const QUESTION_QUALITY_RULES = 'Untuk PG, isi options dengan lima objek berurutan A–E. Setiap content harus berisi teks jawaban lengkap, berbeda, tanpa label huruf atau petunjuk kunci. Isi isCorrect dengan boolean dan tandai tepat satu jawaban benar. Selesaikan soal lalu cocokkan isi dan urutan opsi dengan semua rujukan di pembahasan. Untuk literasi, uji pemahaman bacaan sesuai subtopik. Gunakan bahasa Inggris untuk stimulus, pertanyaan, dan opsi LBE. Alokasikan isian numerik pada PK atau PM.';
 
 export const SOLUTION_FORMATTING_RULES = [
-  'ATURAN GAYA BAHASA & PENYUSUNAN PEMBAHASAN (WAJIB RAMAH ANAK SMA):',
-  '- PERSONA & GAYA BAHASA: Tulis seperti kakak tutor bimbel UTBK yang sabar, ramah, dan langsung ke inti saat menjelaskan ke anak kelas 12 SMA. Gunakan bahasa Indonesia yang santai, sopan, ringan, dan mengalir (contoh: "masukkan ke rumus", "cukup cari $U_5$ saja", "nggak perlu cari satu-satu", "coba tes pakai angka", "hasilnya masih bisa beda-beda").',
-  '- HINDARI BAHASA KAKU / DIKTAT KULIAH: Jangan memakai kata berat atau kaku seperti "substitusikan", "diperoleh nilai antara", "contoh penyangkal", "nilai tidak tunggal", "secara terpisah", "mendefinisikan variabel & besaran", "langkah perhitungan sistematis", atau menjelaskan dengan kalimat berbelit.',
-  '- ALUR BERPIKIR BERTAHAP (JANGAN LOMPAT SIMBOL):',
-  '  * Awali setiap langkah dengan 1 kalimat pengantar ringan tentang TUJUAN langkah itu ("Kenapa kita hitung ini?"), bukan langsung menempelkan deretan persamaan aljabar.',
-  '  * Jika berpindah antar-bentuk rumus yang sering dilupakan siswa SMA (mis. $a + 4d = U_5$), tuliskan pengingat singkatnya ("Ingat, $U_5 = a + 4d$, jadi...") sebelum atau sesudah rumus.',
-  '  * Pecah perhitungan panjang menjadi baris pendek (1 langkah kecil per baris, jangan menumpuk 3 tanda "=" memanjang dalam satu baris).',
-  '- JUMLAH LANGKAH ("steps" / "solutionSteps") FLEKSIBEL (2 sampai 6 langkah) menyesuaikan karakteristik tiap soal — JANGAN dipaksa selalu 3 langkah:',
-  '  * Soal langsung/konseptual/literasi singkat cukup 2-3 langkah.',
-  '  * Soal hitung bertahap, multi-konsep, atau analisis pernyataan (1)-(4) pecah menjadi 4-6 langkah agar tiap slide fokus 1 hal kecil saja.',
-  '  * Gunakan "category" (label tab, maks 1-2 kata) dan "title" yang natural untuk siswa (contoh category: "Pahami Soal", "Cek (1)", "Cek (2)", "Cari x", "Hitung Total", "Kesimpulan").',
-  '- BATAS TINGGI PER SLIDE (BIAR RINGKAS & ENAK DIBACA):',
-  '  * Tiap slide langkah cukup 3-5 baris singkat dan MAKSIMAL 1-2 blok persamaan $$...$$. Gunakan $...$ inline untuk hitungan ringan, dan $$...$$ hanya untuk persamaan utamanya.',
-  '  * Jangan menulis 1 paragraf padat memanjang. Gunakan newline ("\\n" di JSON), bullet "- ...", dan "\\n\\n" antar bagian.',
-  '- DUA TINGKAT PENEKANAN:',
-  '  1. **teks** (Tebal Biasa): untuk info diketahui, angka penting, atau hasil sementara.',
-  '  2. ==teks== (Stabilo Kuning Animasi — KETAT & SELEKTIF): MAKSIMAL 1-2 frasa pendek per langkah khusus untuk poin kunci / kesimpulan paling menentukan.',
-  '- "keyFormula" & "quickTrick" (jika ada):',
-  '  * "keyFormula": tuliskan rumus intinya saja + 1 kalimat sederhana kapan rumus itu dipakai.',
-  '  * "quickTrick": tuliskan cara cepat ala kakak tutor (2-3 kalimat ringan yang langsung menunjukkan pola/eliminasi opsi paling gampang).',
-].join('\n');
+  'PEDOMAN PEMBAHASAN UNTUK SISWA YANG BARU BELAJAR:',
+  '- Jelaskan konsep dari dasar yang relevan dengan soal. Saat istilah teknis pertama muncul, berikan arti dengan bahasa sehari-hari, ciri pengenalnya, contoh konkret, dan alasan konsep itu berlaku pada soal.',
+  '- Contoh metonimia: gaya bahasa yang memakai nama yang berkaitan erat dengan benda untuk menyebut benda itu. Pada "membeli Kijang", nama model mobil mewakili mobilnya. Jelaskan hubungan nama dan benda sebelum memberi label metonimia.',
+  '- Susun chapter menurut kegunaan berpikir: memahami konsep, menerapkan konsep pada bukti, lalu menguji opsi dan menyimpulkan. Setiap chapter harus menghasilkan pemahaman atau keputusan yang dipakai pada tahap berikutnya.',
+  '- Gabungkan pemeriksaan (1)–(5) yang memakai cara berpikir sama dalam satu chapter. Hindari membagi halaman hanya karena nomor pernyataan atau urutan paragraf.',
+  '- Gunakan 2–6 chapter sesuai kebutuhan penjelasan. Chapter pendek yang hanya mengulang soal atau mengumumkan jawaban digabung dengan tahap terkait. Jumlah baris mengikuti kebutuhan konsep.',
+  '- Sebelum hitungan, jelaskan apa yang dicari dan mengapa operasi tersebut diperlukan. Terangkan makna simbol, asumsi, dan alasan perubahan rumus sampai pembaca pemula dapat mengikuti.',
+  '- Saat menguji opsi, tunjukkan bagian yang cocok atau bertentangan dengan konsep atau bukti, termasuk perbedaan istilah yang mudah tertukar.',
+  '- Gunakan paragraf pendek, tabel perbandingan bila membantu, serta baris baru untuk pernyataan. Setiap halaman boleh digulir agar penjelasan tetap utuh.',
+  '- Gunakan category berupa tujuan singkat seperti "Kenali Konsep", "Terapkan Konsep", "Uji Pilihan". Title menjelaskan tujuan langkah dengan bahasa alami.',
+  '- Rumus inline di content, title, dan category memakai $...$. Rumus blok memakai $$...$$. Escape backslash LaTeX sesuai JSON dan pastikan hasil render dapat dibaca.',
+  '- Keluarkan karakter teks asli dan spasi biasa. Hindari entity HTML seperti &#x20; serta penanda markdown yang belum selesai.',
+  '- Gunakan **tebal** untuk istilah penting dan maksimal 1–2 ==sorotan singkat== per chapter. Jelaskan istilah yang ditebalkan saat pertama diperkenalkan.',
+  '- keyFormula boleh berisi konsep inti beserta kapan dipakai. quickTrick merangkum jalan cepat yang sudah dijelaskan alasannya pada langkah utama.',
+].join('\\n');
 
 export function buildRevisionContextPrompt(params: {
   id: string;
