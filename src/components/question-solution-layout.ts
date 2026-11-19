@@ -3,9 +3,9 @@ export const SHORT_ANSWER_FORMAT_TAG = '[PETUNJUK FORMAT: Masukkan bilangan bula
 export function solutionStepsExample(conclusion = 'Nyatakan jawaban dan tunjukkan bukti yang menentukannya.') {
   return JSON.stringify([{
     stepNumber: 1,
-    category: 'Terapkan konsep',
-    title: 'Judul yang menyebut kriteria atau hubungan yang sedang diuji',
-    content: 'Terangkan konsep dengan kata sehari-hari dan kenalkan cirinya melalui contoh.\n\n• Terapkan ciri itu pada bukti pertama dan jelaskan artinya.\n• Bandingkan dengan bukti lainnya menggunakan kriteria yang sama.\n\n' + conclusion,
+    category: '[Objek atau operasi khas butir ini]',
+    title: '[Keputusan yang perlu dipahami siswa di sini]',
+    content: '[Uraikan alasan dengan data, hitungan, atau kutipan dari soal. Jelaskan istilah baru ketika pertama dipakai.]\n\n' + conclusion,
   }]);
 }
 

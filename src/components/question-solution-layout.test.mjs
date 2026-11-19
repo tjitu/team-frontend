@@ -21,6 +21,7 @@ test("distinct operations and different subjects remain independent", () => {
 
 test("one complete explanation is a valid authoring example", () => {
   const [step] = JSON.parse(solutionStepsExample("Keputusannya B."));
-  assert.ok(step.content.includes("\n• "));
+  assert.match(step.category, /^\[.+\]$/);
+  assert.match(step.title, /^\[.+\]$/);
   assert.ok(step.content.endsWith("Keputusannya B."));
 });
