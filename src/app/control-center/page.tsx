@@ -1,4 +1,5 @@
 'use client';
+import { parseQuestionAnswers, supportsNumericSlot } from '@/components/question-import-answers';
 
 import * as React from 'react';
 import type { FormEvent } from 'react';
@@ -1450,6 +1451,9 @@ function ControlCenterContent() {
     if (!aiJsonInput.trim()) return null;
     try {
       const parsed = sanitizeAndParseAiJson(aiJsonInput);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      if (!items.length) throw new Error('Array JSON kosong.');
+      items.forEach((item, index) => parseQuestionAnswers(item, index));
       if (Array.isArray(parsed)) {
         return { valid: true, isArray: true, count: parsed.length, message: `${parsed.length} soal terdeteksi dalam format array` };
       } else if (parsed && typeof parsed === 'object') {
@@ -2011,23 +2015,8 @@ function ControlCenterContent() {
       matchedTopicId = fallbackSlot.topicId || null;
     }
 
-    const rawType = String(parsed.type || '').toUpperCase();
-    const isShortAnswer = rawType.includes('ISIAN') || rawType.includes('SHORT') || (!parsed.options && Boolean(parsed.correctAnswer));
+    const { isShortAnswer, correctAnswer, options: opts } = parseQuestionAnswers(parsed, slotIdx);
     const questionType = isShortAnswer ? 'SHORT_ANSWER' : 'MULTIPLE_CHOICE';
-
-    let rawOptions = Array.isArray(parsed.options) ? parsed.options : [];
-    let opts = [0, 1, 2, 3, 4].map((i) => {
-      const o = rawOptions[i];
-      return {
-        content: o ? String(o.content || '').trim() : '',
-        isCorrect: o ? Boolean(o.isCorrect) : i === 0,
-        order: i + 1,
-      };
-    });
-
-    if (!isShortAnswer && !opts.some((o) => o.isCorrect)) {
-      opts[0].isCorrect = true;
-    }
 
     const sol = parsed.solution || {};
     const rawSteps = Array.isArray(parsed.solutionSteps)
@@ -2048,8 +2037,6 @@ function ControlCenterContent() {
     const validDiff = (diff === 'EASY' || diff === 'HARD') ? diff : 'MEDIUM';
 
     let content = String(parsed.content || '').trim();
-    const correctAnswer = parsed.correctAnswer !== undefined && parsed.correctAnswer !== null ? String(parsed.correctAnswer).trim() : '';
-
     if (isShortAnswer && !content.includes('[PETUNJUK FORMAT')) {
       content += '\n\n[PETUNJUK FORMAT: Tuliskan jawaban akhir hanya dalam bentuk bilangan bulat non-negatif (0-9999) tanpa satuan atau tanda baca. Contoh: 42]';
     }
@@ -2147,8 +2134,8 @@ function ControlCenterContent() {
       setImportingBulk(true);
       setError(''); setNotice('');
       let successCount = 0;
-      for (let idx = 0; idx < parsed.length; idx++) {
-        const body = mapAiJsonToRequestBody(parsed[idx], idx);
+      const bodies = parsed.map((item: unknown, index: number) => mapAiJsonToRequestBody(item, index));
+      for (const body of bodies) {
         await api.post('/team/control-center/questions', body);
         successCount++;
       }
@@ -2225,15 +2212,10 @@ function ControlCenterContent() {
   }
 
   function applyRevisionJsonToForm(data: Record<string, any>) {
+    const nextOptions = data.options !== undefined && questionForm.type !== 'SHORT_ANSWER'
+      ? parseQuestionAnswers({ ...data, content: data.content ?? questionForm.content, type: 'PILIHAN_GANDA' }).options
+      : questionForm.options;
     setQuestionForm((prev) => {
-      const nextOptions = Array.isArray(data.options) && data.options.length > 0
-        ? data.options.map((o: any, idx: number) => ({
-            content: String(o?.content || ''),
-            isCorrect: Boolean(o?.isCorrect),
-            order: Number(o?.order) || idx + 1,
-          }))
-        : prev.options;
-
       const rawSteps = Array.isArray(data.solutionSteps)
         ? data.solutionSteps
         : Array.isArray(data.steps)
@@ -8555,6 +8537,8 @@ function ControlCenterContent() {
                                             nextSlots[sIdx] = {
                                               ...slot,
                                               subtest: nextSubtest,
+                                              subtestShort: getSubtestDisplay(nextSubtest).code,
+                                              questionType: supportsNumericSlot(nextSubtest) ? slot.questionType : 'PILIHAN_GANDA',
                                               subtestLabel: subObj?.label || nextSubtest,
                                               topicId: firstTopic?.id || '',
                                               topicTitle: firstTopic?.title || '',
@@ -8587,7 +8571,7 @@ function ControlCenterContent() {
                                           }}
                                         >
                                           <option value="PILIHAN_GANDA">PG (A-E)</option>
-                                          <option value="ISIAN_SINGKAT">Isian</option>
+                                          <option value="ISIAN_SINGKAT" disabled={!supportsNumericSlot(slot.subtest)}>Isian</option>
                                         </select>
                                       </td>
                                       <td style={{ padding: '6px 8px' }}>

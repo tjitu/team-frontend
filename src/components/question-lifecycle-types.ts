@@ -1,3 +1,5 @@
+import { supportsNumericSlot } from './question-import-answers';
+
 export type QuestionLifecycleStatus =
   | 'DRAFT'
   | 'QC_SANDBOX'
@@ -384,6 +386,8 @@ export function getQuestionStatusBadge(status?: string | null): {
   };
 }
 
+const QUESTION_QUALITY_RULES = 'Untuk PG, isi options dengan lima objek berurutan A–E. Setiap content harus berisi teks jawaban lengkap, berbeda, tanpa label huruf atau petunjuk kunci. Isi isCorrect dengan boolean dan tandai tepat satu jawaban benar. Selesaikan soal lalu cocokkan isi dan urutan opsi dengan semua rujukan di pembahasan. Untuk literasi, uji pemahaman bacaan sesuai subtopik. Gunakan bahasa Inggris untuk stimulus, pertanyaan, dan opsi LBE. Alokasikan isian numerik pada PK atau PM.';
+
 export const SOLUTION_FORMATTING_RULES = [
   'ATURAN GAYA BAHASA & PENYUSUNAN PEMBAHASAN (WAJIB RAMAH ANAK SMA):',
   '- PERSONA & GAYA BAHASA: Tulis seperti kakak tutor bimbel UTBK yang sabar, ramah, dan langsung ke inti saat menjelaskan ke anak kelas 12 SMA. Gunakan bahasa Indonesia yang santai, sopan, ringan, dan mengalir (contoh: "masukkan ke rumus", "cukup cari $U_5$ saja", "nggak perlu cari satu-satu", "coba tes pakai angka", "hasilnya masih bisa beda-beda").',
@@ -452,6 +456,7 @@ export function buildRevisionContextPrompt(params: {
     '=== DATA SOAL SAAT INI ===',
     JSON.stringify(currentJson, null, 2),
     '',
+    QUESTION_QUALITY_RULES,
     SOLUTION_FORMATTING_RULES,
     '',
     '=== ATURAN OUTPUT ===',
@@ -459,7 +464,7 @@ export function buildRevisionContextPrompt(params: {
     '2. Gunakan format LaTeX $...$ untuk rumus inline dan $$...$$ di baris baru untuk persamaan inti; pastikan semua backslash di-escape ganda (\\\\) agar valid JSON.',
     '3. Untuk MULTIPLE_CHOICE, pastikan tepat 1 opsi memiliki "isCorrect": true. Untuk SHORT_ANSWER, isi field "correctAnswer".',
     '4. Jumlah item pada "solutionSteps" fleksibel (2-6 langkah) dengan gaya bahasa ramah anak SMA, mengikuti struktur JSON:',
-    '{"subtest":"...","difficulty":"...","type":"...","narration":"...","content":"...","correctAnswer":"...","options":[{"order":0,"content":"...","isCorrect":false}],"keyFormula":"Rumus inti yang dipakai + 1 kalimat kapan dipakainya","quickTrick":"Tips cepat ala kakak tutor (2-3 kalimat ringan cara ngeh pola/eliminasi opsi)","staticExplanation":"Ringkasan 1-2 kalimat kenapa jawabannya tepat","solutionSteps":[{"stepNumber":1,"category":"Pahami Soal","title":"Cari Tahu Targetnya","content":"Dari soal kita tahu:\\n- **Info 1:** ...\\n- **Info 2:** ...\\n\\n==Inti ide awal supaya gampang lanjut ke hitungan.=="},{"stepNumber":2,"category":"Tahap 1","title":"Langkah Awal (Tambah/Kurangi Step Sesuai Soal)","content":"Supaya gampang, kita hitung bagian ini dulu:\\n$$...$$\\nDari sini ketemu **...**, ==jadi jawabannya tinggal selangkah lagi==."}]}',
+    '{"subtest":"...","difficulty":"...","type":"...","narration":"...","content":"...","correctAnswer":"...","options":[{"content":"Opsi A","isCorrect":false},{"content":"Opsi B","isCorrect":true},{"content":"Opsi C","isCorrect":false},{"content":"Opsi D","isCorrect":false},{"content":"Opsi E","isCorrect":false}],"keyFormula":"Rumus inti yang dipakai + 1 kalimat kapan dipakainya","quickTrick":"Tips cepat ala kakak tutor (2-3 kalimat ringan cara ngeh pola/eliminasi opsi)","staticExplanation":"Ringkasan 1-2 kalimat kenapa jawabannya tepat","solutionSteps":[{"stepNumber":1,"category":"Pahami Soal","title":"Cari Tahu Targetnya","content":"Dari soal kita tahu:\\n- **Info 1:** ...\\n- **Info 2:** ...\\n\\n==Inti ide awal supaya gampang lanjut ke hitungan.=="},{"stepNumber":2,"category":"Tahap 1","title":"Langkah Awal (Tambah/Kurangi Step Sesuai Soal)","content":"Supaya gampang, kita hitung bagian ini dulu:\\n$$...$$\\nDari sini ketemu **...**, ==jadi jawabannya tinggal selangkah lagi==."}]}',
   ].join('\n');
 }
 
@@ -550,6 +555,7 @@ export function buildBalancedTryoutGapPrompt(params: {
     '- Jika memakai model pernyataan (1), (2), (3), (4) atau P & Q, wajib pisahkan tiap pernyataan dengan baris baru (\\n).',
     '- Untuk LBI/LBE/PPU/PBM, buat teks bacaan/stimulus ringkas yang tajam (2-4 paragraf) agar token tetap hemat.',
     '',
+    QUESTION_QUALITY_RULES,
     SOLUTION_FORMATTING_RULES,
     '',
     '=== FORMAT OUTPUT WAJIB: ARRAY JSON VALID TANPA TEKS PEMBUKA/PENUTUP ===',
@@ -563,13 +569,13 @@ export function buildBalancedTryoutGapPrompt(params: {
     "narration": "Stimulus/bacaan soal (atau null jika tidak perlu)",
     "content": "Pertanyaan utama (gunakan \\\\n untuk baris baru)",
     "options": [
-      { "id": "A", "label": "A", "content": "Opsi A" },
-      { "id": "B", "label": "B", "content": "Opsi B" },
-      { "id": "C", "label": "C", "content": "Opsi C" },
-      { "id": "D", "label": "D", "content": "Opsi D" },
-      { "id": "E", "label": "E", "content": "Opsi E" }
+      { "content": "Opsi A", "isCorrect": false },
+      { "content": "Opsi B", "isCorrect": true },
+      { "content": "Opsi C", "isCorrect": false },
+      { "content": "Opsi D", "isCorrect": false },
+      { "content": "Opsi E", "isCorrect": false }
     ],
-    "keyAnswer": "B",
+    "correctAnswer": null,
     "keyFormula": "Rumus/konsep inti + kapan dipakainya",
     "quickTrick": "Trik cepat 30 detik ala kakak tutor",
     "staticExplanation": "Ringkasan 1-2 kalimat kenapa B benar",
@@ -893,7 +899,10 @@ export function computePackageAutoBalancePlan(params: {
     let chosenSubtestKey =
       scopeSubtest && scopeSubtest !== 'AUTO' ? normalizeSubtestKey(scopeSubtest) : '';
     if (!chosenSubtestKey || !subtestCounts[chosenSubtestKey]) {
-      const rankedSubtests = OFFICIAL_SNBT_SUBTEST_SPEC.slice().sort((a, b) => {
+      const eligible = safeCount - i <= remainingBatchIsian
+        ? OFFICIAL_SNBT_SUBTEST_SPEC.filter(spec => supportsNumericSlot(spec.value))
+        : OFFICIAL_SNBT_SUBTEST_SPEC;
+      const rankedSubtests = eligible.slice().sort((a, b) => {
         const countA = simSubtestCounts[a.value] ?? 0;
         const countB = simSubtestCounts[b.value] ?? 0;
         const quotaA = destination === 'FOR_TRYOUT' ? a.fullQuestionTarget : 20;
@@ -929,18 +938,9 @@ export function computePackageAutoBalancePlan(params: {
       ? (simSubtopicCounts.get(chosenSubtopic.subtopicId) ?? chosenSubtopic.existingCount)
       : 0;
 
-    // Automatic Question Type Allocation based on Target Gap & Subtest suitability:
-    const isMathSubtest =
-      chosenSubtestKey === 'PENGETAHUAN_KUANTITATIF' || chosenSubtestKey === 'PENALARAN_MATEMATIKA';
-    const slotsRemaining = safeCount - i;
-
-    let slotType: 'PILIHAN_GANDA' | 'ISIAN_SINGKAT' = 'PILIHAN_GANDA';
-    if (remainingBatchIsian > 0) {
-      if (isMathSubtest || destination === 'FOR_PRACTICE' || slotsRemaining <= remainingBatchIsian) {
-        slotType = 'ISIAN_SINGKAT';
-        remainingBatchIsian--;
-      }
-    }
+    const useNumeric = remainingBatchIsian > 0 && supportsNumericSlot(chosenSubtestKey);
+    const slotType = useNumeric ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA';
+    if (useNumeric) remainingBatchIsian--;
 
     slots.push({
       index: i + 1,
@@ -964,17 +964,6 @@ export function computePackageAutoBalancePlan(params: {
     simDiff[chosenDiff] += 1;
     if (chosenSubtopic) {
       simSubtopicCounts.set(chosenSubtopic.subtopicId, currentSubCount + 1);
-    }
-  }
-
-  // If there are still remaining isian that couldn't be placed, allocate to earlier math slots or last slots
-  if (remainingBatchIsian > 0) {
-    for (let j = 0; j < slots.length && remainingBatchIsian > 0; j++) {
-      if (slots[j].questionType === 'PILIHAN_GANDA') {
-        slots[j].questionType = 'ISIAN_SINGKAT';
-        slots[j].reason = `${slots[j].reason} (Dialokasikan untuk mengejar target ${resolvedTargetIsianPct}% isian)`;
-        remainingBatchIsian--;
-      }
     }
   }
 
@@ -1107,7 +1096,7 @@ export function buildJsonStructureExample(firstItem: {
         ? '[]'
         : `[
       { "content": "Pernyataan / opsi A", "isCorrect": false },
-      { "content": "Pernyataan / opsi B (Kunci Jawaban)", "isCorrect": true },
+      { "content": "Pernyataan / opsi B", "isCorrect": true },
       { "content": "Pernyataan / opsi C", "isCorrect": false },
       { "content": "Pernyataan / opsi D", "isCorrect": false },
       { "content": "Pernyataan / opsi E", "isCorrect": false }
@@ -1198,6 +1187,7 @@ ${buildPassageInstruction(includePassage)}
 ${buildTrickInstruction(includeTricks)}
 ${customInstruction.trim() ? `\n- Catatan / Instruksi Khusus Penyusun:\n${customInstruction.trim()}` : ''}
 
+${QUESTION_QUALITY_RULES}
 ${buildTypeSpecificRules(resolvedQuestionType)}
 
 ${SOLUTION_FORMATTING_RULES}
@@ -1296,7 +1286,11 @@ export function buildManualBatchPrompt(params: {
     topicLine = `- Fokus Topik / Kisi-kisi Khusus: ${promptCustomTopic.trim()}`;
   }
 
-  const questionTypeHeading = buildQuestionTypeHeading(promptQuestionType);
+  const hasVerbal = activeSubtestEntries.some(([key]) => !supportsNumericSlot(key));
+  const hasNumeric = !activeSubtestEntries.length || activeSubtestEntries.some(([key]) => supportsNumericSlot(key));
+  const resolvedType = !hasNumeric ? 'PILIHAN_GANDA'
+    : hasVerbal && promptQuestionType === 'ISIAN_SINGKAT' ? 'CAMPURAN' : promptQuestionType;
+  const questionTypeHeading = buildQuestionTypeHeading(resolvedType);
   const primarySubtestId = activeSubtestEntries[0]?.[0] || 'PENALARAN_MATEMATIKA';
 
   return `${PROMPT_SYSTEM_IDENTITY}
@@ -1318,7 +1312,8 @@ ${topicLine}
 ${buildPassageInstruction(includePassage)}
 ${buildTrickInstruction(includeTricks)}
 
-${buildTypeSpecificRules(promptQuestionType)}
+${QUESTION_QUALITY_RULES}
+${buildTypeSpecificRules(resolvedType)}
 
 ${SOLUTION_FORMATTING_RULES}
 
@@ -1340,7 +1335,7 @@ ${buildJsonStructureExample({
   topic: selectedSubtopicMeta?.topicTitle || 'Aljabar & Persamaan',
   subtopic: selectedSubtopicMeta?.subtopicTitle || 'Persamaan Kuadrat',
   difficulty: promptDifficulty === 'MIXED' ? 'MEDIUM' : promptDifficulty,
-  type: promptQuestionType === 'ISIAN_SINGKAT' ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA',
+  type: supportsNumericSlot(primarySubtestId) && resolvedType === 'ISIAN_SINGKAT' ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA',
   isSingle: totalCount <= 1,
 })}`;
 }
