@@ -133,7 +133,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function PracticeSection({
-  jituMainUrl = 'http://localhost:5173',
+  jituMainUrl,
   curriculumTopics = [],
   onError,
   onNotice,
@@ -141,7 +141,7 @@ export function PracticeSection({
   onEditQuestion,
   onQuestionsChanged,
 }: {
-  jituMainUrl?: string;
+  jituMainUrl: string;
   curriculumTopics?: TryoutCurriculumTopic[];
   onError: (msg: string) => void;
   onNotice: (msg: string) => void;

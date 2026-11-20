@@ -148,7 +148,7 @@ function getErrorMessage(error: unknown): string {
 
 export function TryoutQuestionsSection({
   tryoutId,
-  jituMainUrl = 'http://localhost:5173',
+  jituMainUrl,
   onBack,
   onError,
   onNotice,
@@ -157,7 +157,7 @@ export function TryoutQuestionsSection({
   onEditQuestion,
 }: {
   tryoutId: string;
-  jituMainUrl?: string;
+  jituMainUrl: string;
   onBack: () => void;
   onError: (msg: string) => void;
   onNotice: (msg: string) => void;

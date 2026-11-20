@@ -3,6 +3,7 @@ import { readImportedSteps, SHORT_ANSWER_FORMAT_TAG } from '@/components/questio
 import { parseQuestionAnswers, supportsNumericSlot } from '@/components/question-import-answers';
 
 import * as React from 'react';
+import { JITU_MAIN_URL } from '@/lib/jitu-main-url';
 import type { FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createColumnHelper } from '@tanstack/react-table';
@@ -93,12 +94,6 @@ import {
   type TryoutAssignedQuestion,
   type TryoutCurationStatus,
 } from '@/components/question-lifecycle-types';
-
-const JITU_MAIN_URL = (
-  process.env.NEXT_PUBLIC_JITU_MAIN_URL ||
-  process.env.NEXT_PUBLIC_MAIN_APP_URL ||
-  'http://localhost:5173'
-).replace(/\/+$/, '');
 
 export type Section = 'tryouts' | 'pricing' | 'vouchers' | 'discounts' | 'users' | 'articles' | 'careers' | 'payments' | 'questions' | 'practice' | 'soal-asli' | 'curriculum';
 
