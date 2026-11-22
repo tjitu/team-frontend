@@ -67,6 +67,9 @@ import {
 } from 'lucide-react';
 import { PracticeSection } from '@/components/practice-section';
 import { TryoutQuestionsSection } from '@/components/tryout-questions-section';
+import { TryoutTable } from '@/components/tryout-table';
+import type { Tryout } from '@/components/tryout-table-types';
+export type { Tryout } from '@/components/tryout-table-types';
 import { SoalAsliSection } from '@/components/soal-asli-section';
 import { KotakRevisiBanner, BulkRevisionModal, RevisionRequestModal } from '@/components/question-workflow-modals';
 import { AutoBalanceAdjusterModal } from '@/components/auto-balance-adjuster-modal';
@@ -92,7 +95,6 @@ import {
   type DifficultyComposition,
   type QuestionLifecycleStatus,
   type TryoutAssignedQuestion,
-  type TryoutCurationStatus,
 } from '@/components/question-lifecycle-types';
 
 export type Section = 'tryouts' | 'pricing' | 'vouchers' | 'discounts' | 'users' | 'articles' | 'careers' | 'payments' | 'questions' | 'practice' | 'soal-asli' | 'curriculum';
@@ -205,32 +207,6 @@ export const initialDiscountForm: DiscountForm = {
   badgeText: 'DISKON 25%',
   badgeStyle: 'RED_FIRE',
   isActive: true,
-};
-
-export type Tryout = {
-  id: string;
-  code: number;
-  title: string;
-  description: string | null;
-  solutionPrice: number;
-  batch: 'SNBT' | 'MANDIRI';
-  scheduledStart: string | null;
-  scheduledEnd: string | null;
-  status: string;
-  lifecycleStatus?: 'DRAFT' | 'PUBLIC' | 'LIVE';
-  curationStatus?: TryoutCurationStatus;
-  revisionNotes?: string | null;
-  reviewedBy?: string | null;
-  reviewedAt?: string | null;
-  totalDurationMinutes?: number;
-  isPublic: boolean;
-  referralCode: string | null;
-  questionCount?: number;
-  readyQuestionCount?: number;
-  registrantCount?: number;
-  notStartedCount?: number;
-  inProgressCount?: number;
-  finishedCount?: number;
 };
 
 export type Package = {
@@ -588,7 +564,6 @@ function autoSlug(str: string): string {
 }
 
 // Column Helpers for Data Tables
-const tryoutColHelper = createColumnHelper<DataTableFeatures, Tryout>();
 const packageColHelper = createColumnHelper<DataTableFeatures, Package>();
 const discountColHelper = createColumnHelper<DataTableFeatures, Discount>();
 const userColHelper = createColumnHelper<DataTableFeatures, User>();
@@ -2519,10 +2494,10 @@ function ControlCenterContent() {
   }
 
   async function deleteTryoutItem(item: Tryout) {
-    if (!window.confirm(`Delete tryout "${item.title}"? Tryouts with exam content or student history cannot be deleted.`)) return;
+    if (!window.confirm(`Force delete tryout "${item.title}"? This permanently removes its registrations, exam attempts, answers, scores, and unlocked solutions. Assigned questions will be kept in Bank Soal, Sandbox, or Draft according to their QC status. This cannot be undone.`)) return;
     setDeletingId(item.id); setError(''); setNotice('');
     try {
-      await api.delete(`/team/control-center/tryouts/${encodeURIComponent(item.id)}`);
+      await api.delete(`/team/control-center/tryouts/${encodeURIComponent(item.id)}?force=true`);
       if (editingTryout === item.id) {
         setTryoutForm(initialTryoutForm);
         setEditingTryout(null);
@@ -2755,216 +2730,6 @@ function ControlCenterContent() {
     event.preventDefault();
     await loadSection(section, search.trim());
   }
-
-  // TANSTACK TABLE COLUMNS FOR TRYOUTS
-  const tryoutColumns = React.useMemo(() => [
-    tryoutColHelper.accessor('title', {
-      header: 'Tryout',
-      cell: ({ row }) => {
-        const qCount = Number(row.original.questionCount ?? 0);
-        const readyCount = Number(row.original.readyQuestionCount ?? 0);
-        const durMins = Number(row.original.totalDurationMinutes ?? 195);
-        const lifecycle = getTryoutLifecycle(row.original);
-        const allReady = qCount > 0 && readyCount >= qCount;
-        const lifecycleBadge =
-          lifecycle === 'LIVE'
-            ? { label: 'Live', bg: 'rgba(16, 185, 129, 0.14)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.35)' }
-            : lifecycle === 'PUBLIC'
-              ? { label: 'Public', bg: 'rgba(56, 189, 248, 0.14)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.35)' }
-              : { label: 'Draft', bg: 'rgba(245, 158, 11, 0.14)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.35)' };
-        return (
-          <div>
-            <strong>{row.original.title}</strong>
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span
-                className="pill"
-                style={{
-                  background: lifecycleBadge.bg,
-                  color: lifecycleBadge.color,
-                  border: lifecycleBadge.border,
-                  fontSize: '10px',
-                  fontWeight: 700,
-                }}
-              >
-                {lifecycleBadge.label}
-              </span>
-              <span
-                style={{
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  padding: '1px 7px',
-                  borderRadius: '999px',
-                  background: allReady ? 'rgba(16, 185, 129, 0.14)' : qCount > 0 ? 'rgba(56, 189, 248, 0.14)' : 'rgba(245, 158, 11, 0.14)',
-                  color: allReady ? '#34d399' : qCount > 0 ? '#7dd3fc' : '#fbbf24',
-                  border: allReady ? '1px solid rgba(16, 185, 129, 0.32)' : qCount > 0 ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
-                }}
-              >
-                {readyCount}/{qCount} Siap · {durMins}m
-              </span>
-              <small className="text-[var(--muted-fg)]">
-                #{row.original.code}
-              </small>
-            </div>
-          </div>
-        );
-      },
-    }),
-    tryoutColHelper.accessor('batch', {
-      header: 'Batch',
-      cell: ({ getValue }) => <span className="font-semibold text-xs">{getValue()}</span>,
-    }),
-    tryoutColHelper.accessor('scheduledStart', {
-      header: 'Schedule',
-      cell: ({ row }) => (
-        <div>
-          <span>{formatDate(row.original.scheduledStart)}</span>
-          <small className="block text-[var(--muted-fg)]">Ends {formatDate(row.original.scheduledEnd)}</small>
-        </div>
-      ),
-    }),
-    tryoutColHelper.accessor('solutionPrice', {
-      header: 'Solution Price',
-      cell: ({ getValue }) => <span>{getValue()} coins</span>,
-    }),
-    tryoutColHelper.display({
-      id: 'participants',
-      header: 'Peserta',
-      cell: ({ row }) => {
-        const registrants = Number(row.original.registrantCount ?? 0);
-        const notStarted = Number(row.original.notStartedCount ?? 0);
-        const inProgress = Number(row.original.inProgressCount ?? 0);
-        const finished = Number(row.original.finishedCount ?? 0);
-        return (
-          <div className="text-xs space-y-0.5 tabular-nums">
-            <div className="font-semibold">
-              Registrants: {registrants}
-            </div>
-            <div className="text-[11px] text-[var(--muted-fg)] flex flex-wrap gap-x-2">
-              <span>Belum: {notStarted}</span>
-              <span>Sedang: {inProgress}</span>
-              <span>Selesai: {finished}</span>
-            </div>
-          </div>
-        );
-      },
-    }),
-    tryoutColHelper.accessor('status', {
-      header: 'Status',
-      cell: ({ row }) => {
-        const lifecycle = getTryoutLifecycle(row.original);
-        return (
-          <span className="control-status">{lifecycle}</span>
-        );
-      },
-    }),
-    tryoutColHelper.display({
-      id: 'actions',
-      header: () => <div className="text-right">Actions</div>,
-      cell: ({ row }) => {
-        const lifecycle = getTryoutLifecycle(row.original);
-        const isPublished = lifecycle !== 'DRAFT';
-        const isBusy = tryoutWorkflowBusyId === row.original.id;
-        const qCount = Number(row.original.questionCount ?? 0);
-
-        return (
-          <div className="table-action-group" style={{ flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              className="table-action-btn"
-              style={{
-                borderColor: 'rgba(56, 189, 248, 0.45)',
-                color: '#38bdf8',
-                background: 'rgba(56, 189, 248, 0.08)',
-              }}
-              onClick={() => {
-                setTableAutoBalanceTryout(row.original);
-              }}
-              title="Atur Auto-Balance komposisi tipe & level serta materi kurikulum paket tryout ini"
-            >
-              <Sliders className="action-icon" /> Auto-Balance
-            </button>
-
-            <button
-              type="button"
-              className="table-action-btn"
-              style={{
-                borderColor: 'rgba(56, 189, 248, 0.4)',
-                color: '#7dd3fc',
-                background: 'rgba(56, 189, 248, 0.08)',
-              }}
-              onClick={() => {
-                setTryoutFormOpen(false);
-                setEditingTryout(null);
-                setError('');
-                setNotice('');
-                setManagingTryoutId(row.original.id);
-              }}
-              title="Kelola soal, QC per soal, timer subtes, dan publish tryout ini"
-            >
-              <Layers className="action-icon" /> Kelola Soal
-            </button>
-
-            <button
-              type="button"
-              className="table-action-btn"
-              disabled={isBusy || qCount <= 0}
-              onClick={() => void openTryoutSandboxPreview(row.original)}
-              style={{ borderColor: 'rgba(59, 130, 246, 0.4)', color: '#93c5fd' }}
-              title={qCount <= 0 ? 'Tambahkan minimal 1 soal dulu' : 'Uji simulasi full paket Tryout di Sandbox'}
-            >
-              <ExternalLink className="action-icon" /> Sandbox
-            </button>
-
-            {!isPublished ? (
-              <button
-                type="button"
-                className="table-action-btn"
-                disabled={isBusy}
-                title="Publish Tryout ke katalog publik agar siswa bisa mendaftar"
-                onClick={() => void runTryoutWorkflow(row.original, 'PUBLISH_CATALOG')}
-                style={{
-                  borderColor: 'rgba(16, 185, 129, 0.45)',
-                  color: '#34d399',
-                  background: 'rgba(16, 185, 129, 0.08)',
-                }}
-              >
-                <QcCheckIcon className="action-icon" /> Publish
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="table-action-btn"
-                disabled={isBusy}
-                onClick={() => void runTryoutWorkflow(row.original, 'UNPUBLISH')}
-                style={{ borderColor: 'rgba(245, 158, 11, 0.4)', color: '#fbbf24' }}
-              >
-                <QcRestoreIcon className="action-icon" /> Tarik ke Draft
-              </button>
-            )}
-
-            <button
-              type="button"
-              className="table-action-btn"
-              onClick={() => editTryout(row.original)}
-              title="Edit tryout"
-            >
-              <Edit className="action-icon" /> Edit
-            </button>
-            <button
-              type="button"
-              className="table-action-btn table-action-btn-danger"
-              onClick={() => void deleteTryoutItem(row.original)}
-              disabled={deletingId === row.original.id}
-              aria-label={`Delete tryout ${row.original.title}`}
-              title="Delete tryout"
-            >
-              <Trash2 className="action-icon" /> {deletingId === row.original.id ? 'Deleting…' : 'Delete'}
-            </button>
-          </div>
-        );
-      },
-    }),
-  ], [deletingId, editingTryout, managingTryoutId, tryoutWorkflowBusyId, getTryoutLifecycle]);
 
   // TANSTACK TABLE COLUMNS FOR PRICING
   const packageColumns = React.useMemo(() => [
@@ -4701,10 +4466,24 @@ function ControlCenterContent() {
           {loading ? (
             <div className="control-empty">Loading tryouts…</div>
           ) : error ? null : (
-            <DataTable
-              columns={tryoutColumns}
-              data={filteredTryouts}
-              emptyMessage="Tidak ada tryout pada filter status ini."
+            <TryoutTable
+              tryouts={filteredTryouts}
+              deletingId={deletingId}
+              busyId={tryoutWorkflowBusyId}
+              getLifecycle={getTryoutLifecycle}
+              formatDate={formatDate}
+              onAutoBalance={setTableAutoBalanceTryout}
+              onManageQuestions={(tryout) => {
+                setTryoutFormOpen(false);
+                setEditingTryout(null);
+                setError('');
+                setNotice('');
+                setManagingTryoutId(tryout.id);
+              }}
+              onSandbox={openTryoutSandboxPreview}
+              onWorkflow={runTryoutWorkflow}
+              onEdit={editTryout}
+              onDelete={deleteTryoutItem}
             />
           )}
         </section>
