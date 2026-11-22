@@ -391,6 +391,7 @@ const QUESTION_QUALITY_RULES = 'Untuk PG, isi options dengan lima objek beruruta
 
 export const SOLUTION_FORMATTING_RULES = [
   'PEDOMAN PEMBAHASAN UNTUK SISWA YANG BARU BELAJAR:',
+  '- Jika quickTrick diminta, tunjukkan satu jalan pintas yang benar-benar menghemat langkah. Sebut petunjuk spesifik dalam soal, lalu langsung gunakan untuk memperoleh hasil atau menggugurkan opsi. Jika pembahasan sudah memakai cara tersingkat dan tidak ada jalan pintas lain yang sah, isi quickTrick dengan string kosong.',
   '- Jelaskan konsep dari dasar yang relevan dengan soal. Saat istilah teknis pertama muncul, berikan arti dengan bahasa sehari-hari, ciri pengenalnya, contoh konkret, dan alasan konsep itu berlaku pada soal.',
   '- Contoh metonimia: gaya bahasa yang memakai nama yang berkaitan erat dengan benda untuk menyebut benda itu. Pada "membeli Kijang", nama model mobil mewakili mobilnya. Jelaskan hubungan nama dan benda sebelum memberi label metonimia.',
   '- Selesaikan dulu butirnya. Cari keputusan yang paling sulit bagi pemula, lalu bangun penjelasan di sekitar keputusan itu. Perkenalkan konsep saat pertama kali dibutuhkan. Pilih titik awal, urutan, dan jumlah chapter dari jalan penyelesaian butir tersebut.',
@@ -466,7 +467,7 @@ export function buildRevisionContextPrompt(params: {
     '2. Gunakan format LaTeX $...$ untuk rumus inline dan $$...$$ di baris baru untuk persamaan inti; pastikan semua backslash di-escape ganda (\\\\) agar valid JSON.',
     '3. Untuk MULTIPLE_CHOICE, pastikan tepat 1 opsi memiliki "isCorrect": true. Untuk SHORT_ANSWER, isi field "correctAnswer".',
     '4. Jumlah item pada "solutionSteps" fleksibel (1-6 langkah) dengan gaya bahasa ramah anak SMA, mengikuti struktur JSON:',
-    `{"subtest":"...","difficulty":"...","type":"...","narration":"...","content":"...","correctAnswer":"...","options":[{"content":"Opsi A","isCorrect":false},{"content":"Opsi B","isCorrect":true},{"content":"Opsi C","isCorrect":false},{"content":"Opsi D","isCorrect":false},{"content":"Opsi E","isCorrect":false}],"keyFormula":"Rumus inti yang dipakai + 1 kalimat kapan dipakainya","quickTrick":"Tips cepat ala kakak tutor (2-3 kalimat ringan cara ngeh pola/eliminasi opsi)","staticExplanation":"Ringkasan 1-2 kalimat kenapa jawabannya tepat","solutionSteps":${solutionStepsExample()}}`,
+    `{"subtest":"...","difficulty":"...","type":"...","narration":"...","content":"...","correctAnswer":"...","options":[{"content":"Opsi A","isCorrect":false},{"content":"Opsi B","isCorrect":true},{"content":"Opsi C","isCorrect":false},{"content":"Opsi D","isCorrect":false},{"content":"Opsi E","isCorrect":false}],"keyFormula":"Rumus inti yang dipakai + 1 kalimat kapan dipakainya","quickTrick":"Petunjuk khas soal dan cara memakainya untuk mempersingkat penyelesaian, atau string kosong","staticExplanation":"Ringkasan 1-2 kalimat kenapa jawabannya tepat","solutionSteps":${solutionStepsExample()}}`,
   ].join('\n');
 }
 
@@ -495,7 +496,7 @@ export function buildSoalAsliSolutionPrompt(question: SoalAsliQuestionItem, pack
     SOLUTION_FORMATTING_RULES,
     '',
     '=== FORMAT OUTPUT WAJIB (JSON VALID, JUMLAH STEP 1-6 ADAPTIF SESUAI SOAL) ===',
-    `{${keyFieldExample},"keyFormula":"Rumus inti + kapan dipakainya","quickTrick":"Trik cepat 30 detik ala kakak tutor","staticExplanation":"Ringkasan singkat kenapa jawaban itu benar","solutionSteps":${solutionStepsExample(conclusionExample)}}`,
+    `{${keyFieldExample},"keyFormula":"Rumus inti + kapan dipakainya","quickTrick":"Petunjuk khas soal dan cara memakainya untuk mempersingkat penyelesaian, atau string kosong","staticExplanation":"Ringkasan singkat kenapa jawaban itu benar","solutionSteps":${solutionStepsExample(conclusionExample)}}`,
     '',
     'Catatan: Pakai bahasa yang santai, jelas, tidak berbelit seperti buku kuliahan. Tambah/kurangi jumlah "solutionSteps" (1-6 langkah) sesuai kebutuhan soal agar setiap tahap penalaran tuntas, dan escape semua backslash LaTeX menjadi \\\\ agar JSON valid.',
   ].filter(Boolean).join('\n');
@@ -579,7 +580,7 @@ export function buildBalancedTryoutGapPrompt(params: {
     ],
     "correctAnswer": null,
     "keyFormula": "Rumus/konsep inti + kapan dipakainya",
-    "quickTrick": "Trik cepat 30 detik ala kakak tutor",
+    "quickTrick": "Petunjuk khas soal dan cara memakainya untuk mempersingkat penyelesaian, atau string kosong",
     "staticExplanation": "Ringkasan 1-2 kalimat kenapa B benar",
     "solutionSteps": ${solutionStepsExample()}
   }
@@ -1049,7 +1050,7 @@ export function buildPassageInstruction(includePassage = true): string {
 
 export function buildTrickInstruction(includeTricks = true): string {
   return includeTricks
-    ? '- Pada bagian "solution", WAJIB cantumkan "keyFormula" (rumus inti + kapan dipakainya), "quickTrick" (tips cepat 30 detik ala kakak tutor), serta array "solutionSteps" berjumlah FLEKSIBEL (1-6 langkah) memakai bahasa ringan yang gampang dipahami siswa SMA (jangan dipaksa selalu 3 langkah).'
+    ? '- Pada bagian "solution", WAJIB cantumkan "keyFormula" (rumus inti + kapan dipakainya), "quickTrick" (Petunjuk khas soal dan cara memakainya untuk mempersingkat penyelesaian, atau string kosong), serta array "solutionSteps" berjumlah FLEKSIBEL (1-6 langkah) memakai bahasa ringan yang gampang dipahami siswa SMA (jangan dipaksa selalu 3 langkah).'
     : '- Pada bagian "solution", sertakan array "solutionSteps" berjumlah FLEKSIBEL (1-6 langkah) menyesuaikan karakteristik soal dengan gaya bahasa tutor yang santai, ringan, dan mudah dipahami anak SMA.';
 }
 
@@ -1101,7 +1102,7 @@ export function buildJsonStructureExample(firstItem: {
     ]`
     },
     "staticExplanation": "Ringkasan 1-2 kalimat santai kenapa opsi tersebut benar",
-    "quickTrick": "Tips cepat 30 detik ala kakak tutor (cara baca pola atau eliminasi opsi paling gampang)",
+    "quickTrick": "Petunjuk khas soal dan cara memakainya untuk mempersingkat penyelesaian, atau string kosong",
     "keyFormula": "Rumus inti yang dipakai + 1 kalimat sederhana kapan rumus ini digunakan",
     "solutionSteps": ${solutionStepsExample()}
   }${isSingle ? '' : '\n]'}`;
