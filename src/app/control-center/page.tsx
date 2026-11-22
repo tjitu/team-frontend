@@ -8859,40 +8859,24 @@ function ControlCenterContent() {
                       </>
                       )}
 
-                      {/* 3. Catatan Tambahan & Checkboxes */}
-                      <div className="prompt-field-row-2">
-                        <div>
-                          <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
-                            Catatan Topik Spesifik / Tambahan (Opsional)
-                          </label>
+                      {/* 3. Opsi Format Soal & Solusi (Checkboxes) */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', padding: '4px 0' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--foreground)', cursor: 'pointer' }}>
                           <input
-                            type="text"
-                            className="field-input"
-                            style={{ fontSize: '12px', width: '100%' }}
-                            placeholder="Contoh: Barisan Aritmetika bertingkat, Logika Deduktif, atau instruksi khusus..."
-                            value={promptCustomTopic}
-                            onChange={(e) => setPromptCustomTopic(e.target.value)}
+                            type="checkbox"
+                            checked={promptIncludePassage}
+                            onChange={(e) => setPromptIncludePassage(e.target.checked)}
                           />
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '6px', paddingBottom: '2px' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--foreground)', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={promptIncludePassage}
-                              onChange={(e) => setPromptIncludePassage(e.target.checked)}
-                            />
-                            <span>Sertakan wacana / narasi teks bacaan</span>
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--foreground)', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={promptIncludeTricks}
-                              onChange={(e) => setPromptIncludeTricks(e.target.checked)}
-                            />
-                            <span>Sertakan rumus pokok & trik cepat (Quick Trick)</span>
-                          </label>
-                        </div>
+                          <span>Sertakan wacana / narasi teks bacaan</span>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--foreground)', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={promptIncludeTricks}
+                            onChange={(e) => setPromptIncludeTricks(e.target.checked)}
+                          />
+                          <span>Sertakan rumus pokok & trik cepat (Quick Trick)</span>
+                        </label>
                       </div>
 
                       {/* 4. Live Prompt Box & Copy Button */}
