@@ -5,7 +5,7 @@ export function solutionStepsExample(conclusion = 'Nyatakan jawaban dan tunjukka
     stepNumber: 1,
     category: '[Objek atau operasi khas butir ini]',
     title: '[Keputusan yang perlu dipahami siswa di sini]',
-    content: '[Uraikan alasan dengan data, hitungan, atau kutipan dari soal. Jelaskan istilah baru ketika pertama dipakai.]\n\n' + conclusion,
+    content: '[Jelaskan ==gagasan penentu== dengan kata-kata yang sesuai soal.]\n\n[Tunjukkan hitungan, data, atau kutipan yang membuktikannya.]\n\n' + conclusion,
   }]);
 }
 

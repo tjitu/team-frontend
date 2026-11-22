@@ -408,7 +408,8 @@ export const SOLUTION_FORMATTING_RULES = [
   '- Untuk batch, baca kembali urutan category, title, dan inti penalaran antarbutir. Jika dua butir berbeda strategi tetapi pembahasannya masih bisa saling ditukar, susun ulang pembahasan dari bukti atau operasi khas masing-masing. Mengganti judul dengan sinonim saja belum cukup. Butir yang sungguh memakai penalaran sama boleh berbagi istilah dan urutan.',
   '- Rumus inline di content, title, dan category memakai $...$. Rumus blok memakai $$...$$. Escape backslash LaTeX sesuai JSON dan pastikan hasil render dapat dibaca.',
   '- Keluarkan karakter teks asli dan spasi biasa. Hindari entity HTML seperti &#x20; serta penanda markdown yang belum selesai.',
-  '- Gunakan **tebal** untuk istilah penting dan maksimal 1–2 ==sorotan singkat== per chapter. Jelaskan istilah yang ditebalkan saat pertama diperkenalkan.',
+  '- Dalam content setiap solutionSteps, tandai satu gagasan penentu dengan ==stabilo kuning==. Pilih frasa pendek seperti "==hanya air yang tersisa==" atau "==hitung sejak keran kedua dibuka==". Letakkan sorotan di luar rumus. Gunakan **tebal** untuk istilah yang perlu didefinisikan.',
+  '- Beri ruang saat arah penalaran berganti: pisahkan alasan, hitungan atau bukti, dan kesimpulan dengan satu baris kosong (\\n\\n di dalam string JSON). Bila beberapa hitungan berurutan, tulis satu persamaan per baris.',
   '- keyFormula boleh berisi konsep inti beserta kapan dipakai. quickTrick merangkum jalan cepat yang sudah dijelaskan alasannya pada langkah utama.',
 ].join('\n');
 
