@@ -5350,7 +5350,9 @@ html.dark .department-chip {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
-  overflow: hidden;
+  /* Must stay visible: the combobox popup is absolutely positioned inside this
+     group, and overflow:hidden clipped it to a blank 34px strip. */
+  overflow: visible;
   height: 34px;
 }
 
@@ -5366,6 +5368,7 @@ html.dark .department-chip {
   height: 100%;
   display: inline-flex;
   align-items: center;
+  border-radius: 7px 0 0 7px;
 }
 
 .control-filter-group .combobox-root {
@@ -5374,7 +5377,7 @@ html.dark .department-chip {
 
 .control-filter-group .combobox-trigger {
   border: none !important;
-  border-radius: 0 !important;
+  border-radius: 0 7px 7px 0 !important;
   background: transparent !important;
   height: 32px !important;
   min-height: 32px !important;
