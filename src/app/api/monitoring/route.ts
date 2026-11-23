@@ -115,9 +115,25 @@ async function checkTarget(
   }
 }
 
+function withPath(origin: string, path: string) {
+  try {
+    const url = new URL(origin);
+    url.pathname = path;
+    url.search = '';
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
-  const teamSiteUrl = safeOrigin(process.env.MONITOR_TEAM_URL) ?? request.nextUrl.origin;
-  const mainSiteUrl = safeOrigin(process.env.MONITOR_MAIN_URL || 'https://jituptn.com');
+  const teamOrigin = safeOrigin(process.env.MONITOR_TEAM_URL) ?? request.nextUrl.origin;
+  const mainOrigin = safeOrigin(process.env.MONITOR_MAIN_URL || 'https://jituptn.com');
+  // Liveness checks ("is the web server up") hit a bare JSON route instead of the
+  // full homepage, so this doesn't measure SSR render time, font loading, or
+  // page-level data fetching on top of plain reachability.
+  const teamSiteUrl = teamOrigin ? (withPath(teamOrigin, '/api/health') ?? teamOrigin) : null;
+  const mainSiteUrl = mainOrigin ? (withPath(mainOrigin, '/api/health') ?? mainOrigin) : null;
   const mainApiHealthUrl = safeOrigin(
     process.env.MONITOR_MAIN_API_HEALTH_URL || 'https://jituptn.com/api/proxy/health/ready',
   );
