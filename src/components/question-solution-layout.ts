@@ -5,7 +5,12 @@ export function solutionStepsExample(conclusion = 'Nyatakan jawaban dan tunjukka
     stepNumber: 1,
     category: '[Objek atau operasi khas butir ini]',
     title: '[Keputusan yang perlu dipahami siswa di sini]',
-    content: '[Jelaskan ==gagasan penentu== dengan kata-kata yang sesuai soal.]\n\n[Tunjukkan hitungan, data, atau kutipan yang membuktikannya.]\n\n' + conclusion,
+    content: '[Kenalkan ==hubungan penentu== dari data atau kutipan soal dan jelaskan mengapa hubungan itu relevan.]',
+  }, {
+    stepNumber: 2,
+    category: '[Operasi atau pengujian bukti]',
+    title: '[Bagaimana petunjuk tadi menentukan pilihan atau hasil?]',
+    content: '[Gunakan ==bukti khusus butir ini== untuk menghitung, membandingkan, atau menguji opsi.]\n\n' + conclusion,
   }]);
 }
 

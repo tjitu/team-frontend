@@ -19,9 +19,10 @@ test("distinct operations and different subjects remain independent", () => {
   }
 });
 
-test("one complete explanation is a valid authoring example", () => {
-  const [step] = JSON.parse(solutionStepsExample("Keputusannya B."));
+test("authoring example separates reasoning from application", () => {
+  const [step, application] = JSON.parse(solutionStepsExample("Keputusannya B."));
   assert.match(step.category, /^\[.+\]$/);
   assert.match(step.title, /^\[.+\]$/);
-  assert.ok(step.content.endsWith("Keputusannya B."));
+  assert.equal(application.stepNumber, 2);
+  assert.ok(application.content.endsWith("Keputusannya B."));
 });
