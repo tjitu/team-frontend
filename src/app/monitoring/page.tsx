@@ -402,8 +402,12 @@ export default function MonitoringPage() {
 
         return {
           ...database,
-          cpuBusyPct: cpuIdleDelta !== null && elapsedSeconds > 0 && current?.cpuCores
-            ? Math.max(0, Math.min(100, (1 - cpuIdleDelta / (elapsedSeconds * current.cpuCores)) * 100))
+          // cpuIdleDelta is counterRate()'s output: a per-second rate (idle CPU-seconds
+          // accumulated per second of wall time), already divided by elapsedSeconds once.
+          // Dividing by elapsedSeconds again here made the idle fraction shrink with every
+          // poll interval, so busy% drifted toward 100% regardless of real load.
+          cpuBusyPct: cpuIdleDelta !== null && current?.cpuCores
+            ? Math.max(0, Math.min(100, (1 - cpuIdleDelta / current.cpuCores) * 100))
             : null,
           ramUsedPct: ramTotal && ramUsed !== null ? Math.max(0, Math.min(100, (ramUsed / ramTotal) * 100)) : null,
           diskUsedPct: diskTotal && diskAvailable !== null
