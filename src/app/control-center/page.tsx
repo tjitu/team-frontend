@@ -738,6 +738,7 @@ function ControlCenterContent() {
   const [workflowBusyId, setWorkflowBusyId] = React.useState<string | null>(null);
   const [sandboxOpeningId, setSandboxOpeningId] = React.useState<string | null>(null);
   const [selectedQuestionIds, setSelectedQuestionIds] = React.useState<string[]>([]);
+  const [bulkDeleting, setBulkDeleting] = React.useState(false);
   const [bulkMovingStatus, setBulkMovingStatus] = React.useState<QuestionLifecycleStatus | null>(null);
   const [bulkRevisionModal, setBulkRevisionModal] = React.useState<{
     open: boolean;
@@ -1909,6 +1910,36 @@ function ControlCenterContent() {
     setBulkRevisionModal((prev) => ({ ...prev, submitting: false }));
     if (ok) {
       setBulkRevisionModal({ open: false, notes: '', submitting: false });
+    }
+  }
+
+  async function deleteSelectedQuestions() {
+    const ids = selectedVisibleQuestions.map(question => question.id);
+    if (!ids.length || bulkDeleting || bulkMovingStatus) return;
+    const protectedCount = selectedVisibleQuestions.filter(question => (question.attemptCount ?? 0) > 0).length;
+    if (protectedCount) {
+      setError(`Batalkan pilihan pada ${protectedCount} soal yang sudah memiliki riwayat pengerjaan siswa.`);
+      return;
+    }
+    if (!window.confirm(`Hapus permanen ${ids.length} soal terpilih beserta opsi dan pembahasannya? Aksi ini tidak bisa dibatalkan.`)) return;
+    setBulkDeleting(true);
+    setError('');
+    setNotice('');
+    try {
+      const { deletedCount } = await api.post<{ deletedCount: number }>(
+        '/team/control-center/questions/bulk-delete', { questionIds: ids },
+      );
+      const removed = new Set(ids);
+      setQuestions(previous => previous.filter(question => !removed.has(question.id)));
+      setSelectedQuestionIds(previous => previous.filter(id => !removed.has(id)));
+      lastSelectedQuestionIdRef.current = null;
+      setPracticeRefreshKey(key => key + 1);
+      setNotice(`${deletedCount} soal dihapus permanen.`);
+      await loadSection('questions', search, true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBulkDeleting(false);
     }
   }
 
@@ -4762,6 +4793,12 @@ function ControlCenterContent() {
                 >
                   Batal pilih
                 </button>
+                <button type="button" className="table-action-btn table-action-btn-danger"
+                  disabled={bulkDeleting || Boolean(bulkMovingStatus)}
+                  onClick={() => void deleteSelectedQuestions()}>
+                  <Trash2 className="action-icon" />
+                  {bulkDeleting ? 'Menghapus...' : 'Hapus permanen'}
+                </button>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -4781,7 +4818,7 @@ function ControlCenterContent() {
                     (q) => (q.status || 'DRAFT').toUpperCase() === item.status,
                   );
                   const isMovingThis = bulkMovingStatus === item.status;
-                  const disabled = Boolean(bulkMovingStatus) || allAlreadyInStatus;
+                  const disabled = bulkDeleting || Boolean(bulkMovingStatus) || allAlreadyInStatus;
                   return (
                     <button
                       key={item.status}
