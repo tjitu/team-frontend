@@ -11,6 +11,7 @@ import {
   Sliders,
   Sparkles,
 } from 'lucide-react';
+import { DeleteSelectedQuestionsButton } from './delete-selected-questions-button';
 import { api } from '@/lib/api';
 import { MathText } from './math-text';
 import {
@@ -725,6 +726,19 @@ export function PracticeSection({
             >
               {bulkBusy === 'DRAFT' ? 'Memproses…' : 'Tarik ke Draf'}
             </button>
+            <DeleteSelectedQuestionsButton
+              questionIds={assignedQuestions.filter(q => selectedTableIds.includes(q.id)).map(q => q.id)}
+              visibleIds={filteredAssigned.map(q => q.id)}
+              busy={bulkBusy}
+              setBusy={setBulkBusy}
+              onError={onError}
+              onNotice={onNotice}
+              onDeleted={async ids => {
+                setSelectedTableIds(previous => previous.filter(id => !ids.has(id)));
+                await loadWorkspace();
+                onQuestionsChangedRef.current?.();
+              }}
+            />
             <button
               type="button"
               className="button button-secondary"
