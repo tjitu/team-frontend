@@ -22,6 +22,7 @@ export interface ComboboxSelectProps {
   ariaLabel?: string;
   align?: 'start' | 'end';
   fullWidth?: boolean;
+  onOpen?: () => void;
 }
 
 /**
@@ -40,6 +41,7 @@ export function ComboboxSelect({
   ariaLabel,
   align = 'end',
   fullWidth = false,
+  onOpen,
 }: ComboboxSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -69,6 +71,10 @@ export function ComboboxSelect({
         opt.value.toLowerCase().includes(query)
     );
   }, [normalizedOptions, searchable, search]);
+
+  React.useEffect(() => {
+    if (open) onOpen?.();
+  }, [open, onOpen]);
 
   // Click outside to dismiss
   React.useEffect(() => {

@@ -7962,6 +7962,7 @@ function ControlCenterContent() {
                         key={opt.id}
                         type="button"
                         onClick={() => {
+                          if (!active) setImportBatch('');
                           setCreateTarget(opt.id);
                           if (opt.id !== 'FOR_TRYOUT') {
                             setCreateTryoutId('');
@@ -8014,6 +8015,7 @@ function ControlCenterContent() {
                       style={{ width: '100%', fontSize: '12px' }}
                       value={createTryoutId}
                       onChange={(e) => {
+                        setImportBatch('');
                         setCreateTryoutId(e.target.value);
                         setError('');
                       }}
@@ -8702,7 +8704,8 @@ function ControlCenterContent() {
                     <QuestionBatchField
                       value={importBatch}
                       onChange={setImportBatch}
-                      existingBatches={mergedQuestionBatches}
+                      target={createTarget}
+                      tryoutId={createTryoutId}
                       label="Assign ke Batch Soal"
                       helperText="Pilih batch yang sudah ada atau buat batch baru — akan otomatis diterapkan ke seluruh soal yang diimpor dari JSON di bawah."
                       compact={true}
@@ -9047,6 +9050,7 @@ function ControlCenterContent() {
                           onClick={() =>
                             setQuestionForm({
                               ...questionForm,
+                              batch: isSelected ? questionForm.batch : '',
                               target: item.id as any,
                               tryoutId: item.id === 'FOR_TRYOUT' ? questionForm.tryoutId : '',
                               status: editingQuestion ? questionForm.status : 'DRAFT',
@@ -9103,7 +9107,7 @@ function ControlCenterContent() {
                       </label>
                       <ComboboxSelect
                         value={questionForm.tryoutId}
-                        onValueChange={(val) => setQuestionForm({ ...questionForm, tryoutId: val })}
+                        onValueChange={(val) => setQuestionForm({ ...questionForm, tryoutId: val, batch: val === questionForm.tryoutId ? questionForm.batch : '' })}
                         placeholder="-- Pilih paket Tryout tujuan --"
                         options={tryouts.map((t) => ({
                           label: `${t.title} (#${t.code}) · ${t.readyQuestionCount ?? 0}/${t.questionCount ?? 0} Siap · ${t.batch || 'SNBT'}`,
@@ -9241,7 +9245,8 @@ function ControlCenterContent() {
                     <QuestionBatchField
                       value={questionForm.batch}
                       onChange={(nextBatch) => setQuestionForm({ ...questionForm, batch: nextBatch })}
-                      existingBatches={mergedQuestionBatches}
+                      target={questionForm.target}
+                      tryoutId={questionForm.tryoutId}
                       helperText="Pilih batch yang sudah ada atau buat batch baru agar soal mudah difilter saat QC, curation Latihan, maupun pemantauan Bank Soal."
                     />
                   </div>

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { FolderPlus, Layers, X } from 'lucide-react';
+import { api } from '@/lib/api';
 import { ComboboxSelect } from './ui/combobox';
 
 export type QuestionBatchSummary = {
@@ -41,7 +42,8 @@ export function mergeBatchSummaries(
 type QuestionBatchFieldProps = {
   value: string;
   onChange: (nextBatch: string) => void;
-  existingBatches: QuestionBatchSummary[];
+  target: string;
+  tryoutId?: string;
   label?: string;
   helperText?: string;
   compact?: boolean;
@@ -54,27 +56,37 @@ type QuestionBatchFieldProps = {
 export function QuestionBatchField({
   value,
   onChange,
-  existingBatches,
+  target,
+  tryoutId,
   label = 'Batch Soal',
   helperText,
   compact = false,
 }: QuestionBatchFieldProps) {
+  const [batches, setBatches] = React.useState<Array<QuestionBatchSummary & {
+    targetKind: string;
+    tryoutId?: string | null;
+  }>>([]);
+  const [loadError, setLoadError] = React.useState(false);
+  const [refresh, reload] = React.useReducer((count: number) => count + 1, 0);
+  React.useEffect(() => {
+    let current = true;
+    setLoadError(false);
+    api.get<typeof batches>('/team/control-center/questions/batches', { force: true })
+      .then(rows => { if (current) setBatches(rows); })
+      .catch(() => { if (current) { setBatches([]); setLoadError(true); } });
+    return () => { current = false; };
+  }, [refresh]);
+  const kind = target === 'FOR_TRYOUT' || target === 'FOR_PRACTICE' ? target : 'DRAFT';
+  const existingBatches = React.useMemo(() => batches.filter(batch =>
+    batch.targetKind === kind && (kind !== 'FOR_TRYOUT' || batch.tryoutId === tryoutId)
+  ), [batches, kind, tryoutId]);
   const normalizedValue = value.trim();
   const knownBatchNames = React.useMemo(
     () => new Set(existingBatches.map((item) => item.batch.trim())),
     [existingBatches],
   );
 
-  const [mode, setMode] = React.useState<'EXISTING' | 'NEW'>(() =>
-    normalizedValue && !knownBatchNames.has(normalizedValue) ? 'NEW' : 'EXISTING',
-  );
-
-  React.useEffect(() => {
-    if (!normalizedValue) return;
-    if (!knownBatchNames.has(normalizedValue)) {
-      setMode('NEW');
-    }
-  }, [normalizedValue, knownBatchNames]);
+  const [mode, setMode] = React.useState<'EXISTING' | 'NEW'>('EXISTING');
 
   const comboboxOptions = React.useMemo(() => {
     const opts = [
@@ -184,6 +196,7 @@ export function QuestionBatchField({
               value={normalizedValue}
               onValueChange={(nextVal) => onChange(nextVal)}
               options={comboboxOptions}
+              onOpen={reload}
               searchable={true}
               align="start"
               fullWidth={true}
@@ -238,6 +251,7 @@ export function QuestionBatchField({
         </div>
       )}
 
+      {loadError && <span role="alert">Daftar batch gagal dimuat. Buka kembali pilihan batch untuk mencoba lagi.</span>}
       {helperText && (
         <span style={{ fontSize: '11px', color: 'var(--muted-fg)', lineHeight: 1.4 }}>{helperText}</span>
       )}
