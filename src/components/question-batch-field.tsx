@@ -42,6 +42,7 @@ export function mergeBatchSummaries(
 type QuestionBatchFieldProps = {
   value: string;
   onChange: (nextBatch: string) => void;
+  onDeleted: (batch: string, questionIds: string[]) => void;
   target: string;
   tryoutId?: string;
   label?: string;
@@ -56,6 +57,7 @@ type QuestionBatchFieldProps = {
 export function QuestionBatchField({
   value,
   onChange,
+  onDeleted,
   target,
   tryoutId,
   label = 'Batch Soal',
@@ -106,6 +108,29 @@ export function QuestionBatchField({
 
     return opts;
   }, [existingBatches, knownBatchNames, normalizedValue]);
+
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState('');
+  async function deleteSelectedBatch() {
+    if (deleting || !knownBatchNames.has(normalizedValue)) return;
+    if (!window.confirm(`Hapus batch "${normalizedValue}"? Semua soal dalam batch ini akan menjadi Tanpa Batch.`)) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      const params = new URLSearchParams({ name: normalizedValue, target: kind });
+      if (kind === 'FOR_TRYOUT' && tryoutId) params.set('tryoutId', tryoutId);
+      const result = await api.delete<{ questionIds: string[] }>(
+        `/team/control-center/questions/batches/selected?${params}`,
+      );
+      setBatches(previous => previous.filter(batch => batch.batch !== normalizedValue));
+      onDeleted(normalizedValue, result.questionIds);
+      reload();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Batch gagal dihapus.');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const matchingExisting = React.useMemo(() => {
     if (!normalizedValue) return null;
@@ -208,6 +233,12 @@ export function QuestionBatchField({
               triggerClassName="w-full h-9"
             />
           </div>
+          {knownBatchNames.has(normalizedValue) && (
+            <button type="button" className="button button-secondary text-destructive" disabled={deleting}
+              onClick={() => void deleteSelectedBatch()}>
+              {deleting ? 'Menghapus…' : 'Hapus batch'}
+            </button>
+          )}
           {normalizedValue && (
             <button
               type="button"
@@ -251,6 +282,7 @@ export function QuestionBatchField({
         </div>
       )}
 
+      {deleteError && <span role="alert">{deleteError}</span>}
       {loadError && <span role="alert">Daftar batch gagal dimuat. Buka kembali pilihan batch untuk mencoba lagi.</span>}
       {helperText && (
         <span style={{ fontSize: '11px', color: 'var(--muted-fg)', lineHeight: 1.4 }}>{helperText}</span>

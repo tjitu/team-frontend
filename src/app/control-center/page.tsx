@@ -1464,6 +1464,16 @@ function ControlCenterContent() {
     [questionBatches, questions],
   );
 
+  function handleBatchDeleted(name: string, questionIds: string[]) {
+    const ids = new Set(questionIds);
+    setQuestions(previous => previous.map(q => ids.has(q.id) ? { ...q, batch: null } : q));
+    setQuestionBatches(previous => previous.filter(batch => batch.batch !== name));
+    setFilterBatch(previous => previous === name ? 'ALL' : previous);
+    setImportBatch(previous => previous === name ? '' : previous);
+    setQuestionForm(previous => previous.batch === name ? { ...previous, batch: '' } : previous);
+    setNotice(`Batch "${name}" dihapus. ${ids.size} soal kini tanpa batch.`);
+  }
+
   // Form states
   const [tryoutForm, setTryoutForm] = React.useState<TryoutForm>(initialTryoutForm);
   const [packageForm, setPackageForm] = React.useState<PackageForm>(initialPackageForm);
@@ -8702,6 +8712,7 @@ function ControlCenterContent() {
                     }}
                   >
                     <QuestionBatchField
+                      onDeleted={handleBatchDeleted}
                       value={importBatch}
                       onChange={setImportBatch}
                       target={createTarget}
@@ -9243,6 +9254,7 @@ function ControlCenterContent() {
                   {/* Batch Pengelompokan Soal */}
                   <div className="pt-2 border-t border-zinc-800">
                     <QuestionBatchField
+                      onDeleted={handleBatchDeleted}
                       value={questionForm.batch}
                       onChange={(nextBatch) => setQuestionForm({ ...questionForm, batch: nextBatch })}
                       target={questionForm.target}
