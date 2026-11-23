@@ -781,7 +781,7 @@ export function computePackageAutoBalancePlan(params: {
     typeComposition,
     difficultyRatio,
   } = params;
-  const safeCount = Math.max(1, Math.min(25, Number(count) || 5));
+  const safeCount = Math.max(1, Math.min(160, Number(count) || 5));
   const normRatio = normalizeDifficultyComposition(difficultyRatio);
 
   // Resolved target isian % (default 15%, or derived from typeComposition if provided)

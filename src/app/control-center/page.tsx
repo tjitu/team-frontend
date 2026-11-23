@@ -1,4 +1,7 @@
 'use client';
+import { buildChunkPlan, detectChunk, readPlan, writePlan } from '@/components/question-prompt-chunks';
+import { QuestionChunkControls } from '@/components/question-chunk-controls';
+import { useQuestionPlan } from '@/components/use-question-plan';
 import { readImportedSteps, SHORT_ANSWER_FORMAT_TAG } from '@/components/question-solution-layout';
 import { parseQuestionAnswers, supportsNumericSlot } from '@/components/question-import-answers';
 
@@ -1336,11 +1339,11 @@ function ControlCenterContent() {
     }
   };
 
-  const generatedPrompt = React.useMemo(() => {
+  function makePrompt(offset: number, size: number) {
     if (autoBalanceEnabled && effectiveBalanceSlots.length > 0) {
       return buildAutoBalancedBatchPrompt({
         packageLabel: currentPackageLabel,
-        slots: effectiveBalanceSlots,
+        slots: effectiveBalanceSlots.slice(offset, offset + size).map((slot, i) => ({ ...slot, index: i + 1 })),
         questionType: promptQuestionType,
         customInstruction: promptCustomTopic,
         difficultyRatio: activeTargetConfig.difficulty,
@@ -1351,10 +1354,13 @@ function ControlCenterContent() {
       });
     }
 
+    const counts = new Map<string, number>();
+    const ordered = activeSubtestEntries.flatMap(([subtest, n]) => Array<string>(n).fill(subtest));
+    for (const subtest of ordered.slice(offset, offset + size)) counts.set(subtest, (counts.get(subtest) ?? 0) + 1);
     return buildManualBatchPrompt({
       packageLabel: currentPackageLabel,
-      totalCount: totalPromptCount,
-      activeSubtestEntries,
+      totalCount: size,
+      activeSubtestEntries: [...counts.entries()],
       promptDifficulty,
       normalizedDifficultyComposition,
       promptQuestionType,
@@ -1363,22 +1369,38 @@ function ControlCenterContent() {
       includePassage: promptIncludePassage,
       includeTricks: promptIncludeTricks,
     });
-  }, [
-    autoBalanceEnabled,
-    effectiveBalanceSlots,
-    currentPackageLabel,
-    activeTargetConfig,
-    autoBalanceAnalysis.totalInPackage,
-    activeSubtestEntries,
-    totalPromptCount,
-    promptDifficulty,
-    normalizedDifficultyComposition,
-    promptQuestionType,
-    selectedSubtopicMeta,
-    promptCustomTopic,
-    promptIncludePassage,
-    promptIncludeTricks,
-  ]);
+  }
+
+  const totalPlanned = autoBalanceEnabled ? effectiveBalanceSlots.length : totalPromptCount;
+  const [chunkCount, setChunkCount] = React.useState(1);
+  const [chunkIndex, setChunkIndex] = React.useState(0);
+  const planScope = (member?.id ?? 'loading') + '/' + createTarget + '/' + (createTarget === 'FOR_TRYOUT' ? createTryoutId : '');
+  const chunkPlan = useQuestionPlan(planScope);
+  const selectedChunk = chunkPlan?.chunks[chunkIndex] ?? chunkPlan?.chunks[0];
+  const generatedPrompt = selectedChunk?.prompt ?? (chunkCount === 1 ? makePrompt(0, totalPlanned) : '');
+  async function changeChunkPlan(close = false) {
+    try {
+      await navigator.locks.request(planScope, async () => {
+        const existing = readPlan(planScope);
+        if (close) {
+          if (existing?.chunks.some(c => c.saved < c.keys.length) &&
+            !confirm('Akhiri rencana yang belum selesai? Soal yang sudah tersimpan tetap dihitung pada rencana berikutnya.')) return;
+          const fresh = await api.get<QuestionItem[]>('/team/control-center/questions', { force: true });
+          setQuestions(fresh);
+          writePlan(planScope, null);
+          setChunkCount(1);
+          setAutoBalanceCount(n => Math.min(n, 20));
+        } else if (!existing) {
+          if (!member) throw new Error('Tunggu sampai data akun selesai dimuat.');
+          if (createTarget === 'FOR_TRYOUT' && !createTryoutId) throw new Error('Pilih paket Tryout terlebih dahulu.');
+          writePlan(planScope, buildChunkPlan(totalPlanned, chunkCount,
+            autoBalanceEnabled ? effectiveBalanceSlots : [], makePrompt));
+          setIsPromptAdjusterOpen(true);
+        }
+        setChunkIndex(0);
+      });
+    } catch (err) { setError(errorMessage(err)); }
+  }
 
   function sanitizeAndParseAiJson(raw: string): any {
     if (!raw || !raw.trim()) throw new Error('Input JSON kosong.');
@@ -1423,9 +1445,10 @@ function ControlCenterContent() {
     if (!aiJsonInput.trim()) return null;
     try {
       const parsed = sanitizeAndParseAiJson(aiJsonInput);
-      const items = Array.isArray(parsed) ? parsed : [parsed];
+      const { items, chunk } = detectChunk(parsed, chunkPlan);
       if (!items.length) throw new Error('Array JSON kosong.');
       items.forEach((item, index) => parseQuestionAnswers(item, index));
+      if (chunk) return { valid: true, isArray: true, count: items.length, message: `Chunk ${chunk.id.split("/").pop()} ? ${items.length} soal terdeteksi` };
       if (Array.isArray(parsed)) {
         return { valid: true, isArray: true, count: parsed.length, message: `${parsed.length} soal terdeteksi dalam format array` };
       } else if (parsed && typeof parsed === 'object') {
@@ -1435,7 +1458,7 @@ function ControlCenterContent() {
     } catch (err: any) {
       return { valid: false, message: err.message || 'Format JSON tidak valid' };
     }
-  }, [aiJsonInput]);
+  }, [aiJsonInput, chunkPlan]);
 
   const handleCopyPrompt = async () => {
     try {
@@ -1970,8 +1993,8 @@ function ControlCenterContent() {
     }
   }
 
-  function mapAiJsonToRequestBody(parsed: any, slotIdx = 0) {
-    const fallbackSlot = autoBalanceEnabled ? effectiveBalanceSlots[slotIdx] : undefined;
+  function mapAiJsonToRequestBody(parsed: any, slotIdx = 0, slots = autoBalanceEnabled ? effectiveBalanceSlots : []) {
+    const fallbackSlot = slots[slotIdx];
     const subtestMap: Record<string, string> = {
       PENALARAN_MATEMATIKA: 'PENALARAN_MATEMATIKA',
       PM: 'PENALARAN_MATEMATIKA',
@@ -2131,24 +2154,42 @@ function ControlCenterContent() {
       return;
     }
     try {
-      let parsed = sanitizeAndParseAiJson(aiJsonInput);
-      if (!Array.isArray(parsed)) {
-        parsed = [parsed];
-      }
-      if (parsed.length === 0) {
-        throw new Error('Array JSON kosong.');
-      }
       setImportingBulk(true);
       setError(''); setNotice('');
       let successCount = 0;
-      const bodies = parsed.map((item: unknown, index: number) => mapAiJsonToRequestBody(item, index));
-      for (const body of bodies) {
-        await api.post('/team/control-center/questions', body);
-        successCount++;
-      }
+      await navigator.locks.request(planScope, async () => {
+        const plan = readPlan(planScope);
+        const { items, chunk } = detectChunk(sanitizeAndParseAiJson(aiJsonInput), plan);
+        if (!items.length) throw new Error('Array JSON kosong.');
+        const bodies = items.map((item, i) => {
+          const body = mapAiJsonToRequestBody(item, i, chunk?.slots);
+          const slot = chunk?.slots[i];
+          if (slot && (body.subtest !== slot.subtest || body.difficulty !== slot.difficulty ||
+              (body.type === 'SHORT_ANSWER') !== (slot.questionType === 'ISIAN_SINGKAT') ||
+              (slot.subtopicId && body.subtopicId !== slot.subtopicId))) {
+            throw new Error(`Soal ${i + 1} tidak sesuai dengan slot auto-balance pada prompt chunk ini.`);
+          }
+          return body;
+        });
+        for (let i = chunk?.saved ?? 0; i < bodies.length; i++) {
+          await api.post('/team/control-center/questions', chunk
+            ? { ...bodies[i], importSlotKey: chunk.keys[i] } : bodies[i]);
+          if (chunk && plan) {
+            chunk.saved = i + 1;
+            writePlan(planScope, plan);
+          }
+          successCount++;
+        }
+        if (plan) {
+          const next = plan.chunks.findIndex(c => c.saved < c.keys.length);
+          if (next >= 0) setChunkIndex(next);
+          setIsPromptAdjusterOpen(true);
+        } else {
+          setImportBatch('');
+          setCreateMethodModalOpen(false);
+        }
+      });
       setAiJsonInput('');
-      setImportBatch('');
-      setCreateMethodModalOpen(false);
       await loadSection('questions', '', true);
       void api.get<Tryout[]>('/team/control-center/tryouts', { force: true }).then(setTryouts).catch(() => {});
       setPracticeRefreshKey((k) => k + 1);
@@ -8163,6 +8204,11 @@ function ControlCenterContent() {
               {/* STEP 2: IMPORT JSON + ADJUST PROMPT PANEL */}
               {createMethodView === 'IMPORT_JSON' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {(isPromptAdjusterOpen || chunkPlan) && <QuestionChunkControls plan={chunkPlan}
+                    count={chunkCount} selected={selectedChunk ? chunkPlan!.chunks.indexOf(selectedChunk) : 0} busy={importingBulk}
+                    onCount={n => { setChunkCount(n); if (n === 1) setAutoBalanceCount(v => Math.min(20, v)); }}
+                    onSelect={i => { setChunkIndex(i); setIsPromptAdjusterOpen(true); }}
+                    onStart={() => void changeChunkPlan()} onClose={() => void changeChunkPlan(true)} />}
                   {/* ADJUST PROMPT ACCORDION / BUILDER */}
                   {isPromptAdjusterOpen && (
                     <div className="prompt-builder-box">
@@ -8176,6 +8222,7 @@ function ControlCenterContent() {
                         </span>
                       </div>
 
+                      {!chunkPlan && <>
                       {/* 0. AUTO-BALANCE TERHADAP PAKET SAAT INI (CHECKBOX + KONTEKS PARAMETER PAKET) */}
                       <div
                         style={{
@@ -8245,18 +8292,18 @@ function ControlCenterContent() {
                             <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr auto', gap: '10px', alignItems: 'end', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
                               <div>
                                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
-                                  Jumlah Soal Batch (1-20)
+                                  Jumlah Soal Batch (1?{chunkCount > 1 ? 160 : 20})
                                 </label>
                                 <input
                                   type="number"
                                   min={1}
-                                  max={20}
+                                  max={chunkCount > 1 ? 160 : 20}
                                   className="field-input"
                                   style={{ fontSize: '12px', width: '100%' }}
                                   value={autoBalanceCount}
                                   onChange={(e) => {
                                     const n = parseInt(e.target.value, 10);
-                                    if (!isNaN(n)) setAutoBalanceCount(Math.max(1, Math.min(20, n)));
+                                    if (!isNaN(n)) setAutoBalanceCount(Math.max(1, Math.min(chunkCount > 1 ? 160 : 20, n)));
                                   }}
                                 />
                               </div>
@@ -8547,7 +8594,7 @@ function ControlCenterContent() {
                                     <input
                                       type="number"
                                       min={1}
-                                      max={50}
+                                      max={chunkCount > 1 ? 160 : 50}
                                       className="subtest-stepper-input"
                                       value={currentCount}
                                       onChange={(e) => {
@@ -8555,7 +8602,7 @@ function ControlCenterContent() {
                                         if (!isNaN(val) && val >= 1) {
                                           setPromptSubtestCounts((prev) => ({
                                             ...prev,
-                                            [sub.id]: Math.min(50, val),
+                                            [sub.id]: Math.min(chunkCount > 1 ? 160 : 50, val),
                                           }));
                                         }
                                       }}
@@ -8567,7 +8614,7 @@ function ControlCenterContent() {
                                       onClick={() => {
                                         setPromptSubtestCounts((prev) => ({
                                           ...prev,
-                                          [sub.id]: Math.min(50, (prev[sub.id] || 0) + 1),
+                                          [sub.id]: Math.min(chunkCount > 1 ? 160 : 50, (prev[sub.id] || 0) + 1),
                                         }));
                                       }}
                                     >
@@ -8708,6 +8755,7 @@ function ControlCenterContent() {
                       </div>
 
                       {/* 4. Live Prompt Box & Copy Button */}
+                      </>}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--muted-fg)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -8717,6 +8765,7 @@ function ControlCenterContent() {
                             type="button"
                             className="button button-primary"
                             style={{ fontSize: '12px', height: '30px', padding: '0 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                            disabled={!generatedPrompt}
                             onClick={handleCopyPrompt}
                           >
                             {copiedPrompt ? (
