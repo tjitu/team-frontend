@@ -8196,18 +8196,18 @@ function ControlCenterContent() {
                             <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr auto', gap: '10px', alignItems: 'end', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
                               <div>
                                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
-                                  Jumlah Soal Batch (1-15)
+                                  Jumlah Soal Batch (1-20)
                                 </label>
                                 <input
                                   type="number"
                                   min={1}
-                                  max={15}
+                                  max={20}
                                   className="field-input"
                                   style={{ fontSize: '12px', width: '100%' }}
                                   value={autoBalanceCount}
                                   onChange={(e) => {
                                     const n = parseInt(e.target.value, 10);
-                                    if (!isNaN(n)) setAutoBalanceCount(Math.max(1, Math.min(15, n)));
+                                    if (!isNaN(n)) setAutoBalanceCount(Math.max(1, Math.min(20, n)));
                                   }}
                                 />
                               </div>
