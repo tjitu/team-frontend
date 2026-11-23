@@ -1,4 +1,5 @@
 'use client';
+import { TryoutPromptScopeField, tryoutPromptSubtests, type TryoutPromptScope } from '@/components/tryout-prompt-scope';
 import { buildChunkPlan, detectChunk, readPlan, writePlan } from '@/components/question-prompt-chunks';
 import { QuestionChunkControls } from '@/components/question-chunk-controls';
 import { useQuestionPlan } from '@/components/use-question-plan';
@@ -894,9 +895,15 @@ function ControlCenterContent() {
   // 3-Option Creation Destination & Auto-Balance State
   const [createTarget, setCreateTarget] = React.useState<'FOR_PRACTICE' | 'FOR_TRYOUT' | 'DRAFT'>('DRAFT');
   const [createTryoutId, setCreateTryoutId] = React.useState<string>('');
-  const [autoBalanceEnabled, setAutoBalanceEnabled] = React.useState<boolean>(false);
+  const [autoBalanceRequested, setAutoBalanceEnabled] = React.useState<boolean>(false);
   const [autoBalanceCount, setAutoBalanceCount] = React.useState<number>(5);
   const [autoBalanceSubtestScope, setAutoBalanceSubtestScope] = React.useState<string>('AUTO');
+  const [tryoutPromptScope, setTryoutPromptScope] = React.useState<TryoutPromptScope>('CUSTOM');
+  const [presetSubtest, setPresetSubtest] = React.useState(OFFICIAL_SNBT_SUBTEST_SPEC[0].value);
+  const prescribedSubtests = React.useMemo(() => createTarget === 'FOR_TRYOUT'
+    ? tryoutPromptSubtests(tryoutPromptScope, presetSubtest) : undefined,
+    [createTarget, tryoutPromptScope, presetSubtest]);
+  const autoBalanceEnabled = Boolean(prescribedSubtests) || autoBalanceRequested;
   const [tableAutoBalanceTryout, setTableAutoBalanceTryout] = React.useState<Tryout | null>(null);
   const [difficultyComposition, setDifficultyComposition] = React.useState<DifficultyComposition>({
     easy: 30,
@@ -952,14 +959,15 @@ function ControlCenterContent() {
       curriculumTopics: topics as any,
       count: autoBalanceCount,
       scopeSubtest: autoBalanceSubtestScope,
+      prescribedSubtests,
       targetIsianPct: activeTargetConfig.isianPercentage,
       difficultyRatio: activeTargetConfig.difficulty,
     });
-  }, [createTarget, currentPackageQuestions, topics, autoBalanceCount, autoBalanceSubtestScope, activeTargetConfig]);
+  }, [createTarget, currentPackageQuestions, topics, autoBalanceCount, autoBalanceSubtestScope, activeTargetConfig, prescribedSubtests]);
 
   React.useEffect(() => {
     setCustomBalanceSlots(null);
-  }, [createTarget, createTryoutId, autoBalanceCount, autoBalanceSubtestScope, activeTargetConfig]);
+  }, [createTarget, createTryoutId, autoBalanceCount, autoBalanceSubtestScope, activeTargetConfig, prescribedSubtests]);
 
   const effectiveBalanceSlots = React.useMemo(() => {
     if (customBalanceSlots && customBalanceSlots.length === autoBalanceAnalysis.slots.length) {
@@ -1446,6 +1454,9 @@ function ControlCenterContent() {
     try {
       const parsed = sanitizeAndParseAiJson(aiJsonInput);
       const { items, chunk } = detectChunk(parsed, chunkPlan);
+      if (!chunk && prescribedSubtests && items.length !== prescribedSubtests.length) {
+        throw new Error(`Terdeteksi ${items.length} dari ${prescribedSubtests.length} soal yang diperlukan.`);
+      }
       if (!items.length) throw new Error('Array JSON kosong.');
       items.forEach((item, index) => parseQuestionAnswers(item, index));
       if (chunk) return { valid: true, isArray: true, count: items.length, message: `Chunk ${chunk.id.split("/").pop()} ? ${items.length} soal terdeteksi` };
@@ -1458,7 +1469,7 @@ function ControlCenterContent() {
     } catch (err: any) {
       return { valid: false, message: err.message || 'Format JSON tidak valid' };
     }
-  }, [aiJsonInput, chunkPlan]);
+  }, [aiJsonInput, chunkPlan, prescribedSubtests]);
 
   const handleCopyPrompt = async () => {
     try {
@@ -2161,13 +2172,16 @@ function ControlCenterContent() {
         const plan = readPlan(planScope);
         const { items, chunk } = detectChunk(sanitizeAndParseAiJson(aiJsonInput), plan);
         if (!items.length) throw new Error('Array JSON kosong.');
+        if (!plan && prescribedSubtests && items.length !== prescribedSubtests.length) {
+          throw new Error(`Cakupan yang dipilih membutuhkan tepat ${prescribedSubtests.length} soal.`);
+        }
         const bodies = items.map((item, i) => {
           const body = mapAiJsonToRequestBody(item, i, chunk?.slots);
-          const slot = chunk?.slots[i];
+          const slot = chunk ? chunk.slots[i] : prescribedSubtests ? effectiveBalanceSlots[i] : undefined;
           if (slot && (body.subtest !== slot.subtest || body.difficulty !== slot.difficulty ||
               (body.type === 'SHORT_ANSWER') !== (slot.questionType === 'ISIAN_SINGKAT') ||
               (slot.subtopicId && body.subtopicId !== slot.subtopicId))) {
-            throw new Error(`Soal ${i + 1} tidak sesuai dengan slot auto-balance pada prompt chunk ini.`);
+            throw new Error(`Soal ${i + 1} tidak sesuai dengan slot auto-balance pada prompt ini.`);
           }
           return body;
         });
@@ -4369,6 +4383,7 @@ function ControlCenterContent() {
           onOpenCreateForTryout={(tid) => {
             setEditingQuestion(null);
             setImportBatch('');
+            setTryoutPromptScope('CUSTOM');
             setCreateTarget('FOR_TRYOUT');
             setCreateTryoutId(tid);
             setCreateMethodView('SELECT');
@@ -8204,6 +8219,14 @@ function ControlCenterContent() {
               {/* STEP 2: IMPORT JSON + ADJUST PROMPT PANEL */}
               {createMethodView === 'IMPORT_JSON' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {createTarget === 'FOR_TRYOUT' && !chunkPlan && <TryoutPromptScopeField
+                    mode={tryoutPromptScope} selected={presetSubtest}
+                    onChange={(mode, subtest) => {
+                      setTryoutPromptScope(mode);
+                      setPresetSubtest(subtest);
+                      setCustomBalanceSlots(null);
+                      setIsPromptAdjusterOpen(true);
+                    }} />}
                   {(isPromptAdjusterOpen || chunkPlan) && <QuestionChunkControls plan={chunkPlan}
                     count={chunkCount} selected={selectedChunk ? chunkPlan!.chunks.indexOf(selectedChunk) : 0} busy={importingBulk}
                     onCount={n => { setChunkCount(n); if (n === 1) setAutoBalanceCount(v => Math.min(20, v)); }}
@@ -8249,6 +8272,7 @@ function ControlCenterContent() {
                             <input
                               type="checkbox"
                               checked={autoBalanceEnabled}
+                              disabled={Boolean(prescribedSubtests)}
                               onChange={(e) => setAutoBalanceEnabled(e.target.checked)}
                               style={{ marginTop: '3px', width: '15px', height: '15px', cursor: 'pointer' }}
                             />
@@ -8289,6 +8313,7 @@ function ControlCenterContent() {
 
                         {autoBalanceEnabled && (
                           <>
+                            {prescribedSubtests ? <strong>{prescribedSubtests.length} soal baru</strong> : (
                             <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr auto', gap: '10px', alignItems: 'end', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
                               <div>
                                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--foreground)', display: 'block', marginBottom: '4px' }}>
@@ -8339,7 +8364,7 @@ function ControlCenterContent() {
                                 </button>
                               )}
                             </div>
-
+                            )}
                             {/* Auto-Filled Gap Summary */}
                             <div
                               style={{
@@ -8389,6 +8414,7 @@ function ControlCenterContent() {
                                           className="field-input"
                                           style={{ fontSize: '11px', padding: '4px 6px', minWidth: '140px' }}
                                           value={slot.subtest}
+                                          disabled={Boolean(prescribedSubtests)}
                                           onChange={(e) => {
                                             const nextSubtest = e.target.value;
                                             const subObj = ALL_SUBTESTS.find((s) => s.id === nextSubtest);

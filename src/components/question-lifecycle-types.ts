@@ -767,6 +767,7 @@ export function computePackageAutoBalancePlan(params: {
   curriculumTopics: TryoutCurriculumTopic[];
   count: number;
   scopeSubtest?: string;
+  prescribedSubtests?: readonly string[];
   targetIsianPct?: number;
   typeComposition?: QuestionTypeComposition;
   difficultyRatio?: DifficultyComposition;
@@ -781,7 +782,7 @@ export function computePackageAutoBalancePlan(params: {
     typeComposition,
     difficultyRatio,
   } = params;
-  const safeCount = Math.max(1, Math.min(160, Number(count) || 5));
+  const safeCount = Math.max(1, Math.min(160, params.prescribedSubtests?.length || Number(count) || 5));
   const normRatio = normalizeDifficultyComposition(difficultyRatio);
 
   // Resolved target isian % (default 15%, or derived from typeComposition if provided)
@@ -897,7 +898,7 @@ export function computePackageAutoBalancePlan(params: {
 
   for (let i = 0; i < safeCount; i++) {
     let chosenSubtestKey =
-      scopeSubtest && scopeSubtest !== 'AUTO' ? normalizeSubtestKey(scopeSubtest) : '';
+      params.prescribedSubtests?.[i] ?? (scopeSubtest && scopeSubtest !== 'AUTO' ? normalizeSubtestKey(scopeSubtest) : '');
     if (!chosenSubtestKey || !subtestCounts[chosenSubtestKey]) {
       const eligible = safeCount - i <= remainingBatchIsian
         ? OFFICIAL_SNBT_SUBTEST_SPEC.filter(spec => supportsNumericSlot(spec.value))
