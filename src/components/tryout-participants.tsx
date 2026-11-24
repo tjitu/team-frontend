@@ -24,7 +24,7 @@ export function TryoutParticipants({ tryout, disabled, onChanged }: { tryout: Tr
     finally { setLoading(false); }
   }
   async function reset(participant: Participant) {
-    if (!window.confirm(`Reset pengerjaan ${participant.name}? Jawaban dan nilai akan dihapus. Pendaftaran dan akses pembahasan tetap ada.`)) return;
+    if (!window.confirm(`Reset pengerjaan ${participant.name}? Semua jawaban dan hasil tryout ini akan dihapus. Peserta tetap terdaftar dan bisa mengerjakan ulang. Hak pembahasan yang sudah dibeli tetap tersimpan.`)) return;
     setBusy(participant.id); setError('');
     try {
       await api.post(`${path}/${encodeURIComponent(participant.id)}/reset`);
@@ -39,7 +39,7 @@ export function TryoutParticipants({ tryout, disabled, onChanged }: { tryout: Tr
     {open && <div className="modal-overlay" role="presentation">
       <section className={styles.dialog} role="dialog" aria-modal="true" aria-label={`Peserta ${tryout.title}`}>
         <div className={styles.header}>
-          <div><h2>Peserta: {tryout.title}</h2><p>Reset menghapus jawaban dan nilai, tetapi pendaftaran tetap aktif.</p></div>
+          <div><h2>Peserta: {tryout.title}</h2><p>Reset menghapus jawaban dan hasil; peserta tetap terdaftar dan bisa mengerjakan ulang.</p></div>
           <button type="button" className="table-action-btn" onClick={() => setOpen(false)}>Tutup</button>
         </div>
         {tryout.scheduledEnd && new Date(tryout.scheduledEnd).getTime() < Date.now() && <p>Periode tryout telah berakhir. Sesuaikan jadwal jika peserta perlu mengerjakan ulang.</p>}
