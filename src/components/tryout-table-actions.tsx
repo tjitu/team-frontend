@@ -2,6 +2,7 @@
 
 import { CheckCircle2, Edit, ExternalLink, Layers, RotateCcw, Sliders, Trash2 } from 'lucide-react';
 import type { Tryout, TryoutActions, TryoutLifecycle } from './tryout-table-types';
+import { TryoutParticipants } from './tryout-participants';
 
 interface Props extends TryoutActions {
   tryout: Tryout;
@@ -12,7 +13,7 @@ interface Props extends TryoutActions {
 
 export function TryoutTableActions({
   tryout, lifecycle, isBusy, isDeleting,
-  onAutoBalance, onManageQuestions, onSandbox, onWorkflow, onEdit, onDelete,
+  onAutoBalance, onManageQuestions, onSandbox, onWorkflow, onEdit, onDelete, onParticipantsChanged,
 }: Props) {
   const disabled = isBusy || isDeleting;
   const isPublished = lifecycle !== 'DRAFT';
@@ -20,6 +21,7 @@ export function TryoutTableActions({
 
   return (
     <div className="table-action-stack">
+      <TryoutParticipants tryout={tryout} disabled={disabled} onChanged={onParticipantsChanged} />
       <button type="button" className="table-action-btn" disabled={disabled}
         onClick={() => onAutoBalance(tryout)} title="Atur Auto-Balance komposisi tipe, level, dan materi tryout">
         <Sliders className="action-icon" /> Auto-Balance

@@ -35,4 +35,5 @@ export interface TryoutActions {
   onWorkflow: (tryout: Tryout, action: 'PUBLISH_CATALOG' | 'UNPUBLISH') => Promise<void>;
   onEdit: (tryout: Tryout) => void;
   onDelete: (tryout: Tryout) => Promise<void>;
+  onParticipantsChanged: () => void;
 }

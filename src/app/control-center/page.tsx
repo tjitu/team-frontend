@@ -547,6 +547,14 @@ function dateInput(value?: string | null) {
   return value ? new Date(value).toISOString().slice(0, 16) : '';
 }
 
+function wibDateInput(value?: string | null) {
+  return value ? new Date(new Date(value).getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 16) : '';
+}
+
+function formatTryoutWib(value?: string | null) {
+  return value ? `${new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))} WIB` : 'Not scheduled';
+}
+
 function formatDate(value?: string | null) {
   return value ? dateLabel.format(new Date(value)) : 'Not scheduled';
 }
@@ -2374,8 +2382,8 @@ function ControlCenterContent() {
       description: tryoutForm.description.trim() || null,
       solutionPrice: Number(tryoutForm.solutionPrice),
       batch: tryoutForm.batch,
-      scheduledStart: new Date(tryoutForm.scheduledStart).toISOString(),
-      scheduledEnd: new Date(tryoutForm.scheduledEnd).toISOString(),
+      scheduledStart: new Date(`${tryoutForm.scheduledStart}+07:00`).toISOString(),
+      scheduledEnd: new Date(`${tryoutForm.scheduledEnd}+07:00`).toISOString(),
       isPublic: tryoutForm.isPublic,
       referralCode: tryoutForm.referralCode.trim() || null,
     };
@@ -2634,7 +2642,7 @@ function ControlCenterContent() {
     setEditingTryout(item.id); setTryoutFormOpen(true); setError(''); setNotice('');
     setTryoutForm({
       title: item.title, description: item.description ?? '', solutionPrice: String(item.solutionPrice), batch: item.batch,
-      scheduledStart: dateInput(item.scheduledStart), scheduledEnd: dateInput(item.scheduledEnd),
+      scheduledStart: wibDateInput(item.scheduledStart), scheduledEnd: wibDateInput(item.scheduledEnd),
       isPublic: item.isPublic, referralCode: item.referralCode ?? ''
     });
   }
@@ -4457,7 +4465,7 @@ function ControlCenterContent() {
                   />
                 </label>
                 <label className="field-label">
-                  Starts at
+                  Starts at (WIB)
                   <input
                     className="field-input"
                     type="datetime-local"
@@ -4467,7 +4475,7 @@ function ControlCenterContent() {
                   />
                 </label>
                 <label className="field-label">
-                  Ends at
+                  Ends at (WIB)
                   <input
                     className="field-input"
                     type="datetime-local"
@@ -4568,7 +4576,8 @@ function ControlCenterContent() {
               deletingId={deletingId}
               busyId={tryoutWorkflowBusyId}
               getLifecycle={getTryoutLifecycle}
-              formatDate={formatDate}
+              formatDate={formatTryoutWib}
+              onParticipantsChanged={() => { void loadSection('tryouts', '', true); }}
               onAutoBalance={setTableAutoBalanceTryout}
               onManageQuestions={(tryout) => {
                 setTryoutFormOpen(false);
