@@ -912,6 +912,7 @@ export function TryoutQuestionsSection({
               {bulkBusy === 'DRAFT' ? 'Memproses…' : 'Tarik ke Draf'}
             </button>
             <DeleteSelectedQuestionsButton
+              tryoutId={tryoutId}
               questionIds={assignedQuestions.filter(q => selectedTableIds.includes(q.id)).map(q => q.id)}
               visibleIds={filteredAssigned.map(q => q.id)}
               busy={bulkBusy}
