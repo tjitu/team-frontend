@@ -1,6 +1,7 @@
 import { SHORT_ANSWER_FORMAT_TAG, solutionStepsExample } from './question-solution-layout';
 import { supportsNumericSlot } from './question-import-answers';
 import { balanceSlotDistributions } from './question-slot-distribution';
+import { questionGenerationQuality } from './question-generation-quality';
 
 export type QuestionLifecycleStatus =
   | 'DRAFT'
@@ -543,7 +544,7 @@ export function buildBalancedTryoutGapPrompt(params: {
         : 'MEDIUM: Standar rata-rata SNBT, butuh 2-3 langkah penalaran atau sintesis bacaan.';
 
   return [
-    `Buat TEPAT ${safeCount} soal UTBK-SNBT baru (mini-batch ringan agar output tidak terpotong) untuk mengisi kekurangan Tryout "${params.tryoutTitle}".`,
+    `Buat TEPAT ${safeCount} soal UTBK-SNBT baru untuk mengisi kekurangan Tryout "${params.tryoutTitle}".`,
     '',
     '=== SPESIFIKASI MINI-BATCH ===',
     `- Subtes: ${normSubtest} (${sub.code} - ${sub.label})`,
@@ -558,7 +559,7 @@ export function buildBalancedTryoutGapPrompt(params: {
     '=== ATURAN KUALITAS SOAL ===',
     '- Pastikan konteks bacaan/angka segar, logis, tidak ambigu, dan setiap pengecoh masuk akal.',
     '- Jika memakai model pernyataan (1), (2), (3), (4) atau P & Q, wajib pisahkan tiap pernyataan dengan baris baru (\\n).',
-    '- Untuk LBI/LBE/PPU/PBM, buat teks bacaan/stimulus ringkas yang tajam (2-4 paragraf) agar token tetap hemat.',
+    questionGenerationQuality(),
     '',
     QUESTION_QUALITY_RULES,
     SOLUTION_FORMATTING_RULES,
@@ -1164,7 +1165,7 @@ export function buildAutoBalancedBatchPrompt(params: {
   return `${PROMPT_SYSTEM_IDENTITY}
 
 TUGAS UTAMA:
-Buatkan ${totalSlots} butir ${questionTypeHeading} yang 100% orisinal, terkalibrasi akurat, dan memenuhi standar kisi-kisi resmi BPPP SNBT untuk paket: "${packageLabel}".
+Buatkan ${totalSlots} butir ${questionTypeHeading} orisinal untuk paket "${packageLabel}" dengan mengacu pada kompetensi SNBT. Label kesulitan merupakan perkiraan awal untuk ditinjau dalam QC.
 
 SPESIFIKASI & DISTRIBUSI SOAL:
 - Mode Penyusunan: Auto-Balance Berdasarkan Gap Kurikulum & Target Komposisi
@@ -1189,6 +1190,7 @@ ${buildTrickInstruction(includeTricks)}
 ${customInstruction.trim() ? `\n- Catatan / Instruksi Khusus Penyusun:\n${customInstruction.trim()}` : ''}
 
 ${QUESTION_QUALITY_RULES}
+${questionGenerationQuality(includePassage)}
 ${buildTypeSpecificRules(resolvedQuestionType)}
 
 ${SOLUTION_FORMATTING_RULES}
@@ -1297,7 +1299,7 @@ export function buildManualBatchPrompt(params: {
   return `${PROMPT_SYSTEM_IDENTITY}
 
 TUGAS UTAMA:
-Buatkan ${totalCount} butir ${questionTypeHeading} yang 100% orisinal, terkalibrasi akurat, dan memenuhi standar kisi-kisi resmi BPPP SNBT untuk paket: "${packageLabel}".
+Buatkan ${totalCount} butir ${questionTypeHeading} orisinal untuk paket "${packageLabel}" dengan mengacu pada kompetensi SNBT. Label kesulitan merupakan perkiraan awal untuk ditinjau dalam QC.
 
 SPESIFIKASI & DISTRIBUSI SOAL:
 ${subtestBreakdown}
@@ -1314,6 +1316,7 @@ ${buildPassageInstruction(includePassage)}
 ${buildTrickInstruction(includeTricks)}
 
 ${QUESTION_QUALITY_RULES}
+${questionGenerationQuality(includePassage)}
 ${buildTypeSpecificRules(resolvedType)}
 
 ${SOLUTION_FORMATTING_RULES}

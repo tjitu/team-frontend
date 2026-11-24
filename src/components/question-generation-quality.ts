@@ -1,0 +1,12 @@
+/** Shared authoring guidance for generated questions, including chunked plans. */
+export function questionGenerationQuality(includePassage = true): string {
+  return [
+  'PEDOMAN MUTU STIMULUS DAN KESESUAIAN SUBTES:',
+  '- Rancang soal sesuai kompetensi subtes dan subtopik setiap slot, bukan sekadar memberi label subtes pada konteks yang tidak sesuai. LBI dan LBE menguji pemahaman teks, inferensi, hubungan gagasan, tujuan atau sikap penulis; jangan menjadikan hitung aritmetika keterampilan utama. Gunakan bahasa Inggris pada seluruh stimulus, pertanyaan, dan opsi LBE.',
+  '- Untuk PK dan PM, variasikan soal langsung dengan masalah kontekstual yang memerlukan pemodelan dan penalaran kuantitatif; letakkan isian numerik hanya pada subtes yang diizinkan oleh slot. PU menguji penalaran; PPU dan PBM menguji kemampuan bahasa atau pemahaman bacaan sesuai subtopik.',
+  ...(includePassage ? ['- Variasikan panjang dan bentuk stimulus sesuai kemampuan yang diuji: teks pendek, bacaan beberapa paragraf, dan bacaan panjang yang utuh. Untuk slot literasi yang sesuai, sertakan juga bacaan 250–350 kata dengan gagasan dan bukti yang cukup untuk dianalisis. Ini sasaran editorial internal, bukan ketentuan resmi atau alasan menambah kata tanpa fungsi. Jangan membuat semua stimulus pendek.'] : []),
+  '- Jika beberapa butir memakai bacaan yang sama, setiap butir wajib memiliki salinan lengkap bacaan pada field narration agar tetap mandiri saat diimpor atau ditampilkan. Jangan merujuk ke butir lain, stimulus di chunk lain, atau memotong bacaan di batas chunk. Gunakan stimulus bersama hanya jika selaras dengan subtes dan topik masing-masing slot.',
+  '- Jika pertanyaan menyebut tabel, sertakan tabel sebenarnya dalam narration menggunakan LaTeX \\begin{tabular}...\\end{tabular} yang valid, dengan judul kolom dan data lengkap. Escape setiap backslash untuk JSON. Jangan mengganti tabel yang disebut dengan daftar poin, dan jangan gunakan HTML mentah atau tabel Markdown. Gunakan teks biasa dan spasi asli, bukan entity HTML seperti &#x20;.',
+  '- Patuhi jumlah dan urutan slot, jenis, subtes, topik, serta kesulitan yang diberikan untuk chunk. Jangan pindahkan jatah antar-subtes atau ubah PG menjadi isian. Periksa ulang setiap butir, tabel, jawaban, dan jumlah per kategori sebelum mengirim; tingkat kesulitan adalah perkiraan awal yang memerlukan QC, bukan hasil kalibrasi empiris.',
+  ].join('\n');
+}
