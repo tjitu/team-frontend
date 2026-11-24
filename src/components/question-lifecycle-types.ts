@@ -1,6 +1,6 @@
 import { SHORT_ANSWER_FORMAT_TAG, solutionStepsExample } from './question-solution-layout';
 import { supportsNumericSlot } from './question-import-answers';
-import { balanceSlotDistributions } from './question-slot-distribution';
+import { balanceSlotDistributions, tryoutShortTarget } from './question-slot-distribution';
 import { questionGenerationQuality } from './question-generation-quality';
 
 export type QuestionLifecycleStatus =
@@ -730,6 +730,8 @@ export type AutoBalanceSlot = {
 };
 
 export type PackageAutoBalanceAnalysis = {
+  requestedShort: number;
+  shortCapacity: number;
   totalInPackage: number;
   subtestCounts: Record<string, { count: number; targetQuota: number; short: string; label: string }>;
   difficultyCounts: { EASY: number; MEDIUM: number; HARD: number };
@@ -962,9 +964,14 @@ export function computePackageAutoBalancePlan(params: {
     }
   }
 
-  balanceSlotDistributions(slots, subtestCounts, subtestShortCount, normRatio, resolvedTargetIsianPct);
+  const requestedShort = tryoutShortTarget(OFFICIAL_SNBT_SUBTEST_SPEC, params.prescribedSubtests,
+    safeCount, resolvedTargetIsianPct, isianDeficit);
+  balanceSlotDistributions(slots, subtestCounts, subtestShortCount, normRatio, resolvedTargetIsianPct,
+    destination === 'FOR_TRYOUT' ? requestedShort : undefined);
 
   return {
+    requestedShort,
+    shortCapacity: slots.filter(slot => supportsNumericSlot(slot.subtest)).length,
     totalInPackage: packageQuestions.length,
     subtestCounts,
     difficultyCounts,

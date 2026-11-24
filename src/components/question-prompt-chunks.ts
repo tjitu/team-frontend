@@ -1,5 +1,7 @@
 import type { AutoBalanceSlot } from './question-lifecycle-types';
 
+export const PROMPT_PLAN_VERSION = 3;
+
 export interface PromptChunk {
   id: string;
   prompt: string;
@@ -39,7 +41,7 @@ export function buildChunkPlan(
     offset += size;
     return chunk;
   });
-  return { version: 2, chunks };
+  return { version: PROMPT_PLAN_VERSION, chunks };
 }
 
 export function readPlan(scope: string): PromptPlan | null {

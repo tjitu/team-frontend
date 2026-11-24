@@ -1,5 +1,12 @@
 ﻿import type { PromptPlan } from './question-prompt-chunks';
 
+import { PROMPT_PLAN_VERSION } from './question-prompt-chunks';
+
+function composition(slots: PromptPlan['chunks'][number]['slots']) {
+  const short = slots.filter(slot => slot.questionType === 'ISIAN_SINGKAT').length;
+  return `${slots.length - short} PG · ${short} isian`;
+}
+
 interface Props {
   plan: PromptPlan | null;
   count: number;
@@ -20,13 +27,15 @@ export function QuestionChunkControls(p: Props) {
     </div>
   );
   const chunks = p.plan.chunks;
+  const slots = chunks.flatMap(chunk => chunk.slots);
   const done = chunks.filter(c => c.saved === c.keys.length).length;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {p.plan.version !== 2 && <p className="w-full text-sm">Rencana ini dibuat sebelum perbaikan distribusi. Akhiri rencana lalu buat rencana baru untuk memakai pembagian terbaru; soal yang sudah tersimpan tetap ada.</p>}
+      {p.plan.version !== PROMPT_PLAN_VERSION && <p className="w-full text-sm">Rencana ini memakai perhitungan lama. Pilih “Akhiri rencana” lalu buat rencana baru untuk menghitung ulang kuota isian.</p>}
+      {slots.length > 0 && <p className="w-full text-sm">Total semua chunk: {composition(slots)}</p>}
       <label>{done}/{chunks.length} chunk selesai
         <select className="field-input" value={p.selected} onChange={e => p.onSelect(Number(e.target.value))}>
-          {chunks.map((c,i) => <option key={c.id} value={i}>Chunk {i+1} · {c.saved}/{c.keys.length} soal · {c.saved === c.keys.length ? 'Selesai' : 'Belum selesai'}</option>)}
+          {chunks.map((c,i) => <option key={c.id} value={i}>Chunk {i+1} · {c.saved}/{c.keys.length} soal · {c.slots.length > 0 && composition(c.slots) + ' · '}{c.saved === c.keys.length ? 'Selesai' : 'Belum selesai'}</option>)}
         </select>
       </label>
       <button type="button" disabled={p.busy} className="button button-secondary" onClick={p.onClose}>

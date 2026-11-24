@@ -3,7 +3,7 @@
 import React from 'react';
 
 export type AutoBalanceTargetConfig = {
-  isianPercentage: number; // 0 - 40 (%)
+  isianPercentage: number; // 0–100%
   difficulty: {
     easy: number; // (%)
     medium: number; // (%)
@@ -103,7 +103,7 @@ export function getAutoBalanceConfig(scope: string): AutoBalanceTargetConfig {
     if (!raw) return { ...DEFAULT_AUTOBALANCE_CONFIG };
     const parsed = JSON.parse(raw);
     const isian = typeof parsed?.isianPercentage === 'number'
-      ? Math.max(0, Math.min(50, Math.round(parsed.isianPercentage)))
+      ? Math.max(0, Math.min(100, Math.round(parsed.isianPercentage)))
       : DEFAULT_AUTOBALANCE_CONFIG.isianPercentage;
 
     const easy = Number(parsed?.difficulty?.easy ?? DEFAULT_AUTOBALANCE_CONFIG.difficulty.easy);

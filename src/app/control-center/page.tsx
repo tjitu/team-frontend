@@ -1393,7 +1393,13 @@ function ControlCenterContent() {
   const planScope = (member?.id ?? 'loading') + '/' + createTarget + '/' + (createTarget === 'FOR_TRYOUT' ? createTryoutId : '');
   const chunkPlan = useQuestionPlan(planScope);
   const selectedChunk = chunkPlan?.chunks[chunkIndex] ?? chunkPlan?.chunks[0];
-  const generatedPrompt = selectedChunk?.prompt ?? (chunkCount === 1 ? makePrompt(0, totalPlanned) : '');
+  const shortCapacityExceeded = autoBalanceEnabled && createTarget === 'FOR_TRYOUT' &&
+    autoBalanceAnalysis.requestedShort > autoBalanceAnalysis.shortCapacity;
+  const capacityMessage = shortCapacityExceeded
+    ? `Target membutuhkan ${autoBalanceAnalysis.requestedShort} isian, sementara rencana ini memuat ${autoBalanceAnalysis.shortCapacity} slot PK dan PM.`
+    : '';
+  const blockFullPlan = tryoutPromptScope === 'FULL' && shortCapacityExceeded;
+  const generatedPrompt = selectedChunk?.prompt ?? (chunkCount === 1 && !blockFullPlan ? makePrompt(0, totalPlanned) : '');
   async function changeChunkPlan(close = false) {
     try {
       await navigator.locks.request(planScope, async () => {
@@ -1407,6 +1413,7 @@ function ControlCenterContent() {
           setChunkCount(1);
           setAutoBalanceCount(n => Math.min(n, 20));
         } else if (!existing) {
+          if (blockFullPlan) throw new Error(capacityMessage);
           if (!member) throw new Error('Tunggu sampai data akun selesai dimuat.');
           if (createTarget === 'FOR_TRYOUT' && !createTryoutId) throw new Error('Pilih paket Tryout terlebih dahulu.');
           writePlan(planScope, buildChunkPlan(totalPlanned, chunkCount,
@@ -8242,6 +8249,9 @@ function ControlCenterContent() {
                     onSelect={i => { setChunkIndex(i); setIsPromptAdjusterOpen(true); }}
                     onStart={() => void changeChunkPlan()} onClose={() => void changeChunkPlan(true)} />}
                   {/* ADJUST PROMPT ACCORDION / BUILDER */}
+                  {!chunkPlan && capacityMessage && <p role="status">{capacityMessage} {blockFullPlan
+                    ? 'Turunkan target isian di Pengaturan Parameter untuk membuat paket lengkap.'
+                    : 'Rencana batch ini memakai slot isian yang tersedia.'}</p>}
                   {isPromptAdjusterOpen && (
                     <div className="prompt-builder-box">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>

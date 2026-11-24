@@ -103,6 +103,7 @@ export function AutoBalanceAdjusterModal({
         {/* BODY */}
         <div className="modal-body">
           <AutoBalanceTargetPanel
+            isTryout={scopeId !== 'PRACTICE' && scopeId !== 'DRAFT'}
             draftConfig={draftConfig}
             setDraftConfig={setDraftConfig}
             totalCurrent={totalCurrent}

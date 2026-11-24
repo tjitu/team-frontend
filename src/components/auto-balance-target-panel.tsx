@@ -11,6 +11,7 @@ import {
 } from './auto-balance-settings';
 
 interface AutoBalanceTargetPanelProps {
+  isTryout: boolean;
   draftConfig: AutoBalanceTargetConfig;
   setDraftConfig: React.Dispatch<React.SetStateAction<AutoBalanceTargetConfig>>;
   totalCurrent: number;
@@ -27,6 +28,7 @@ interface AutoBalanceTargetPanelProps {
 }
 
 export function AutoBalanceTargetPanel({
+  isTryout,
   draftConfig,
   setDraftConfig,
   totalCurrent,
@@ -96,7 +98,9 @@ export function AutoBalanceTargetPanel({
               1. Komposisi Tipe Soal (PG vs Isian Singkat)
             </div>
             <div style={{ fontSize: '11.5px', color: 'var(--muted-fg)', marginTop: '2px' }}>
-              Target berlaku terpisah untuk setiap subtes yang mendukung isian (PK dan PM). Subtes lain tetap pilihan ganda.
+              {isTryout
+                ? 'Persentase isian dihitung dari seluruh soal dalam paket. Kuotanya dibagi ke PK dan PM sebelum prompt dipecah menjadi chunk.'
+                : 'Target berlaku terpisah untuk setiap subtes yang mendukung isian (PK dan PM). Subtes lain tetap pilihan ganda.'}
             </div>
           </div>
           <span
