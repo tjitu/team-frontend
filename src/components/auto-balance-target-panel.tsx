@@ -96,7 +96,7 @@ export function AutoBalanceTargetPanel({
               1. Komposisi Tipe Soal (PG vs Isian Singkat)
             </div>
             <div style={{ fontSize: '11.5px', color: 'var(--muted-fg)', marginTop: '2px' }}>
-              Tentukan target persentase soal Pilihan Ganda dan Isian Singkat pada paket ini.
+              Target berlaku terpisah untuk setiap subtes yang mendukung isian (PK dan PM). Subtes lain tetap pilihan ganda.
             </div>
           </div>
           <span

@@ -9,6 +9,7 @@ export interface PromptChunk {
 }
 
 export interface PromptPlan {
+  version?: number;
   chunks: PromptChunk[];
 }
 
@@ -38,7 +39,7 @@ export function buildChunkPlan(
     offset += size;
     return chunk;
   });
-  return { chunks };
+  return { version: 2, chunks };
 }
 
 export function readPlan(scope: string): PromptPlan | null {

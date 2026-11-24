@@ -23,6 +23,7 @@ export function QuestionChunkControls(p: Props) {
   const done = chunks.filter(c => c.saved === c.keys.length).length;
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {p.plan.version !== 2 && <p className="w-full text-sm">Rencana ini dibuat sebelum perbaikan distribusi. Akhiri rencana lalu buat rencana baru untuk memakai pembagian terbaru; soal yang sudah tersimpan tetap ada.</p>}
       <label>{done}/{chunks.length} chunk selesai
         <select className="field-input" value={p.selected} onChange={e => p.onSelect(Number(e.target.value))}>
           {chunks.map((c,i) => <option key={c.id} value={i}>Chunk {i+1} · {c.saved}/{c.keys.length} soal · {c.saved === c.keys.length ? 'Selesai' : 'Belum selesai'}</option>)}

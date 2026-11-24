@@ -40,6 +40,7 @@ team-frontend/
 * **Auth**: Supabase Auth with SSR cookie management (`@supabase/ssr`).
 * **API Calls**: Sends Supabase JWT bearer token to `NEXT_PUBLIC_TEAM_API_URL` (`http://localhost:3200/api`).
 * **Control Center & Bank Soal**: Auto-balance slot planner (`auto-balance-adjuster-modal.tsx`, `tryout-workflow-balancer.tsx`), curriculum gap analysis, question type (`PG`/`Isian`) composition controls, and QC workflows (`question-lifecycle-types.ts`). Question imports and prompt examples share section grouping and answer-format conventions in `question-solution-layout.ts`.
+* Auto-balance distributes difficulty and supported answer formats per subtest in `question-slot-distribution.ts`; chunk prompts include their exact per-subtest allocations.
 * **Tryout Table**: `tryout-table.tsx`, `tryout-table-actions.tsx`, and `tryout-table-types.ts` own the catalog table, stacked participant counts, lifecycle badge, and explicit force-delete action. Scoped token-based styles live in `tryout-table.module.css`; the page confirms history deletion before calling `?force=true`.
 * **Tryout Participants**: `tryout-participants.tsx` lists registered students and lets administrators reset a finished attempt. Tryout schedule inputs and table times use WIB.
 * **UI & Styling**: Base UI + TanStack Table + Tailwind CSS using semantic tokens in `src/app/globals.css`, documented in [design.md](file:///C:/JITU-ECOSYSTEM/team-frontend/design.md) and [writing.md](file:///C:/JITU-ECOSYSTEM/team-frontend/writing.md).

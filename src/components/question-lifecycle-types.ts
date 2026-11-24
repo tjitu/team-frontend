@@ -1,5 +1,6 @@
 import { SHORT_ANSWER_FORMAT_TAG, solutionStepsExample } from './question-solution-layout';
 import { supportsNumericSlot } from './question-import-answers';
+import { balanceSlotDistributions } from './question-slot-distribution';
 
 export type QuestionLifecycleStatus =
   | 'DRAFT'
@@ -844,7 +845,6 @@ export function computePackageAutoBalancePlan(params: {
   const totalAfterBatch = existingTotal + safeCount;
   const idealIsianTotal = Math.round((totalAfterBatch * resolvedTargetIsianPct) / 100);
   const isianDeficit = Math.max(0, idealIsianTotal - typeCounts.ISIAN_SINGKAT);
-  const batchIsianTarget = Math.min(safeCount, isianDeficit);
 
   const idealEasyTotal = Math.round(totalAfterBatch * normRatio.easyShare);
   const idealHardTotal = Math.round(totalAfterBatch * normRatio.hardShare);
@@ -887,22 +887,25 @@ export function computePackageAutoBalancePlan(params: {
   for (const k of Object.keys(subtestCounts)) {
     simSubtestCounts[k] = subtestCounts[k].count;
   }
-  const simDiff = { ...difficultyCounts };
+  const subtestShortCount = new Map<string, number>();
+  for (const q of packageQuestions) {
+    const subtest = normalizeSubtestKey(q.subtest || '');
+    if (['SHORT_ANSWER', 'ISIAN_SINGKAT'].includes(String(q.type || '').toUpperCase())) {
+      subtestShortCount.set(subtest, (subtestShortCount.get(subtest) ?? 0) + 1);
+    }
+  }
   const simSubtopicCounts = new Map<string, number>();
   for (const item of allSubtopics) {
     simSubtopicCounts.set(item.subtopicId, item.existingCount);
   }
 
-  let remainingBatchIsian = batchIsianTarget;
   const slots: AutoBalanceSlot[] = [];
 
   for (let i = 0; i < safeCount; i++) {
     let chosenSubtestKey =
       params.prescribedSubtests?.[i] ?? (scopeSubtest && scopeSubtest !== 'AUTO' ? normalizeSubtestKey(scopeSubtest) : '');
     if (!chosenSubtestKey || !subtestCounts[chosenSubtestKey]) {
-      const eligible = safeCount - i <= remainingBatchIsian
-        ? OFFICIAL_SNBT_SUBTEST_SPEC.filter(spec => supportsNumericSlot(spec.value))
-        : OFFICIAL_SNBT_SUBTEST_SPEC;
+      const eligible = OFFICIAL_SNBT_SUBTEST_SPEC;
       const rankedSubtests = eligible.slice().sort((a, b) => {
         const countA = simSubtestCounts[a.value] ?? 0;
         const countB = simSubtestCounts[b.value] ?? 0;
@@ -916,14 +919,7 @@ export function computePackageAutoBalancePlan(params: {
       chosenSubtestKey = rankedSubtests[0]?.value || 'PENALARAN_UMUM';
     }
 
-    const totalAfter = simDiff.EASY + simDiff.MEDIUM + simDiff.HARD + 1;
-    const allCandidates: Array<{ diff: 'EASY' | 'MEDIUM' | 'HARD'; share: number; deficit: number }> = [
-      { diff: 'EASY', share: normRatio.easyShare, deficit: totalAfter * normRatio.easyShare - simDiff.EASY },
-      { diff: 'MEDIUM', share: normRatio.mediumShare, deficit: totalAfter * normRatio.mediumShare - simDiff.MEDIUM },
-      { diff: 'HARD', share: normRatio.hardShare, deficit: totalAfter * normRatio.hardShare - simDiff.HARD },
-    ];
-    const candidates = allCandidates.filter((c) => c.share > 0).sort((a, b) => b.deficit - a.deficit);
-    const chosenDiff: 'EASY' | 'MEDIUM' | 'HARD' = candidates[0]?.diff || 'MEDIUM';
+    const chosenDiff: AutoBalanceSlot['difficulty'] = 'MEDIUM';
 
     const candidateSubtopics = allSubtopics
       .filter((s) => s.subtestKey === chosenSubtestKey)
@@ -939,9 +935,7 @@ export function computePackageAutoBalancePlan(params: {
       ? (simSubtopicCounts.get(chosenSubtopic.subtopicId) ?? chosenSubtopic.existingCount)
       : 0;
 
-    const useNumeric = remainingBatchIsian > 0 && supportsNumericSlot(chosenSubtestKey);
-    const slotType = useNumeric ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA';
-    if (useNumeric) remainingBatchIsian--;
+    const slotType = 'PILIHAN_GANDA';
 
     slots.push({
       index: i + 1,
@@ -957,16 +951,17 @@ export function computePackageAutoBalancePlan(params: {
       currentSubtopicCount: currentSubCount,
       reason:
         currentSubCount === 0
-          ? `Subtopik belum tercover di paket · Target ${slotType === 'ISIAN_SINGKAT' ? 'Isian Singkat' : 'PG'} ${chosenDiff} (mengejar target setting)`
-          : `Subtopik baru ${currentSubCount} soal · Target ${slotType === 'ISIAN_SINGKAT' ? 'Isian Singkat' : 'PG'} ${chosenDiff}`,
+          ? `Subtopik belum tercover di paket · Target PG ${chosenDiff} (mengejar target setting)`
+          : `Subtopik baru ${currentSubCount} soal · Target PG ${chosenDiff}`,
     });
 
     simSubtestCounts[chosenSubtestKey] = (simSubtestCounts[chosenSubtestKey] ?? 0) + 1;
-    simDiff[chosenDiff] += 1;
     if (chosenSubtopic) {
       simSubtopicCounts.set(chosenSubtopic.subtopicId, currentSubCount + 1);
     }
   }
+
+  balanceSlotDistributions(slots, subtestCounts, subtestShortCount, normRatio, resolvedTargetIsianPct);
 
   return {
     totalInPackage: packageQuestions.length,
@@ -1158,6 +1153,12 @@ export function buildAutoBalancedBatchPrompt(params: {
     .join('\n');
 
   const targetSubtests = Array.from(new Set(slots.map((s) => s.subtestShort || s.subtest))).join(', ');
+  const subtestSummary = Array.from(new Set(slots.map((slot) => slot.subtest))).map((subtest) => {
+    const group = slots.filter((slot) => slot.subtest === subtest);
+    const count = (type: AutoBalanceSlot['questionType']) => group.filter((slot) => slot.questionType === type).length;
+    const level = (difficulty: AutoBalanceSlot['difficulty']) => group.filter((slot) => slot.difficulty === difficulty).length;
+    return `- ${group[0].subtestShort}: ${count('PILIHAN_GANDA')} PG, ${count('ISIAN_SINGKAT')} isian; ${level('EASY')} mudah, ${level('MEDIUM')} sedang, ${level('HARD')} sulit.`;
+  }).join('\n');
   const firstSlot = slots[0];
 
   return `${PROMPT_SYSTEM_IDENTITY}
@@ -1170,6 +1171,10 @@ SPESIFIKASI & DISTRIBUSI SOAL:
 - Tipe Soal: ${pgSlots.length} Pilihan Ganda (A-E) · ${isianSlots.length} Isian Singkat
 - Tingkat Kesulitan: ${slotDiffSummary.EASY} Mudah · ${slotDiffSummary.MEDIUM} Sedang · ${slotDiffSummary.HARD} Sulit HOTS
 Total Keseluruhan: ${totalSlots} butir soal
+
+DISTRIBUSI KHUSUS CHUNK INI PER SUBTES (WAJIB):
+${subtestSummary}
+- Jangan pindahkan jatah jenis atau tingkat kesulitan antar-subtes. Setiap butir harus mengikuti slot dan urutan di bawah.
 
 DAFTAR SLOT BUTIR (WAJIB DIIKUTI PERSIS SESUAI PEMETAAN DARI BUTIR #1 SAMPAI #${totalSlots}):
 ${slotLines}
