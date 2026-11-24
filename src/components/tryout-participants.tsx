@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { Tryout } from './tryout-table-types';
+import styles from './tryout-participants.module.css';
 
 type Participant = { id: string; userId: string; name: string; email: string; status: string };
 const labels: Record<string, string> = { NOT_STARTED: 'Belum mengerjakan', IN_PROGRESS: 'Sedang mengerjakan', FINISHED: 'Selesai' };
@@ -36,18 +37,18 @@ export function TryoutParticipants({ tryout, disabled, onChanged }: { tryout: Tr
       <Users className="action-icon" /> Peserta
     </button>
     {open && <div className="modal-overlay" role="presentation">
-      <section className="modal-dialog modal-wide p-6 overflow-y-auto" role="dialog" aria-modal="true" aria-label={`Peserta ${tryout.title}`}>
-        <div className="flex items-start justify-between gap-4">
+      <section className={styles.dialog} role="dialog" aria-modal="true" aria-label={`Peserta ${tryout.title}`}>
+        <div className={styles.header}>
           <div><h2>Peserta: {tryout.title}</h2><p>Reset menghapus jawaban dan nilai, tetapi pendaftaran tetap aktif.</p></div>
           <button type="button" className="table-action-btn" onClick={() => setOpen(false)}>Tutup</button>
         </div>
         {tryout.scheduledEnd && new Date(tryout.scheduledEnd).getTime() < Date.now() && <p>Periode tryout telah berakhir. Sesuaikan jadwal jika peserta perlu mengerjakan ulang.</p>}
         {error && <p role="alert">{error}</p>}
         {loading ? <p>Memuat peserta...</p> : participants.length === 0 ? <p>Belum ada peserta.</p> :
-          <div className="overflow-auto"><table className="w-full text-sm"><thead><tr><th>Nama</th><th>Email</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
+          <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Nama</th><th>Email</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
             {participants.map((participant) => <tr key={participant.id}>
               <td>{participant.name}</td><td>{participant.email}</td><td>{labels[participant.status] || participant.status}</td>
-              <td>{participant.status === 'FINISHED' && <button type="button" className="table-action-btn" disabled={Boolean(busy)} onClick={() => void reset(participant)}>{busy === participant.id ? 'Mereset...' : 'Reset pengerjaan'}</button>}</td>
+              <td>{['FINISHED', 'IN_PROGRESS'].includes(participant.status) && <button type="button" className="table-action-btn" disabled={Boolean(busy)} onClick={() => void reset(participant)}>{busy === participant.id ? 'Mereset...' : 'Reset pengerjaan'}</button>}</td>
             </tr>)}
           </tbody></table></div>}
       </section>

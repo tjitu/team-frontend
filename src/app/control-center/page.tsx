@@ -201,7 +201,7 @@ export type DiscountForm = {
   isActive: boolean;
 };
 
-export const initialDiscountForm: DiscountForm = {
+const initialDiscountForm: DiscountForm = {
   name: '',
   type: 'PERCENTAGE',
   value: '25',
