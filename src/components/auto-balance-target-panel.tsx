@@ -99,7 +99,7 @@ export function AutoBalanceTargetPanel({
             </div>
             <div style={{ fontSize: '11.5px', color: 'var(--muted-fg)', marginTop: '2px' }}>
               {isTryout
-                ? 'Persentase isian dihitung dari seluruh soal dalam paket. Kuotanya dibagi ke PK dan PM sebelum prompt dipecah menjadi chunk.'
+                ? 'Persentase isian dihitung dari seluruh soal dalam paket. Tiap subtes mendapat bagian sesuai jumlah soalnya sebelum prompt dipecah menjadi chunk.'
                 : 'Target berlaku terpisah untuk setiap subtes yang mendukung isian (PK dan PM). Subtes lain tetap pilihan ganda.'}
             </div>
           </div>

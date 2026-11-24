@@ -1374,6 +1374,7 @@ function ControlCenterContent() {
     const ordered = activeSubtestEntries.flatMap(([subtest, n]) => Array<string>(n).fill(subtest));
     for (const subtest of ordered.slice(offset, offset + size)) counts.set(subtest, (counts.get(subtest) ?? 0) + 1);
     return buildManualBatchPrompt({
+      isTryout: createTarget === 'FOR_TRYOUT',
       packageLabel: currentPackageLabel,
       totalCount: size,
       activeSubtestEntries: [...counts.entries()],
@@ -1396,10 +1397,9 @@ function ControlCenterContent() {
   const shortCapacityExceeded = autoBalanceEnabled && createTarget === 'FOR_TRYOUT' &&
     autoBalanceAnalysis.requestedShort > autoBalanceAnalysis.shortCapacity;
   const capacityMessage = shortCapacityExceeded
-    ? `Target membutuhkan ${autoBalanceAnalysis.requestedShort} isian, sementara rencana ini memuat ${autoBalanceAnalysis.shortCapacity} slot PK dan PM.`
+    ? `Target paket membutuhkan ${autoBalanceAnalysis.requestedShort} isian tambahan, sementara batch ini memuat ${autoBalanceAnalysis.shortCapacity} soal.`
     : '';
-  const blockFullPlan = tryoutPromptScope === 'FULL' && shortCapacityExceeded;
-  const generatedPrompt = selectedChunk?.prompt ?? (chunkCount === 1 && !blockFullPlan ? makePrompt(0, totalPlanned) : '');
+  const generatedPrompt = selectedChunk?.prompt ?? (chunkCount === 1 ? makePrompt(0, totalPlanned) : '');
   async function changeChunkPlan(close = false) {
     try {
       await navigator.locks.request(planScope, async () => {
@@ -1413,7 +1413,6 @@ function ControlCenterContent() {
           setChunkCount(1);
           setAutoBalanceCount(n => Math.min(n, 20));
         } else if (!existing) {
-          if (blockFullPlan) throw new Error(capacityMessage);
           if (!member) throw new Error('Tunggu sampai data akun selesai dimuat.');
           if (createTarget === 'FOR_TRYOUT' && !createTryoutId) throw new Error('Pilih paket Tryout terlebih dahulu.');
           writePlan(planScope, buildChunkPlan(totalPlanned, chunkCount,
@@ -8249,9 +8248,7 @@ function ControlCenterContent() {
                     onSelect={i => { setChunkIndex(i); setIsPromptAdjusterOpen(true); }}
                     onStart={() => void changeChunkPlan()} onClose={() => void changeChunkPlan(true)} />}
                   {/* ADJUST PROMPT ACCORDION / BUILDER */}
-                  {!chunkPlan && capacityMessage && <p role="status">{capacityMessage} {blockFullPlan
-                    ? 'Turunkan target isian di Pengaturan Parameter untuk membuat paket lengkap.'
-                    : 'Rencana batch ini memakai slot isian yang tersedia.'}</p>}
+                  {!chunkPlan && capacityMessage && <p role="status">{capacityMessage} Rencana batch ini memakai slot isian yang tersedia.</p>}
                   {isPromptAdjusterOpen && (
                     <div className="prompt-builder-box">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
@@ -8444,7 +8441,7 @@ function ControlCenterContent() {
                                               ...slot,
                                               subtest: nextSubtest,
                                               subtestShort: getSubtestDisplay(nextSubtest).code,
-                                              questionType: supportsNumericSlot(nextSubtest) ? slot.questionType : 'PILIHAN_GANDA',
+                                              questionType: createTarget === 'FOR_TRYOUT' || supportsNumericSlot(nextSubtest) ? slot.questionType : 'PILIHAN_GANDA',
                                               subtestLabel: subObj?.label || nextSubtest,
                                               topicId: firstTopic?.id || '',
                                               topicTitle: firstTopic?.title || '',
@@ -8477,7 +8474,7 @@ function ControlCenterContent() {
                                           }}
                                         >
                                           <option value="PILIHAN_GANDA">PG (A-E)</option>
-                                          <option value="ISIAN_SINGKAT" disabled={!supportsNumericSlot(slot.subtest)}>Isian</option>
+                                          <option value="ISIAN_SINGKAT" disabled={createTarget !== 'FOR_TRYOUT' && !supportsNumericSlot(slot.subtest)}>Isian</option>
                                         </select>
                                       </td>
                                       <td style={{ padding: '6px 8px' }}>
@@ -8681,9 +8678,9 @@ function ControlCenterContent() {
                           </label>
                           <span style={{ fontSize: '11px', color: 'var(--muted-fg)' }}>
                             {promptQuestionType === 'ISIAN_SINGKAT'
-                              ? 'Format isian angka murni resmi BPPP SNBT'
+                              ? 'Jawaban berupa bilangan bulat 0–9999'
                               : promptQuestionType === 'CAMPURAN'
-                              ? 'Kombinasi resmi UTBK SNBT (PG & Isian)'
+                              ? 'Kombinasi pilihan ganda dan isian'
                               : 'Format standar pilihan ganda 5 opsi'}
                           </span>
                         </div>
@@ -8702,7 +8699,7 @@ function ControlCenterContent() {
                             style={{ height: '36px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                             onClick={() => setPromptQuestionType('ISIAN_SINGKAT')}
                           >
-                            <span>Isian Singkat BPPP</span>
+                            <span>Isian Singkat</span>
                           </button>
                           <button
                             type="button"
@@ -9401,7 +9398,7 @@ function ControlCenterContent() {
                         Tipe Format Soal <span className="text-red-400">*</span>
                       </label>
                       <span className="text-[11px] text-zinc-400">
-                        Isian Singkat hanya diujikan pada subtes PK dan Penalaran Matematika
+                        Kunci isian berupa bilangan bulat dari 0 sampai 9999.
                       </span>
                     </div>
 
@@ -9444,7 +9441,7 @@ function ControlCenterContent() {
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        ✍️ Isian Singkat (BPPP)
+                        ✍️ Isian Singkat
                       </button>
                     </div>
                   </div>

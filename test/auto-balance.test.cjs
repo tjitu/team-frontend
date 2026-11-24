@@ -5,7 +5,8 @@ const ts = require('typescript');
 require.extensions['.ts'] = (mod, name) => mod._compile(ts.transpileModule(fs.readFileSync(name, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
 }).outputText, name);
-const { computePackageAutoBalancePlan, buildAutoBalancedBatchPrompt, OFFICIAL_SNBT_SUBTEST_SPEC } = require('../src/components/question-lifecycle-types.ts');
+const { computePackageAutoBalancePlan, buildAutoBalancedBatchPrompt, buildManualBatchPrompt, OFFICIAL_SNBT_SUBTEST_SPEC } = require('../src/components/question-lifecycle-types.ts');
+const { parseQuestionAnswers } = require('../src/components/question-import-answers.ts');
 const { buildChunkPlan } = require('../src/components/question-prompt-chunks.ts');
 const fullExam = OFFICIAL_SNBT_SUBTEST_SPEC.flatMap(spec => Array(spec.fullQuestionTarget).fill(spec.value));
 const countShort = slots => slots.filter(slot => slot.questionType === 'ISIAN_SINGKAT').length;
@@ -17,7 +18,7 @@ function plan(overrides = {}) {
   });
 }
 
-test('a fresh 160-question plan allocates the package percentage to PK and PM', () => {
+test('a fresh 160-question tryout distributes short answers across all seven subtests', () => {
   const existing = fullExam.map(subtest => ({ subtest, type: 'MULTIPLE_CHOICE' }));
   const { slots } = plan({ packageQuestions: existing });
   assert.equal(slots.length, 160);
@@ -25,7 +26,7 @@ test('a fresh 160-question plan allocates the package percentage to PK and PM', 
   for (const spec of OFFICIAL_SNBT_SUBTEST_SPEC) {
     const group = slots.filter(slot => slot.subtest === spec.value);
     assert.equal(group.length, spec.fullQuestionTarget);
-    assert.equal(countShort(group), ['PK','PM'].includes(spec.code) ? 16 : 0);
+    assert.equal(countShort(group), spec.fullQuestionTarget * 0.2);
     for (const [level, ratio] of [['EASY', .3], ['MEDIUM', .5], ['HARD', .2]]) {
       assert.equal(group.filter(slot => slot.difficulty === level).length, group.length * ratio);
     }
@@ -49,12 +50,12 @@ test('the headers and numbered instructions of every chunk sum to the same packa
   }
 });
 
-test('rounds the package quota once and reports insufficient numeric capacity', () => {
+test('rounds the package quota once across the full range of short-answer targets', () => {
   for (const pct of [0, 1, 7, 15, 24, 25, 26, 50, 100]) {
     const result = plan({ targetIsianPct: pct });
     assert.equal(result.requestedShort, Math.round(160 * pct / 100));
-    assert.equal(result.shortCapacity, 40);
-    assert.equal(countShort(result.slots), Math.min(40, result.requestedShort));
+    assert.equal(result.shortCapacity, 160);
+    assert.equal(countShort(result.slots), result.requestedShort);
   }
 });
 
@@ -64,6 +65,19 @@ test('generating the seven official subtests separately reproduces the complete 
     const subtest = plan({ targetIsianPct: 7, prescribedSubtests: Array(spec.fullQuestionTarget).fill(spec.value) });
     assert.equal(countShort(subtest.slots), countShort(full.filter(slot => slot.subtest === spec.value)));
   }
+});
+
+test('manual English literacy tryouts keep the selected short-answer format through import', () => {
+  const prompt = buildManualBatchPrompt({
+    isTryout: true, packageLabel: 'Perdana', totalCount: 1, activeSubtestEntries: [['LITERASI_INGGRIS', 1]],
+    promptDifficulty: 'MEDIUM', normalizedDifficultyComposition: { easyPct: 30, mediumPct: 50, hardPct: 20 },
+    promptQuestionType: 'ISIAN_SINGKAT',
+  });
+  const example = JSON.parse(prompt.split('STRUKTUR JSON YANG WAJIB DIPATUHI:\n')[1]);
+  assert.equal(example.type, 'ISIAN_SINGKAT');
+  assert.equal(example.subtest, 'LITERASI_INGGRIS');
+  assert.equal(parseQuestionAnswers(example).isShortAnswer, true);
+  assert.doesNotMatch(prompt, /Alokasikan isian numerik pada PK atau PM/);
 });
 
 test('a custom top-up accounts for existing answers, practice keeps its subtest target', () => {

@@ -389,7 +389,7 @@ export function getQuestionStatusBadge(status?: string | null): {
   };
 }
 
-const QUESTION_QUALITY_RULES = 'Untuk PG, isi options dengan lima objek berurutan A–E. Setiap content harus berisi teks jawaban lengkap, berbeda, tanpa label huruf atau petunjuk kunci. Isi isCorrect dengan boolean dan tandai tepat satu jawaban benar. Selesaikan soal lalu cocokkan isi dan urutan opsi dengan semua rujukan di pembahasan. Untuk literasi, uji pemahaman bacaan sesuai subtopik. Gunakan bahasa Inggris untuk stimulus, pertanyaan, dan opsi LBE. Alokasikan isian numerik pada PK atau PM.';
+const QUESTION_QUALITY_RULES = 'Untuk PG, isi options dengan lima objek berurutan A–E. Setiap content harus berisi teks jawaban lengkap, berbeda, tanpa label huruf atau petunjuk kunci. Isi isCorrect dengan boolean dan tandai tepat satu jawaban benar. Selesaikan soal lalu cocokkan isi dan urutan opsi dengan semua rujukan di pembahasan. Untuk literasi, uji pemahaman bacaan sesuai subtopik. Gunakan bahasa Inggris untuk stimulus, pertanyaan, dan opsi LBE.';
 
 export const SOLUTION_FORMATTING_RULES = [
   'PEDOMAN PEMBAHASAN UNTUK SISWA YANG BARU BELAJAR:',
@@ -971,7 +971,7 @@ export function computePackageAutoBalancePlan(params: {
 
   return {
     requestedShort,
-    shortCapacity: slots.filter(slot => supportsNumericSlot(slot.subtest)).length,
+    shortCapacity: slots.length,
     totalInPackage: packageQuestions.length,
     subtestCounts,
     difficultyCounts,
@@ -1005,19 +1005,19 @@ export const PROMPT_SYSTEM_IDENTITY = `Kamu adalah Guru & Tutor Pembahasan UTBK 
 
 export function buildQuestionTypeHeading(questionType: string): string {
   if (questionType === 'ISIAN_SINGKAT') {
-    return 'SOAL ISIAN SINGKAT (STANDAR RESMI BPPP UTBK SNBT)';
+    return 'SOAL ISIAN SINGKAT';
   }
   if (questionType === 'CAMPURAN') {
-    return 'KOMBINASI PILIHAN GANDA (A-E) DAN ISIAN SINGKAT (STANDAR RESMI UTBK SNBT TERBARU)';
+    return 'KOMBINASI PILIHAN GANDA (A-E) DAN ISIAN SINGKAT';
   }
   return 'SOAL PILIHAN GANDA 5 OPSI (A, B, C, D, E)';
 }
 
 export function buildTypeSpecificRules(questionType: string): string {
   if (questionType === 'ISIAN_SINGKAT') {
-    return `KETENTUAN KHUSUS PEMBUATAN SOAL ISIAN SINGKAT (STANDAR BPPP UTBK):
-1. Target Subtes Resmi: Soal isian singkat resmi UTBK SNBT BPPP ditujukan untuk subtes Pengetahuan Kuantitatif (PK) dan Penalaran Matematika (PM).
-2. Pertanyaan Menuntut Jawaban Pasti: Pertanyaan WAJIB dirumuskan secara eksplisit sehingga menghasilkan nilai akhir matematis tunggal dan pasti (tidak ambigu dan bukan berupa rentang jawaban).
+    return `KETENTUAN PEMBUATAN SOAL ISIAN SINGKAT:
+1. Ikuti subtes dan kompetensi pada slot.
+2. Rumuskan pertanyaan dengan satu jawaban angka yang pasti. Jika jawabannya nomor kalimat, paragraf, atau pernyataan, beri nomor pada stimulus dan pastikan tepat satu nomor memenuhi pertanyaan.
 3. PETUNJUK FORMAT MENJAWAB WAJIB DICANTUMKAN PADA TEKS SOAL:
    Pada akhir teks pertanyaan (field "content"), kamu WAJIB mencantumkan petunjuk format menjawab baku dalam tanda kurung siku berikut:
    "\\n\\n${SHORT_ANSWER_FORMAT_TAG}"
@@ -1226,6 +1226,7 @@ ${buildJsonStructureExample({
 }
 
 export function buildManualBatchPrompt(params: {
+  isTryout?: boolean;
   packageLabel: string;
   totalCount: number;
   activeSubtestEntries: Array<[string, number]>;
@@ -1298,7 +1299,7 @@ export function buildManualBatchPrompt(params: {
 
   const hasVerbal = activeSubtestEntries.some(([key]) => !supportsNumericSlot(key));
   const hasNumeric = !activeSubtestEntries.length || activeSubtestEntries.some(([key]) => supportsNumericSlot(key));
-  const resolvedType = !hasNumeric ? 'PILIHAN_GANDA'
+  const resolvedType = params.isTryout ? promptQuestionType : !hasNumeric ? 'PILIHAN_GANDA'
     : hasVerbal && promptQuestionType === 'ISIAN_SINGKAT' ? 'CAMPURAN' : promptQuestionType;
   const questionTypeHeading = buildQuestionTypeHeading(resolvedType);
   const primarySubtestId = activeSubtestEntries[0]?.[0] || 'PENALARAN_MATEMATIKA';
@@ -1346,7 +1347,7 @@ ${buildJsonStructureExample({
   topic: selectedSubtopicMeta?.topicTitle || 'Aljabar & Persamaan',
   subtopic: selectedSubtopicMeta?.subtopicTitle || 'Persamaan Kuadrat',
   difficulty: promptDifficulty === 'MIXED' ? 'MEDIUM' : promptDifficulty,
-  type: supportsNumericSlot(primarySubtestId) && resolvedType === 'ISIAN_SINGKAT' ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA',
+  type: (params.isTryout || supportsNumericSlot(primarySubtestId)) && resolvedType === 'ISIAN_SINGKAT' ? 'ISIAN_SINGKAT' : 'PILIHAN_GANDA',
   isSingle: totalCount <= 1,
 })}`;
 }

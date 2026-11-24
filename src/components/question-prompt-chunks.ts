@@ -1,6 +1,6 @@
 import type { AutoBalanceSlot } from './question-lifecycle-types';
 
-export const PROMPT_PLAN_VERSION = 3;
+export const PROMPT_PLAN_VERSION = 4;
 
 export interface PromptChunk {
   id: string;

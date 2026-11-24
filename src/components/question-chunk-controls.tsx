@@ -31,7 +31,7 @@ export function QuestionChunkControls(p: Props) {
   const done = chunks.filter(c => c.saved === c.keys.length).length;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {p.plan.version !== PROMPT_PLAN_VERSION && <p className="w-full text-sm">Rencana ini memakai perhitungan lama. Pilih “Akhiri rencana” lalu buat rencana baru untuk menghitung ulang kuota isian.</p>}
+      {p.plan.version !== PROMPT_PLAN_VERSION && <p className="w-full text-sm">Rencana ini memakai pembagian isian lama. Akhiri rencana lalu buat rencana baru untuk memakai distribusi terbaru.</p>}
       {slots.length > 0 && <p className="w-full text-sm">Total semua chunk: {composition(slots)}</p>}
       <label>{done}/{chunks.length} chunk selesai
         <select className="field-input" value={p.selected} onChange={e => p.onSelect(Number(e.target.value))}>
