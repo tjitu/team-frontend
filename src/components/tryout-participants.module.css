@@ -1,11 +1,11 @@
-﻿.dialog { width: min(960px, 100%); max-height: min(85vh, 900px); display: flex; flex-direction: column; gap: 16px; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); color: var(--foreground); box-shadow: 0 20px 50px rgba(0,0,0,.35); }
+.dialog { width: min(1200px, 100%); max-height: min(85vh, 900px); display: flex; flex-direction: column; gap: 16px; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); color: var(--foreground); box-shadow: 0 20px 50px rgba(0,0,0,.35); }
 .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .header h2 { font-size: 1.15rem; font-weight: 700; margin: 0 0 6px; }
 .header p { color: var(--muted-fg); font-size: .875rem; margin: 0; }
 .tableWrap { overflow: auto; min-height: 0; border: 1px solid var(--border); border-radius: 10px; }
-.table { width: 100%; min-width: 650px; border-collapse: collapse; text-align: left; font-size: .875rem; }
+.table { width: 100%; min-width: 1000px; border-collapse: collapse; text-align: left; font-size: .875rem; }
 .table th { position: sticky; top: 0; background: var(--card); color: var(--muted-fg); font-weight: 600; z-index: 1; }
 .table th, .table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .table tr:last-child td { border-bottom: 0; }
-.table td:nth-child(2) { overflow-wrap: anywhere; }
+.table td:nth-child(3) { overflow-wrap: anywhere; }
 @media (max-width: 640px) { .dialog { padding: 16px; max-height: 90vh; } }

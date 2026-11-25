@@ -6,7 +6,10 @@ import { api } from '@/lib/api';
 import type { Tryout } from './tryout-table-types';
 import styles from './tryout-participants.module.css';
 
-type Participant = { id: string; userId: string; name: string; email: string; status: string };
+type Participant = {
+  id: string; userId: string; name: string; email: string; status: string;
+  rank: number | null; score: number | null; correctCount: number | null; wrongCount: number | null;
+};
 const labels: Record<string, string> = { NOT_STARTED: 'Belum mengerjakan', IN_PROGRESS: 'Sedang mengerjakan', FINISHED: 'Selesai' };
 
 export function TryoutParticipants({ tryout, disabled, onChanged }: { tryout: Tryout; disabled: boolean; onChanged: () => void }) {
@@ -39,15 +42,19 @@ export function TryoutParticipants({ tryout, disabled, onChanged }: { tryout: Tr
     {open && <div className="modal-overlay" role="presentation">
       <section className={styles.dialog} role="dialog" aria-modal="true" aria-label={`Peserta ${tryout.title}`}>
         <div className={styles.header}>
-          <div><h2>Peserta: {tryout.title}</h2><p>Reset menghapus jawaban dan hasil; peserta tetap terdaftar dan bisa mengerjakan ulang.</p></div>
+          <div><h2>Peserta: {tryout.title}</h2><p>Peringkat sementara berdasarkan skor IRT peserta yang sudah selesai, termasuk yang selesai setelah periode berakhir. Muat ulang untuk memperbarui.</p></div>
+          <button type="button" className="table-action-btn" disabled={loading} onClick={() => void load()}>Muat ulang</button>
           <button type="button" className="table-action-btn" onClick={() => setOpen(false)}>Tutup</button>
         </div>
         {tryout.scheduledEnd && new Date(tryout.scheduledEnd).getTime() < Date.now() && <p>Periode tryout telah berakhir. Sesuaikan jadwal jika peserta perlu mengerjakan ulang.</p>}
         {error && <p role="alert">{error}</p>}
         {loading ? <p>Memuat peserta...</p> : participants.length === 0 ? <p>Belum ada peserta.</p> :
-          <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Nama</th><th>Email</th><th>Status</th><th>Aksi</th></tr></thead><tbody>
+          <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Peringkat</th><th>Nama</th><th>Email</th><th>Status</th><th>Benar</th><th>Salah</th><th>Skor IRT</th><th>Aksi</th></tr></thead><tbody>
             {participants.map((participant) => <tr key={participant.id}>
+              <td>{participant.rank != null ? `#${participant.rank}` : '—'}</td>
               <td>{participant.name}</td><td>{participant.email}</td><td>{labels[participant.status] || participant.status}</td>
+              <td>{participant.correctCount ?? '—'}</td><td>{participant.wrongCount ?? '—'}</td>
+              <td>{participant.score != null ? Math.round(participant.score) : '—'}</td>
               <td>{['FINISHED', 'IN_PROGRESS'].includes(participant.status) && <button type="button" className="table-action-btn" disabled={Boolean(busy)} onClick={() => void reset(participant)}>{busy === participant.id ? 'Mereset...' : 'Reset pengerjaan'}</button>}</td>
             </tr>)}
           </tbody></table></div>}
