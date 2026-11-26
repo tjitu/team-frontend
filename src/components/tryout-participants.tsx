@@ -9,6 +9,7 @@ import styles from './tryout-participants.module.css';
 type Participant = {
   id: string; userId: string; name: string; email: string; status: string;
   rank: number | null; score: number | null; correctCount: number | null; wrongCount: number | null;
+  emptyCount: number | null;
 };
 const labels: Record<string, string> = { NOT_STARTED: 'Belum mengerjakan', IN_PROGRESS: 'Sedang mengerjakan', FINISHED: 'Selesai' };
 
@@ -49,11 +50,12 @@ export function TryoutParticipants({ tryout, disabled, onChanged }: { tryout: Tr
         {tryout.scheduledEnd && new Date(tryout.scheduledEnd).getTime() < Date.now() && <p>Periode tryout telah berakhir. Sesuaikan jadwal jika peserta perlu mengerjakan ulang.</p>}
         {error && <p role="alert">{error}</p>}
         {loading ? <p>Memuat peserta...</p> : participants.length === 0 ? <p>Belum ada peserta.</p> :
-          <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Peringkat</th><th>Nama</th><th>Email</th><th>Status</th><th>Benar</th><th>Salah</th><th>Skor IRT</th><th>Aksi</th></tr></thead><tbody>
+          <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Peringkat</th><th>Nama</th><th>Email</th><th>Status</th><th>Benar</th><th>Salah</th><th>Kosong</th><th>Skor IRT</th><th>Aksi</th></tr></thead><tbody>
             {participants.map((participant) => <tr key={participant.id}>
               <td>{participant.rank != null ? `#${participant.rank}` : '—'}</td>
               <td>{participant.name}</td><td>{participant.email}</td><td>{labels[participant.status] || participant.status}</td>
               <td>{participant.correctCount ?? '—'}</td><td>{participant.wrongCount ?? '—'}</td>
+              <td>{participant.emptyCount ?? '—'}</td>
               <td>{participant.score != null ? Math.round(participant.score) : '—'}</td>
               <td>{['FINISHED', 'IN_PROGRESS'].includes(participant.status) && <button type="button" className="table-action-btn" disabled={Boolean(busy)} onClick={() => void reset(participant)}>{busy === participant.id ? 'Mereset...' : 'Reset pengerjaan'}</button>}</td>
             </tr>)}
