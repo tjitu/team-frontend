@@ -2,14 +2,22 @@
 
 import { useEffect, useState } from 'react';
 
-export function ThemeToggle({ className = '' }: { className?: string }) {
-  const [darkMode, setDarkMode] = useState(false);
+interface ThemeToggleProps {
+  className?: string;
+  defaultTheme?: 'light' | 'dark';
+  iconOnly?: boolean;
+}
+
+export function ThemeToggle({ className = '', defaultTheme = 'light', iconOnly = false }: ThemeToggleProps) {
+  const [darkMode, setDarkMode] = useState(defaultTheme === 'dark');
 
   useEffect(() => {
-    const shouldUseDarkMode = window.localStorage.getItem('jitu-team-theme') === 'dark';
+    const savedTheme = window.localStorage.getItem('jitu-team-theme');
+    const shouldUseDarkMode = (savedTheme ?? defaultTheme) === 'dark';
+    if (!savedTheme) window.localStorage.setItem('jitu-team-theme', defaultTheme);
     document.documentElement.classList.toggle('dark', shouldUseDarkMode);
     setDarkMode(shouldUseDarkMode);
-  }, []);
+  }, [defaultTheme]);
 
   function toggleTheme() {
     const nextDarkMode = !darkMode;
@@ -31,7 +39,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       ) : (
         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.2 12.2A7 7 0 0 1 7.8 3.8a7 7 0 1 0 8.4 8.4Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
       )}
-      <span>{darkMode ? 'Light mode' : 'Dark mode'}</span>
+      {!iconOnly && <span>{darkMode ? 'Light mode' : 'Dark mode'}</span>}
     </button>
   );
 }

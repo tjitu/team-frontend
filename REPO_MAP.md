@@ -38,6 +38,7 @@ team-frontend/
 ## 2. Key Architecture Patterns
 
 * **Auth**: Supabase Auth with SSR cookie management (`@supabase/ssr`).
+* **Login**: `login-form.tsx` keeps Supabase sign-in and safe return paths; `login-form.module.css` owns the centered, responsive brand layout and scoped `--login-*` theme tokens. The icon-only theme toggle defaults new visitors to dark mode and respects saved preferences.
 * **API Calls**: Sends Supabase JWT bearer token to `NEXT_PUBLIC_TEAM_API_URL` (`http://localhost:3200/api`).
 * **Control Center & Bank Soal**: Auto-balance slot planner (`auto-balance-adjuster-modal.tsx`, `tryout-workflow-balancer.tsx`), curriculum gap analysis, question type (`PG`/`Isian`) composition controls, and QC workflows (`question-lifecycle-types.ts`). Question imports and prompt examples share section grouping and answer-format conventions in `question-solution-layout.ts`.
 * Auto-balance distributes difficulty and supported answer formats per subtest in `question-slot-distribution.ts`; chunk prompts include their exact per-subtest allocations.

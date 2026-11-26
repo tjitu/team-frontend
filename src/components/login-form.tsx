@@ -1,11 +1,14 @@
 'use client';
 
-import { BrandLogo } from '@/components/brand-logo';
+import Image from 'next/image';
+import Link from 'next/link';
+import { Eye, EyeOff, LoaderCircle } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { markSessionStarted } from '@/lib/session';
+import styles from './login-form.module.css';
 
 function safeNextPath(value: string | undefined) {
   if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\') || value.startsWith('/login')) return '/';
@@ -28,6 +31,7 @@ export function LoginForm({
   const [error, setError] = useState(initialError ?? '');
   const [notice, setNotice] = useState(initialNotice ?? '');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -70,37 +74,41 @@ export function LoginForm({
   }
 
   return (
-    <div className="auth-layout">
-      <aside className="auth-aside">
-        <a className="brand auth-brand" href="/" aria-label="JituPTN Team Platform">
-          <BrandLogo size={36} showText />
-        </a>
-        <div className="auth-aside-copy">
-          <h2>A well-organized workspace for teams in motion.</h2>
-          <p>Plan projects, organize work, and track team progress in one place.</p>
-        </div>
-      </aside>
-      <section className="auth-card" aria-labelledby="login-title">
-        <div className="auth-card-toolbar"><ThemeToggle /></div>
-        <div className="auth-heading">
-          <h1 id="login-title">Sign in to your workspace</h1>
-          <p>Sign in with an account that has access to JituPTN Team Platform.</p>
-        </div>
-        <form className="form-stack auth-form" onSubmit={signIn}>
-          {notice && <p className="inline-message info" role="status">{notice}</p>}
-          {error && <p className="inline-message error" role="alert">{error}</p>}
-          <label className="field-label" htmlFor="login-email">Email
-            <input id="login-email" className="field-input" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
+    <div className={styles.page}>
+      <ThemeToggle className={styles.themeToggle} defaultTheme="dark" iconOnly />
+      <section className={styles.panel} aria-labelledby="login-title">
+        <Link className={styles.brand} href="/" aria-label="Jitu Team Platform home">
+          <Image src="/blue-jitu-logo.png" alt="" width={64} height={44} priority />
+          <span>jitu.</span>
+        </Link>
+        <header className={styles.heading}>
+          <p className={styles.eyebrow}>Jitu Workspace</p>
+          <h1 id="login-title">Welcome back</h1>
+          <p className={styles.subtitle}>Sign in to your Jitu workspace.</p>
+        </header>
+        <form className={styles.form} onSubmit={signIn} aria-busy={loading}>
+          {notice && <p className={styles.notice} role="status">{notice}</p>}
+          {error && <p className={styles.error} role="alert">{error}</p>}
+          <label className={styles.field} htmlFor="login-email">Email
+            <input id="login-email" className={styles.input} type="email" autoComplete="username" placeholder="you@jituptn.com" value={email} onChange={(event) => setEmail(event.target.value)} disabled={loading} required />
           </label>
-          <label className="field-label" htmlFor="login-password">Password
-            <input id="login-password" className="field-input" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-          </label>
-          <button className="button button-primary auth-submit" disabled={loading}>
-            {loading ? 'Checking account…' : 'Sign in'}
+          <div className={styles.field}>
+            <label htmlFor="login-password">Password</label>
+            <div className={styles.passwordField}>
+              <input id="login-password" className={styles.input} type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Enter your password" value={password} onChange={(event) => setPassword(event.target.value)} disabled={loading} required />
+              <button className={styles.passwordToggle} type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} aria-controls="login-password" onClick={() => setShowPassword((visible) => !visible)}>
+                {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+              </button>
+            </div>
+          </div>
+          <button className={styles.submit} type="submit" disabled={loading}>
+            {loading && <LoaderCircle className={styles.spinner} aria-hidden="true" />}
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-        <p className="auth-footnote">Accounts are managed by a JituPTN Team Platform administrator.</p>
+        <p className={styles.footnote}>Need access? Contact your administrator.</p>
       </section>
+      <footer className={styles.footer}>Jitu Team Platform</footer>
     </div>
   );
 }

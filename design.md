@@ -53,6 +53,8 @@ Always reference CSS variables from `team-frontend/src/app/globals.css` rather t
 
 Built on **Base UI + Tailwind CSS + TanStack Table (`src/components/ui/`)**.
 
+The login screen uses scoped `--login-*` tokens in `src/components/login-form.module.css`: a centered form without a card, blue primary action, subtle blue corner gradients, and a logo wordmark. Dark mode is the first-visit default; saved theme choices take precedence. Keep the password visibility control, icon-only theme switch, and mobile layout accessible.
+
 | Elemen | Karakter Standar | Ruang Fleksibilitas |
 | :--- | :--- | :--- |
 | **Workspace Shell & Nav** | Collapsible sidebar (`--sidebar-bg`, `--sidebar-border`), top breadcrumb bar (`ui/breadcrumb.tsx`), theme toggle, notification/activity triggers. | Sub-routes like `control-center` or `monitoring` may add secondary sub-navigation tabs or filter bars. |
