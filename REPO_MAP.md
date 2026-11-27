@@ -39,7 +39,7 @@ team-frontend/
 
 * **Affiliate routes**: `/affiliate` with `/referrals`, `/boosts`, `/earnings` and `/agreement` provides the session-scoped affiliate workspace. `/affiliates`, `/affiliates/[id]` and `/affiliates/agreements` integrate administration into the existing Team shell.
 * **Affiliate components**: `src/components/affiliate/` separates reports, chart/table views, safe Markdown agreement rendering/editor, quota activation confirmation, admin configuration and manual payouts. Scoped semantic-token CSS supports mobile and dark mode.
-* **Server access enforcement**: `proxy.ts` and `src/lib/affiliate-route-access.ts` verify membership and route agreement gates. Backend authorization independently protects data and mutations. Team/Referral forms add the role, optional username and searchable assigned-affiliate picker.
+* **Server access enforcement**: `src/proxy.ts` (beside `src/app`, as required by Next) and `src/lib/affiliate-route-access.ts` verify membership and route agreement gates. Backend authorization independently protects data and mutations. Team/Referral forms add the role, optional username and searchable assigned-affiliate picker.
 * **Affiliate verification**: `test/affiliate-ui.test.cjs` verifies escaped agreement content and effective-rate display; `docs/affiliate-program.md` documents routes and rollout.
 
 * **Auth**: Supabase Auth with SSR cookie management (`@supabase/ssr`).

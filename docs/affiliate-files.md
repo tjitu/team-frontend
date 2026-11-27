@@ -3,7 +3,7 @@
 - `docs/affiliate-files.md`
 - `docs/affiliate-program.md`
 - `package.json`
-- `proxy.ts`
+- `src/proxy.ts`
 - `REPO_MAP.md`
 - `src/app/affiliate/agreement/page.tsx`
 - `src/app/affiliate/boosts/page.tsx`

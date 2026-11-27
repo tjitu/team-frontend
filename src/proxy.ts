@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
-import { enforceAffiliateRoute } from './src/lib/affiliate-route-access';
+import { enforceAffiliateRoute } from './lib/affiliate-route-access';
 
 export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
