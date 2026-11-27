@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
+import { AffiliateShell } from '@/components/affiliate/affiliate-shell';
 
 const controlCenterItems = [
   { id: 'tryouts', label: 'Tryouts', icon: GraduationCap },
@@ -296,10 +297,8 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isInvitationRoute || isLoginRoute) return;
     let active = true;
-    Promise.all([
-      api.get<CurrentMember>('/team/me'),
-      api.get<Project[]>('/team/projects'),
-    ]).then(([currentMember, projectList]) => {
+    api.get<CurrentMember>('/team/me',{ force: true }).then(async currentMember => {
+      const projectList = currentMember.role === 'AFFILIATOR' ? [] : await api.get<Project[]>('/team/projects');
       if (!active) return;
       setMember(currentMember);
       setProjects(projectList);
@@ -313,7 +312,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       setLoadError(error.message);
     });
     return () => { active = false; };
-  }, [isInvitationRoute, isLoginRoute]);
+  }, [isInvitationRoute, isLoginRoute, pathname]);
 
   // Load notification read timestamp
   useEffect(() => {
@@ -403,6 +402,9 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
     }
   }
 
+  if (member?.role === 'AFFILIATOR') return <AffiliateShell member={member} signOut={signOut}>{children}</AffiliateShell>;
+  if (!member) return <main className="page-content"><p role="status">{loadError || 'Memuat workspace…'}</p></main>;
+
   return (
     <div className="workspace" data-variant="inset">
       <a className="skip-link" href="#main-content">Skip to main content</a>
@@ -429,6 +431,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-content">
           <div className="sidebar-label">Dashboards</div>
           <nav className="primary-nav" aria-label="Workspace">
+          {member && (member.role==='SYSTEM_OWNER' || member.role==='SYSTEM_ADMIN') && <Link className={`nav-link ${pathname.startsWith('/affiliates') ? 'is-active' : ''}`} href="/affiliates" title="Affiliate Management"><Users className="nav-icon" /><span className="nav-link-text">Affiliates</span></Link>}
           <Link
             className={`nav-link ${pathname === '/' ? 'is-active' : ''}`}
             href="/"

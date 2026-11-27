@@ -1,11 +1,16 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
+import { enforceAffiliateRoute } from './src/lib/affiliate-route-access';
 
 export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  if (!supabaseUrl || !publishableKey) return NextResponse.next({ request });
+  if (!supabaseUrl || !publishableKey) {
+    const path=request.nextUrl.pathname;
+    if (path==='/login' || path.startsWith('/auth/') || path==='/api/health') return NextResponse.next({ request });
+    return new NextResponse('Team authentication is not configured.',{ status: 503 });
+  }
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(supabaseUrl, publishableKey, {
@@ -20,9 +25,24 @@ export async function proxy(request: NextRequest) {
   });
 
   try {
-    await supabase.auth.getClaims();
+    const { data } = await supabase.auth.getClaims();
+    const path = request.nextUrl.pathname;
+    const publicRoute = path==='/login' || path.startsWith('/auth/') || path.startsWith('/invitations/') || path==='/api/health';
+    if (!publicRoute) {
+      if (!data?.claims) return path.startsWith('/api/') ? NextResponse.json({ message: 'Unauthorized' },{ status: 401 })
+        : NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(path)}`,request.url));
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) return NextResponse.redirect(new URL('/login',request.url));
+      const decision = await enforceAffiliateRoute(request,sessionData.session.access_token);
+      if (decision) {
+        response.cookies.getAll().forEach(cookie => decision.cookies.set(cookie));
+        return decision;
+      }
+    }
   } catch {
-    // Keep the login page reachable during a temporary Supabase outage.
+    if (request.nextUrl.pathname!=='/login' && !request.nextUrl.pathname.startsWith('/auth/')) {
+      return new NextResponse('Team access is temporarily unavailable.',{ status: 503 });
+    }
   }
   return response;
 }

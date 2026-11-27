@@ -50,10 +50,20 @@ export function LoginForm({
     setError('');
     setNotice('');
     try {
-      const { error: authError } = await createSupabaseBrowserClient().auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      const client = createSupabaseBrowserClient();
+      let authError: Error | null = null;
+      if (email.includes('@')) {
+        const result = await client.auth.signInWithPassword({ email: email.trim(),password });
+        authError = result.error;
+      } else {
+        const apiUrl = (process.env.NEXT_PUBLIC_TEAM_API_URL ?? 'http://localhost:3200/api').replace(/\/$/,'');
+        const response = await fetch(`${apiUrl}/team/auth/username-session`,{ method: 'POST',headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: email.trim().toLowerCase(),password }) });
+        const session = await response.json();
+        if (!response.ok) throw new Error(session.message || 'Sign-in failed.');
+        const result = await client.auth.setSession(session);
+        authError = result.error;
+      }
       if (authError) throw authError;
       markSessionStarted();
       router.replace(destination);
@@ -89,8 +99,8 @@ export function LoginForm({
         <form className="form-stack auth-form" onSubmit={signIn}>
           {notice && <p className="inline-message info" role="status">{notice}</p>}
           {error && <p className="inline-message error" role="alert">{error}</p>}
-          <label className="field-label" htmlFor="login-email">Email
-            <input id="login-email" className="field-input" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          <label className="field-label" htmlFor="login-email">Email or username
+            <input id="login-email" className="field-input" type="text" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required />
           </label>
           <label className="field-label" htmlFor="login-password">Password
             <input id="login-password" className="field-input" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />

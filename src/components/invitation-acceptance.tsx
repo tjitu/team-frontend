@@ -12,6 +12,7 @@ const roleLabels: Record<TeamRole, string> = {
   SYSTEM_OWNER: 'System Owner',
   SYSTEM_ADMIN: 'System Admin',
   MEMBER: 'Member',
+  AFFILIATOR: 'Affiliator',
 };
 
 export function InvitationAcceptance({ token, completed }: { token: string | null; completed: boolean }) {

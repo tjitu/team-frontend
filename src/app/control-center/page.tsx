@@ -15,6 +15,7 @@ import { api, CurrentMember, RevenueSummary, signInUrl } from '@/lib/api';
 import { DataTable } from '@/components/ui/data-table';
 import { type DataTableFeatures } from '@/components/ui/data-table-features';
 import { ComboboxSelect } from '@/components/ui/combobox';
+import { AssignedAffiliator } from '@/components/affiliate/assigned-affiliator';
 import {
   ExternalLink,
   Eye,
@@ -104,6 +105,7 @@ import {
 export type Section = 'tryouts' | 'pricing' | 'vouchers' | 'discounts' | 'users' | 'articles' | 'careers' | 'payments' | 'questions' | 'practice' | 'soal-asli' | 'curriculum';
 
 export type Voucher = {
+  affiliateId?: string | null;
   id: string;
   code: string;
   discountPercent: number;
@@ -134,6 +136,7 @@ export type Voucher = {
 };
 
 export type VoucherForm = {
+  affiliateId: string;
   code: string;
   discountPercent: string;
   commissionPercent: string;
@@ -150,6 +153,7 @@ export type VoucherForm = {
 };
 
 const initialVoucherForm: VoucherForm = {
+  affiliateId: '',
   code: '',
   discountPercent: '20',
   commissionPercent: '10',
@@ -2489,6 +2493,7 @@ function ControlCenterContent() {
     setSaving(true); setError(''); setNotice('');
     const body = {
       code: voucherForm.code.trim().toUpperCase(),
+      affiliateId: voucherForm.affiliateId || null,
       discountPercent: Number(voucherForm.discountPercent),
       commissionPercent: Number(voucherForm.commissionPercent || 0),
       issuedToUserId: voucherForm.issuedToUserId.trim() || null,
@@ -2519,6 +2524,7 @@ function ControlCenterContent() {
     setEditingVoucher(item.id);
     setVoucherForm({
       code: item.code,
+      affiliateId: item.affiliateId || '',
       discountPercent: String(item.discountPercent),
       commissionPercent: String(item.commissionPercent ?? 0),
       issuedToUserId: item.issuedToUserId || '',
@@ -6633,6 +6639,7 @@ function ControlCenterContent() {
             </div>
 
             <form onSubmit={saveVoucher}>
+              <AssignedAffiliator value={voucherForm.affiliateId} onChange={value => setVoucherForm({ ...voucherForm,affiliateId: value })} />
               <div className="modal-body" style={{ maxHeight: 'calc(80vh - 120px)', overflowY: 'auto' }}>
                 <div className="control-form-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
                   <label className="field-label" style={{ gridColumn: 'span 2' }}>
@@ -6657,6 +6664,7 @@ function ControlCenterContent() {
                       max="100"
                       placeholder="20"
                       value={voucherForm.discountPercent}
+                      disabled={Boolean(voucherForm.affiliateId)}
                       onChange={(e) => setVoucherForm({ ...voucherForm, discountPercent: e.target.value })}
                     />
                   </label>
@@ -6671,6 +6679,7 @@ function ControlCenterContent() {
                       max="100"
                       placeholder="10"
                       value={voucherForm.commissionPercent}
+                      disabled={Boolean(voucherForm.affiliateId)}
                       onChange={(e) => setVoucherForm({ ...voucherForm, commissionPercent: e.target.value })}
                     />
                   </label>

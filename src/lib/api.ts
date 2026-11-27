@@ -3,7 +3,7 @@ import { isSessionExpiredDueToInactivity, recordActivity, performInactivityLogou
 
 const API_URL = (process.env.NEXT_PUBLIC_TEAM_API_URL ?? 'http://localhost:3200/api').replace(/\/$/, '');
 
-export type TeamRole = 'SYSTEM_OWNER' | 'SYSTEM_ADMIN' | 'MEMBER';
+export type TeamRole = 'SYSTEM_OWNER' | 'SYSTEM_ADMIN' | 'MEMBER' | 'AFFILIATOR';
 export type ProjectRole = 'PROJECT_MANAGER' | 'MEMBER' | 'VIEWER';
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'BLOCKED' | 'DONE';
 export type TaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
