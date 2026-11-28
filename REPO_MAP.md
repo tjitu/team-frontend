@@ -43,7 +43,7 @@ team-frontend/
 * **Affiliate verification**: `test/affiliate-ui.test.cjs` verifies escaped agreement content and effective-rate display; `docs/affiliate-program.md` documents routes and rollout.
 
 * **Auth**: Supabase Auth with SSR cookie management (`@supabase/ssr`).
-* **API Calls**: Sends Supabase JWT bearer token to `NEXT_PUBLIC_TEAM_API_URL` (`http://localhost:3200/api`).
+* **API Calls**: Sends Supabase JWT bearer token to `NEXT_PUBLIC_TEAM_API_URL` (`http://localhost:3200/api`). Account creation uses same-origin `POST /api/team/members` on Next.js; `src/lib/server/team-members/` verifies session and authoritative Team DB role, creates Supabase Auth accounts, writes membership/audit, and initializes Main affiliate terms. Server-only environment variables are documented in `.env.example`.
 * **Control Center & Bank Soal**: Auto-balance slot planner (`auto-balance-adjuster-modal.tsx`, `tryout-workflow-balancer.tsx`), curriculum gap analysis, question type (`PG`/`Isian`) composition controls, and QC workflows (`question-lifecycle-types.ts`). Question imports and prompt examples share section grouping and answer-format conventions in `question-solution-layout.ts`.
 * Auto-balance distributes difficulty and supported answer formats per subtest in `question-slot-distribution.ts`; chunk prompts include their exact per-subtest allocations.
 * **Tryout Table**: `tryout-table.tsx`, `tryout-table-actions.tsx`, and `tryout-table-types.ts` own the catalog table, stacked participant counts, lifecycle badge, and explicit force-delete action. Scoped token-based styles live in `tryout-table.module.css`; the page confirms history deletion before calling `?force=true`.

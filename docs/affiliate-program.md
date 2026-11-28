@@ -26,6 +26,22 @@ a searchable Assigned Affiliator field; per-code rate controls are disabled when
 assignment makes affiliate configuration authoritative. Configuration changes are
 made on the individual affiliate detail page and tied to a published agreement.
 
+Account creation from the Team form now runs in Next.js at `POST /api/team/members`
+(port 3100). It verifies the Supabase session with `getUser`, checks the active
+Team DB role, and rechecks that role under a row lock before saving. Owners alone
+can create admins; Owner creation remains bootstrap-only. The Next server creates
+the Auth user, Team membership and audit entry, plus initial Main affiliate terms.
+Failed writes compensate only the newly created account. An uncertain commit is
+preserved for reconciliation rather than deleting a potentially committed account.
+Listing, role changes and other existing Team operations continue through NestJS.
+
+Configure `TEAM_DATABASE_URL`, `JITU_CONTROL_CENTER_DATABASE_URL` and a valid Team
+`SUPABASE_SECRET_KEY` in the Next server environment (`.env.local` locally), then
+restart Next.js. These values must never have `NEXT_PUBLIC_` prefixes. Database TLS
+verifies the hostname and official Supabase CA; custom CA PEM overrides are listed
+in `.env.example`. Changing the request path cannot repair a revoked or invalid
+Supabase admin key. No password is stored in membership, metadata or audit records.
+
 The agreement editor supports headings, bold, lists, variables and preview through
 a safe Markdown subset; HTML stays text. Acceptance requires a fresh server preview
 hash and an unchecked acknowledgment. Accepted snapshots remain read-only.

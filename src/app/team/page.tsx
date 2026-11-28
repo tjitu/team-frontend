@@ -6,6 +6,7 @@ import { api, CurrentMember, isAdministrator, ManagedMember, signInUrl, TeamRole
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from '@/components/ui/avatar';
 import { getCartoonAvatarUrl } from '@/lib/avatar';
 import { DepartmentIcon } from '@/components/department-icon';
+import { createTeamAccount } from '@/lib/create-team-member';
 
 const roleLabels: Record<TeamRole, string> = {
   SYSTEM_OWNER: 'System Owner',
@@ -74,7 +75,7 @@ export default function TeamPage() {
     const data = new FormData(event.currentTarget);
     const email = String(data.get('email') ?? '').trim();
     try {
-      const created = await api.post<{ email: string }>('/team/members', {
+      const created = await createTeamAccount({
         email,
         name: String(data.get('name') ?? '').trim(),
         username: String(data.get('username') ?? '').trim().toLowerCase() || undefined,
@@ -88,7 +89,7 @@ export default function TeamPage() {
       setNotice(`Account for ${created.email} is ready. Share the initial password with them securely.`);
       form.reset();
       try {
-        const memberList = await api.get<ManagedMember[]>('/team/members?isActive=true');
+        const memberList = await api.get<ManagedMember[]>('/team/members?isActive=true', { force: true });
         setMembers(memberList);
       } catch {
         setError('The account was created, but the member list could not be refreshed. Reload the page.');

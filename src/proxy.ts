@@ -31,6 +31,8 @@ export async function proxy(request: NextRequest) {
     if (!publicRoute) {
       if (!data?.claims) return path.startsWith('/api/') ? NextResponse.json({ message: 'Unauthorized' },{ status: 401 })
         : NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(path)}`,request.url));
+      // This Next route verifies the user and authoritative DB role itself.
+      if (path === '/api/team/members') return response;
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) return NextResponse.redirect(new URL('/login',request.url));
       const decision = await enforceAffiliateRoute(request,sessionData.session.access_token);
