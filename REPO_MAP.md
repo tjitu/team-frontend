@@ -51,3 +51,5 @@ team-frontend/
 * **UI & Styling**: Base UI + TanStack Table + Tailwind CSS using semantic tokens in `src/app/globals.css`, documented in [design.md](file:///C:/JITU-ECOSYSTEM/team-frontend/design.md) and [writing.md](file:///C:/JITU-ECOSYSTEM/team-frontend/writing.md).
 
 * Chunked question prompts freeze slots per plan. The importer detects the JSON envelope, stores progress per member and destination in browser storage, and retries with a stable key per question.
+
+* **Registration growth**: `src/components/registration-growth/` provides persisted tryout settings, private queue, independent administrator checklist, review history and analytics. Control Center create/edit and existing participants dialog integrate these components. See `docs/registration-growth.md` and `npm run test:growth`.

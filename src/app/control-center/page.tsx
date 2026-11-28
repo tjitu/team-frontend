@@ -1,4 +1,6 @@
 'use client';
+import { GrowthSettings } from '@/components/registration-growth/growth-settings';
+import type { GrowthConfig } from '@/components/registration-growth/types';
 import { TryoutPromptScopeField, tryoutPromptSubtests, type TryoutPromptScope } from '@/components/tryout-prompt-scope';
 import { buildChunkPlan, detectChunk, readPlan, writePlan } from '@/components/question-prompt-chunks';
 import { QuestionChunkControls } from '@/components/question-chunk-controls';
@@ -458,6 +460,8 @@ export type CareerApplication = {
 };
 
 type TryoutForm = {
+  growthConfig: GrowthConfig | null;
+  growthVersion: number;
   title: string;
   description: string;
   solutionPrice: string;
@@ -489,6 +493,8 @@ type ArticleForm = {
 };
 
 const initialTryoutForm: TryoutForm = {
+  growthConfig: null,
+  growthVersion: 0,
   title: '',
   description: '',
   solutionPrice: '1',
@@ -2388,6 +2394,8 @@ function ControlCenterContent() {
     event.preventDefault();
     setSaving(true); setError(''); setNotice('');
     const body = {
+      growthConfig: tryoutForm.growthConfig ?? undefined,
+      growthVersion: tryoutForm.growthVersion,
       title: tryoutForm.title.trim(),
       description: tryoutForm.description.trim() || null,
       solutionPrice: Number(tryoutForm.solutionPrice),
@@ -2653,6 +2661,7 @@ function ControlCenterContent() {
   function editTryout(item: Tryout) {
     setEditingTryout(item.id); setTryoutFormOpen(true); setError(''); setNotice('');
     setTryoutForm({
+      growthConfig: null, growthVersion: item.growthVersion ?? 0,
       title: item.title, description: item.description ?? '', solutionPrice: String(item.solutionPrice), batch: item.batch,
       scheduledStart: wibDateInput(item.scheduledStart), scheduledEnd: wibDateInput(item.scheduledEnd),
       isPublic: item.isPublic, referralCode: item.referralCode ?? ''
@@ -4521,6 +4530,8 @@ function ControlCenterContent() {
                   />{' '}
                   Public tryout
                 </label>
+                <GrowthSettings tryoutId={editingTryout} disabled={saving} onChange={(growthConfig, growthVersion) =>
+                  setTryoutForm(value => ({ ...value, growthConfig, growthVersion }))} />
               </div>
               <div className="control-form-actions">
                 <button
@@ -4534,7 +4545,7 @@ function ControlCenterContent() {
                 >
                   Cancel
                 </button>
-                <button className="button button-primary" type="submit" disabled={saving}>
+                <button className="button button-primary" type="submit" disabled={saving || !tryoutForm.growthConfig}>
                   {saving ? 'Saving…' : editingTryout ? 'Save changes' : 'Create tryout'}
                 </button>
               </div>

@@ -5,6 +5,8 @@ import { Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { Tryout } from './tryout-table-types';
 import styles from './tryout-participants.module.css';
+import { GrowthVerificationQueue } from './registration-growth/growth-verification-queue';
+import growthStyles from './registration-growth/growth.module.css';
 
 type Participant = {
   id: string; userId: string; name: string; email: string; status: string;
@@ -15,6 +17,7 @@ const labels: Record<string, string> = { NOT_STARTED: 'Belum mengerjakan', IN_PR
 
 export function TryoutParticipants({ tryout, disabled, onChanged }: { tryout: Tryout; disabled: boolean; onChanged: () => void }) {
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<'results' | 'verification'>('results');
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -44,9 +47,14 @@ export function TryoutParticipants({ tryout, disabled, onChanged }: { tryout: Tr
       <section className={styles.dialog} role="dialog" aria-modal="true" aria-label={`Peserta ${tryout.title}`}>
         <div className={styles.header}>
           <div><h2>Peserta: {tryout.title}</h2><p>Peringkat sementara berdasarkan skor IRT peserta yang sudah selesai, termasuk yang selesai setelah periode berakhir. Muat ulang untuk memperbarui.</p></div>
-          <button type="button" className="table-action-btn" disabled={loading} onClick={() => void load()}>Muat ulang</button>
+          {tab === 'results' && <button type="button" className="table-action-btn" disabled={loading} onClick={() => void load()}>Muat ulang</button>}
           <button type="button" className="table-action-btn" onClick={() => setOpen(false)}>Tutup</button>
         </div>
+        <nav className={growthStyles.tabs} aria-label="Manajemen peserta">
+          <button type="button" className={`button ${tab === 'results' ? 'button-primary' : 'button-secondary'}`} onClick={() => setTab('results')}>Hasil peserta</button>
+          <button type="button" className={`button ${tab === 'verification' ? 'button-primary' : 'button-secondary'}`} onClick={() => setTab('verification')}>Verifikasi pendaftaran</button>
+        </nav>
+        {tab === 'verification' ? <GrowthVerificationQueue tryoutId={tryout.id} onChanged={onChanged} /> : <>
         {tryout.scheduledEnd && new Date(tryout.scheduledEnd).getTime() < Date.now() && <p>Periode tryout telah berakhir. Sesuaikan jadwal jika peserta perlu mengerjakan ulang.</p>}
         {error && <p role="alert">{error}</p>}
         {loading ? <p>Memuat peserta...</p> : participants.length === 0 ? <p>Belum ada peserta.</p> :
@@ -60,6 +68,7 @@ export function TryoutParticipants({ tryout, disabled, onChanged }: { tryout: Tr
               <td>{['FINISHED', 'IN_PROGRESS'].includes(participant.status) && <button type="button" className="table-action-btn" disabled={Boolean(busy)} onClick={() => void reset(participant)}>{busy === participant.id ? 'Mereset...' : 'Reset pengerjaan'}</button>}</td>
             </tr>)}
           </tbody></table></div>}
+        </>}
       </section>
     </div>}
   </>;

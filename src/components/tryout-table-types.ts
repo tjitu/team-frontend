@@ -1,8 +1,11 @@
 import type { TryoutCurationStatus } from './question-lifecycle-types';
+import type { GrowthConfig } from './registration-growth/types';
 
 export type TryoutLifecycle = 'DRAFT' | 'PUBLIC' | 'LIVE';
 
 export interface Tryout {
+  growthConfig?: GrowthConfig;
+  growthVersion?: number;
   id: string;
   code: number;
   title: string;

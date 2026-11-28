@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:growth": "node --test test/growth-ui.test.cjs",
     "test:affiliate": "node --test test/affiliate-ui.test.cjs test/team-member-creation.test.cjs",
     "dev": "next dev -p 3100",
     "build": "next build",
